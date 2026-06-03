@@ -720,6 +720,8 @@ const SESSION_TIMEOUT_HOURS = 0.5; // Nach 30 Minuten automatisch abmelden
 function logout() {
   sessionStorage.removeItem('tb_authenticated');
   sessionStorage.removeItem('tb_login_time');
+  sessionStorage.removeItem('tb_active_section');
+  sessionStorage.removeItem('tb_active_trainer');
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('passwordScreen').style.display = 'flex';
@@ -730,8 +732,6 @@ function logout() {
 function unlockApp() {
   sessionStorage.setItem('tb_authenticated', '1');
   sessionStorage.setItem('tb_login_time', Date.now().toString());
-  sessionStorage.removeItem('tb_active_section');
-  sessionStorage.removeItem('tb_active_trainer');
   document.getElementById('passwordScreen').style.display = 'none';
   // Weiter mit Setup oder App
   if (athleteId && apiKey) {
