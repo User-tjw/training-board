@@ -505,8 +505,11 @@ async function checkPassword() {
   }
 }
 
+const SESSION_TIMEOUT_HOURS = 8; // Nach 8 Stunden automatisch abmelden
+
 function logout() {
-  localStorage.removeItem('tb_authenticated');
+  sessionStorage.removeItem('tb_authenticated');
+  sessionStorage.removeItem('tb_login_time');
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('passwordScreen').style.display = 'flex';
@@ -515,7 +518,8 @@ function logout() {
 }
 
 function unlockApp() {
-  localStorage.setItem('tb_authenticated', '1');
+  sessionStorage.setItem('tb_authenticated', '1');
+  sessionStorage.setItem('tb_login_time', Date.now().toString());
   document.getElementById('passwordScreen').style.display = 'none';
   // Weiter mit Setup oder App
   if (athleteId && apiKey) {
@@ -523,6 +527,13 @@ function unlockApp() {
   } else {
     document.getElementById('setupScreen').style.display = 'flex';
   }
+}
+
+function isSessionValid() {
+  if (sessionStorage.getItem('tb_authenticated') !== '1') return false;
+  const loginTime = parseInt(sessionStorage.getItem('tb_login_time') || '0');
+  const elapsed = (Date.now() - loginTime) / (1000 * 60 * 60); // in Stunden
+  return elapsed < SESSION_TIMEOUT_HOURS;
 }
 
 // Beim ersten Besuch: Passwort setzen statt eingeben
@@ -539,8 +550,8 @@ const ICU_BASE = 'https://intervals.icu/api/v1';
 let athleteId = localStorage.getItem('icu_athlete_id') || '';
 let apiKey    = localStorage.getItem('icu_api_key') || '';
 
-// Bei Reload: automatisch einloggen wenn bereits authentifiziert
-if (localStorage.getItem('tb_pw_hash') && localStorage.getItem('tb_authenticated') === '1') {
+// Bei Reload: automatisch einloggen wenn Session noch gültig
+if (localStorage.getItem('tb_pw_hash') && isSessionValid()) {
   unlockApp();
 }
 
