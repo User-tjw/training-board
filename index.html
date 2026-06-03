@@ -473,6 +473,7 @@
             <span class="card-title">Alle Notizen</span>
             <div style="display:flex;gap:8px;align-items:center">
               <button class="btn" onclick="renderTeam()" title="Neu laden">↻</button>
+              <button class="btn" id="copyClaudeBtn" onclick="copyForClaude()" title="Letzte 7 Tage für Claude kopieren">✦ Für Claude kopieren</button>
               <button class="btn" style="background:var(--accent);color:white;border-color:var(--accent);font-weight:600" onclick="openNoteEditor(null)">+ Neue Notiz</button>
             </div>
           </div>
@@ -1421,6 +1422,59 @@ function renderNotesList(notes) {
       <div class="note-card-excerpt">${escHtml(n.body.slice(0,160))}</div>
     </div>`;
   }).join('');
+}
+
+// ─── Copy for Claude ─────────────────────────────────────────────────────────
+
+async function copyForClaude() {
+  const btn = document.getElementById('copyClaudeBtn');
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
+  const recent = _notes.filter(n => n.date && new Date(n.date) >= cutoff);
+  const all    = recent.length > 0 ? recent : _notes.slice(0, 10);
+
+  const today = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const lines = [
+    `# Training Board Kontext — ${today}`,
+    `**Athlet:** Thomas Wagner | 50J | 74.6 kg | FTP 250W | Max-HF 183`,
+    '',
+    `## Trainer-Notizen (letzte 7 Tage)`,
+    '',
+  ];
+
+  if (all.length === 0) {
+    lines.push('_Noch keine Notizen vorhanden._');
+  } else {
+    const grouped = {};
+    all.forEach(n => { if (!grouped[n.trainer]) grouped[n.trainer] = []; grouped[n.trainer].push(n); });
+    TRAINERS.forEach(t => {
+      if (!grouped[t.slug]) return;
+      grouped[t.slug].forEach(n => {
+        lines.push(`### ${t.icon} ${t.name} — ${fmtNoteDate(n.date)}`);
+        lines.push(`**${n.title}**`);
+        lines.push(n.body);
+        lines.push('');
+      });
+    });
+  }
+
+  lines.push('---');
+  lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
+
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    btn.textContent = '✓ Kopiert!';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--green)';
+    setTimeout(() => {
+      btn.textContent = '✦ Für Claude kopieren';
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }, 2500);
+  } catch(e) {
+    alert('Kopieren fehlgeschlagen. Bitte manuell kopieren.');
+  }
 }
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
