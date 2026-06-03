@@ -65,6 +65,7 @@
     .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 2px; cursor: pointer; transition: all 0.15s; }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
     .nav-item.active { background: var(--accent-light); color: var(--accent); }
+    .nav-sub { padding-left: 26px; font-size: 12px; }
     .sidebar-footer { margin-top: auto; padding: 12px 8px; border-top: 1px solid var(--border); }
     .api-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); font-family: var(--mono); }
     .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text2); animation: pulse 2s infinite; }
@@ -358,6 +359,11 @@
     <a class="nav-item" data-section="activities">◎ Aktivitäten</a>
     <div class="nav-section">KI-Trainer</div>
     <a class="nav-item" data-section="team">✦ Trainer Team</a>
+    <a class="nav-item nav-sub" data-section="trainer" data-trainer="head-coach">⊙ Head Coach</a>
+    <a class="nav-item nav-sub" data-section="trainer" data-trainer="reha">🦺 Reha-Trainer</a>
+    <a class="nav-item nav-sub" data-section="trainer" data-trainer="kraft">💪 Kraft-Trainer</a>
+    <a class="nav-item nav-sub" data-section="trainer" data-trainer="ernaehrung">🥗 Sporternährung</a>
+    <a class="nav-item nav-sub" data-section="trainer" data-trainer="methodik">🏔 UA-Methodik</a>
     <div class="nav-section">Analyse</div>
     <a class="nav-item" data-section="cardio">♡ Herz-Kreislauf</a>
     <a class="nav-item" data-section="zones">◉ HF-Zonen</a>
@@ -480,6 +486,13 @@
           <div class="note-filter-bar" id="noteFilters"></div>
           <div id="notesList"><div class="notes-loading">Notizen werden geladen…</div></div>
         </div>
+      </div>
+    </section>
+
+    <!-- Trainer Detail -->
+    <section id="section-trainer" class="section">
+      <div class="content" id="trainerDetailContent">
+        <div class="notes-loading">Trainer wird geladen…</div>
       </div>
     </section>
 
@@ -836,29 +849,37 @@ function toggleTheme() {
 }
 
 function setupNav() {
-  // Letzten aktiven Tab wiederherstellen
   const lastSection = sessionStorage.getItem('tb_active_section');
+  const lastTrainer = sessionStorage.getItem('tb_active_trainer');
   if (lastSection) {
-    const savedItem = document.querySelector(`.nav-item[data-section="${lastSection}"]`);
+    const savedItem = lastSection === 'trainer' && lastTrainer
+      ? document.querySelector(`.nav-item[data-trainer="${lastTrainer}"]`)
+      : document.querySelector(`.nav-item[data-section="${lastSection}"]:not([data-trainer])`);
     if (savedItem) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       savedItem.classList.add('active');
       document.getElementById(`section-${lastSection}`)?.classList.add('active');
       document.getElementById('pageTitle').textContent = savedItem.textContent.trim();
+      if (lastSection === 'trainer' && lastTrainer) showTrainerDetail(lastTrainer);
     }
   }
 
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', e => {
       e.preventDefault();
-      const sec = item.dataset.section;
+      const sec     = item.dataset.section;
+      const trainer = item.dataset.trainer;
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       item.classList.add('active');
       document.getElementById(`section-${sec}`).classList.add('active');
       document.getElementById('pageTitle').textContent = item.textContent.trim();
       sessionStorage.setItem('tb_active_section', sec);
+      if (trainer) {
+        sessionStorage.setItem('tb_active_trainer', trainer);
+        showTrainerDetail(trainer);
+      }
     });
   });
 }
@@ -1354,17 +1375,13 @@ function fmtNoteDate(d) {
   return new Date(d).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
-// ─── Team Tab Render ──────────────────────────────────────────────────────────
+// ─── Team Tab Render (Übersicht) ──────────────────────────────────────────────
 
 async function renderTeam() {
   const configured = !!(ghToken && ghRepo);
   document.getElementById('ghSetupBanner').style.display = configured ? 'none' : 'block';
-  document.getElementById('notesSection').style.display  = configured ? 'block' : 'none';
 
-  if (configured) {
-    document.getElementById('notesList').innerHTML = '<div class="notes-loading">Notizen werden geladen…</div>';
-    _notes = await loadNotes();
-  }
+  if (configured && _notes.length === 0) _notes = await loadNotes();
 
   const latestByTrainer = {};
   _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
@@ -1376,26 +1393,20 @@ async function renderTeam() {
           ? `<div class="trainer-latest">${escHtml(latest.title)}</div><div class="trainer-latest-date">${fmtNoteDate(latest.date)}</div>`
           : `<div class="trainer-latest" style="opacity:0.45">Noch keine Notizen</div>`)
       : '';
-    return `<div class="trainer-card" onclick="openNoteEditor('${t.slug}')">
+    return `<div class="trainer-card" onclick="navToTrainer('${t.slug}')">
       <div class="trainer-icon">${t.icon}</div>
       <div class="trainer-name">${t.name}</div>
       <div class="trainer-role" style="color:${t.color}">${t.role}</div>
       <div class="trainer-desc">${t.desc}</div>
       ${latestHtml}
-      <button class="trainer-link">${configured ? '+ Neue Notiz' : 'Einstellungen →'}</button>
+      <button class="trainer-link">${configured ? '→ Zum Trainer' : 'Einstellungen →'}</button>
     </div>`;
   }).join('');
+}
 
-  if (!configured) return;
-
-  const usedTrainers = [...new Set(_notes.map(n => n.trainer))];
-  document.getElementById('noteFilters').innerHTML =
-    `<button class="filter-btn active" onclick="filterNotes(this,'all')">Alle (${_notes.length})</button>` +
-    TRAINERS.filter(t => usedTrainers.includes(t.slug)).map(t =>
-      `<button class="filter-btn" onclick="filterNotes(this,'${t.slug}')">${t.icon} ${t.name}</button>`
-    ).join('');
-
-  renderNotesList(_notes);
+function navToTrainer(slug) {
+  const item = document.querySelector(`.nav-item[data-trainer="${slug}"]`);
+  if (item) item.click();
 }
 
 function filterNotes(btn, filter) {
@@ -1407,7 +1418,7 @@ function filterNotes(btn, filter) {
 function renderNotesList(notes) {
   const el = document.getElementById('notesList');
   if (notes.length === 0) {
-    el.innerHTML = `<div class="notes-loading">Noch keine Notizen — klicke "+ Neue Notiz" um zu starten.</div>`;
+    el.innerHTML = `<div class="notes-loading">Noch keine Notizen — oben neue Notiz erstellen.</div>`;
     return;
   }
   el.innerHTML = notes.map(n => {
@@ -1422,6 +1433,125 @@ function renderNotesList(notes) {
       <div class="note-card-excerpt">${escHtml(n.body.slice(0,160))}</div>
     </div>`;
   }).join('');
+}
+
+// ─── Trainer Detail ───────────────────────────────────────────────────────────
+
+async function showTrainerDetail(slug) {
+  if (!ghToken || !ghRepo) {
+    document.getElementById('trainerDetailContent').innerHTML =
+      `<div class="gh-setup-banner"><div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub nicht konfiguriert</div>
+      <div style="font-size:12px;color:#1e40af;margin-bottom:10px">Token + Repo in den Einstellungen eintragen.</div>
+      <button class="trainer-link" onclick="showSettings()">⚙ Einstellungen →</button></div>`;
+    return;
+  }
+
+  const t = TRAINERS.find(x => x.slug === slug);
+  if (!t) return;
+
+  if (_notes.length === 0) _notes = await loadNotes();
+  const trainerNotes = _notes.filter(n => n.trainer === slug);
+
+  document.getElementById('trainerDetailContent').innerHTML = `
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <span style="font-size:36px">${t.icon}</span>
+      <div>
+        <div style="font-size:20px;font-weight:700">${t.name}</div>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:${t.color};margin-top:2px">${t.role}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">${t.desc}</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><span class="card-title">Neue Notiz</span></div>
+      <div class="setup-field" style="margin-bottom:10px">
+        <input class="setup-input" id="tnTitle" type="text" placeholder="Titel (z.B. Morgen Check-In)" onkeydown="if(event.key==='Enter')document.getElementById('tnContent').focus()">
+      </div>
+      <textarea class="note-textarea" id="tnContent" style="min-height:110px" placeholder="Notiz eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <button class="setup-btn" style="width:auto;padding:8px 20px" onclick="saveTrainerNote('${slug}')">Speichern</button>
+        <div class="setup-error" id="tnError" style="display:inline;margin:0"></div>
+      </div>
+    </div>
+
+    <div class="notes-header" style="margin-bottom:12px">
+      <span class="card-title">${trainerNotes.length} Notiz${trainerNotes.length !== 1 ? 'en' : ''}</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="refreshTrainerDetail('${slug}')" title="Neu laden">↻</button>
+        <button class="btn" id="copyTBtn_${slug}" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
+      </div>
+    </div>
+    <div id="trainerNotesList">
+      ${renderTrainerNotesHtml(trainerNotes)}
+    </div>`;
+}
+
+async function refreshTrainerDetail(slug) {
+  _notes = await loadNotes();
+  showTrainerDetail(slug);
+}
+
+function renderTrainerNotesHtml(notes) {
+  if (notes.length === 0)
+    return `<div class="notes-loading">Noch keine Notizen — oben erste Notiz erstellen.</div>`;
+  return notes.map(n => {
+    const idx = _notes.indexOf(n);
+    return `<div class="note-card" onclick="openNoteViewer(${idx})">
+      <div class="note-card-head">
+        <span class="note-card-date" style="font-size:12px">${fmtNoteDate(n.date)}</span>
+      </div>
+      <div class="note-card-title">${escHtml(n.title)}</div>
+      <div class="note-card-excerpt">${escHtml(n.body.slice(0,160))}</div>
+    </div>`;
+  }).join('');
+}
+
+async function saveTrainerNote(slug) {
+  const title = document.getElementById('tnTitle').value.trim();
+  const body  = document.getElementById('tnContent').value.trim();
+  const errEl = document.getElementById('tnError');
+  if (!title || !body) { errEl.textContent = 'Titel und Inhalt erforderlich.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  try {
+    const content  = buildNoteContent(body, slug, title);
+    const filename = `${Date.now()}-${slug}.md`;
+    await saveNoteToGH(filename, content, null);
+    _notes = await loadNotes();
+    showTrainerDetail(slug);
+  } catch(e) {
+    errEl.textContent = 'Fehler: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function copyTrainerNotes(slug) {
+  const t    = TRAINERS.find(x => x.slug === slug);
+  const notes = _notes.filter(n => n.trainer === slug);
+  const today = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const lines = [
+    `# ${t.icon} ${t.name} — Notizverlauf (${today})`,
+    `**Athlet:** Thomas Wagner | 50J | 74.6 kg | FTP 250W | Max-HF 183`,
+    '',
+  ];
+  if (notes.length === 0) {
+    lines.push('_Noch keine Notizen vorhanden._');
+  } else {
+    notes.forEach(n => {
+      lines.push(`## ${fmtNoteDate(n.date)} — ${n.title}`);
+      lines.push(n.body);
+      lines.push('');
+    });
+  }
+  lines.push('---');
+  lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
+
+  const btn = document.getElementById(`copyTBtn_${slug}`);
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    btn.textContent = '✓ Kopiert!';
+    btn.style.background = 'var(--green)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--green)';
+    setTimeout(() => { btn.textContent = '✦ Für Claude kopieren'; btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }, 2500);
+  } catch(e) { alert('Kopieren fehlgeschlagen.'); }
 }
 
 // ─── Copy for Claude ─────────────────────────────────────────────────────────
