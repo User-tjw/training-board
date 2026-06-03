@@ -729,11 +729,14 @@ function logout() {
   document.getElementById('pwError').style.display = 'none';
 }
 
-function unlockApp() {
+function unlockApp(fromReload = false) {
   sessionStorage.setItem('tb_authenticated', '1');
   sessionStorage.setItem('tb_login_time', Date.now().toString());
+  if (!fromReload) {
+    sessionStorage.removeItem('tb_active_section');
+    sessionStorage.removeItem('tb_active_trainer');
+  }
   document.getElementById('passwordScreen').style.display = 'none';
-  // Weiter mit Setup oder App
   if (athleteId && apiKey) {
     showApp();
   } else {
@@ -1769,7 +1772,7 @@ function getWeek(date) {
 
 // Bei Reload: automatisch einloggen wenn Session noch gültig (muss am Ende stehen — nach allen const-Deklarationen)
 if (localStorage.getItem('tb_pw_hash') && isSessionValid()) {
-  unlockApp();
+  unlockApp(true); // Reload: Position beibehalten
 }
 </script>
 </body>
