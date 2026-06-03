@@ -57,7 +57,7 @@
       position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
     }
     .logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 28px; }
-    .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; }
+    .logo-icon { width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
     .logo-titles { display: flex; flex-direction: column; gap: 1px; }
     .logo-text { font-size: 18px; font-weight: 700; line-height: 1.2; }
     .logo-sub { font-size: 10px; font-weight: 400; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; }
@@ -189,7 +189,39 @@
 <!-- Password Screen -->
 <div id="passwordScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)">
   <div class="setup-card" style="width:360px">
-    <div class="setup-logo">🔒 Training Board</div>
+    <div class="setup-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" style="border-radius:10px">
+        <rect width="48" height="48" rx="10" fill="#060b18"/>
+        <circle cx="6" cy="6" r="0.7" fill="white" opacity="0.8"/>
+        <circle cx="15" cy="3" r="0.6" fill="white" opacity="0.6"/>
+        <circle cx="30" cy="6" r="0.7" fill="white" opacity="0.9"/>
+        <circle cx="41" cy="4" r="0.6" fill="white" opacity="0.7"/>
+        <circle cx="3" cy="15" r="0.5" fill="white" opacity="0.5"/>
+        <circle cx="44" cy="12" r="0.5" fill="white" opacity="0.6"/>
+        <circle cx="38" cy="18" r="0.4" fill="white" opacity="0.5"/>
+        <defs>
+          <radialGradient id="sg" cx="50%" cy="36%" r="42%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+            <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="sp" cx="50%" cy="28%" r="70%">
+            <stop offset="0%" stop-color="#1e3a5f"/>
+            <stop offset="100%" stop-color="#0a0f1e"/>
+          </radialGradient>
+          <clipPath id="sc"><rect width="48" height="48" rx="10"/></clipPath>
+        </defs>
+        <g clip-path="url(#sc)">
+          <circle cx="24" cy="58" r="33" fill="url(#sp)"/>
+          <circle cx="24" cy="58" r="33" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
+          <circle cx="24" cy="58" r="33" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.35"/>
+          <ellipse cx="24" cy="26" rx="12" ry="4.5" fill="url(#sg)" opacity="0.95"/>
+          <circle cx="24" cy="23.5" r="2.5" fill="white" opacity="0.95"/>
+          <circle cx="24" cy="23.5" r="5" fill="#bfdbfe" opacity="0.3"/>
+        </g>
+      </svg>
+      Training Board
+    </div>
     <div class="setup-sub" id="pwSub">Bitte Passwort eingeben.</div>
     <div class="setup-field">
       <label class="setup-label">Passwort</label>
@@ -203,7 +235,39 @@
 <!-- Setup Screen -->
 <div id="setupScreen" style="display:none">
   <div class="setup-card">
-    <div class="setup-logo">🏔 Training Board</div>
+    <div class="setup-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" style="border-radius:10px">
+        <rect width="48" height="48" rx="10" fill="#060b18"/>
+        <circle cx="6" cy="6" r="0.7" fill="white" opacity="0.8"/>
+        <circle cx="15" cy="3" r="0.6" fill="white" opacity="0.6"/>
+        <circle cx="30" cy="6" r="0.7" fill="white" opacity="0.9"/>
+        <circle cx="41" cy="4" r="0.6" fill="white" opacity="0.7"/>
+        <circle cx="3" cy="15" r="0.5" fill="white" opacity="0.5"/>
+        <circle cx="44" cy="12" r="0.5" fill="white" opacity="0.6"/>
+        <circle cx="38" cy="18" r="0.4" fill="white" opacity="0.5"/>
+        <defs>
+          <radialGradient id="sg2" cx="50%" cy="36%" r="42%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+            <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="sp2" cx="50%" cy="28%" r="70%">
+            <stop offset="0%" stop-color="#1e3a5f"/>
+            <stop offset="100%" stop-color="#0a0f1e"/>
+          </radialGradient>
+          <clipPath id="sc2"><rect width="48" height="48" rx="10"/></clipPath>
+        </defs>
+        <g clip-path="url(#sc2)">
+          <circle cx="24" cy="58" r="33" fill="url(#sp2)"/>
+          <circle cx="24" cy="58" r="33" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
+          <circle cx="24" cy="58" r="33" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.35"/>
+          <ellipse cx="24" cy="26" rx="12" ry="4.5" fill="url(#sg2)" opacity="0.95"/>
+          <circle cx="24" cy="23.5" r="2.5" fill="white" opacity="0.95"/>
+          <circle cx="24" cy="23.5" r="5" fill="#bfdbfe" opacity="0.3"/>
+        </g>
+      </svg>
+      Training Board
+    </div>
     <div class="setup-sub">Verbinde dein intervals.icu-Konto um loszulegen.</div>
     <div class="setup-field">
       <label class="setup-label">intervals.icu Athlete ID</label>
@@ -225,7 +289,38 @@
 
   <aside class="sidebar">
     <div class="logo">
-      <div class="logo-icon">🏔</div>
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+          <rect width="36" height="36" rx="8" fill="#060b18"/>
+          <circle cx="4" cy="4" r="0.5" fill="white" opacity="0.8"/>
+          <circle cx="11" cy="2" r="0.4" fill="white" opacity="0.6"/>
+          <circle cx="22" cy="5" r="0.5" fill="white" opacity="0.9"/>
+          <circle cx="30" cy="3" r="0.4" fill="white" opacity="0.7"/>
+          <circle cx="2" cy="11" r="0.3" fill="white" opacity="0.5"/>
+          <circle cx="33" cy="9" r="0.4" fill="white" opacity="0.6"/>
+          <circle cx="28" cy="14" r="0.3" fill="white" opacity="0.5"/>
+          <defs>
+            <radialGradient id="lg" cx="50%" cy="36%" r="42%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+              <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
+            </radialGradient>
+            <radialGradient id="pl" cx="50%" cy="28%" r="70%">
+              <stop offset="0%" stop-color="#1e3a5f"/>
+              <stop offset="100%" stop-color="#0a0f1e"/>
+            </radialGradient>
+            <clipPath id="lc"><rect width="36" height="36" rx="8"/></clipPath>
+          </defs>
+          <g clip-path="url(#lc)">
+            <circle cx="18" cy="44" r="25" fill="url(#pl)"/>
+            <circle cx="18" cy="44" r="25" fill="none" stroke="#3b82f6" stroke-width="2.5" opacity="0.5"/>
+            <circle cx="18" cy="44" r="25" fill="none" stroke="#93c5fd" stroke-width="1" opacity="0.35"/>
+            <ellipse cx="18" cy="19.5" rx="9" ry="3.5" fill="url(#lg)" opacity="0.95"/>
+            <circle cx="18" cy="18" r="1.8" fill="white" opacity="0.95"/>
+            <circle cx="18" cy="18" r="3.5" fill="#bfdbfe" opacity="0.35"/>
+          </g>
+        </svg>
+      </div>
       <div class="logo-titles">
         <span class="logo-text">Training Board</span>
         <span class="logo-sub">Thomas Wagner</span>
