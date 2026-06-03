@@ -1467,10 +1467,10 @@ async function showTrainerDetail(slug) {
         <input class="setup-input" id="tnTitle" type="text" placeholder="Titel (z.B. Morgen Check-In)" onkeydown="if(event.key==='Enter')document.getElementById('tnContent').focus()">
       </div>
       <textarea class="note-textarea" id="tnContent" style="min-height:110px" placeholder="Notiz eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
-        <button class="setup-btn" style="width:auto;padding:8px 20px" onclick="saveTrainerNote('${slug}')">Speichern</button>
-        <button class="setup-btn" id="copyTBtn_${slug}" style="width:auto;padding:8px 20px;background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
-        <div class="setup-error" id="tnError" style="display:none;margin:0"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="saveTrainerNote('${slug}')">Speichern</button>
+        <button id="copyTBtn_${slug}" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
+        <div class="setup-error" id="tnError" style="display:none;margin:0;align-self:center"></div>
       </div>
     </div>
 
