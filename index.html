@@ -1469,7 +1469,7 @@ async function showTrainerDetail(slug) {
       <textarea class="note-textarea" id="tnContent" style="min-height:110px" placeholder="Notiz eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
         <button class="setup-btn" style="width:auto;padding:8px 20px" onclick="saveTrainerNote('${slug}')">Speichern</button>
-        <button class="btn" id="copyTBtn_${slug}" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
+        <button class="setup-btn" id="copyTBtn_${slug}" style="width:auto;padding:8px 20px;background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
         <div class="setup-error" id="tnError" style="display:none;margin:0"></div>
       </div>
     </div>
