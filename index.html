@@ -172,8 +172,34 @@
     .trainer-name { font-size: 16px; font-weight: 600; }
     .trainer-role { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
     .trainer-desc { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
-    .trainer-link { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 7px; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none; }
+    .trainer-link { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 7px; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: var(--font); }
     .trainer-link:hover { background: var(--accent); color: white; }
+    .trainer-latest { font-size:11px; color:var(--text2); margin-top:6px; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .trainer-latest-date { font-size:10px; font-family:var(--mono); color:var(--text2); margin-top:2px; }
+    .gh-setup-banner { background:var(--accent-light); border:1px solid #bfdbfe; border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
+    .note-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+    .filter-btn { padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--bg2); color:var(--text2); transition:all 0.15s; }
+    .filter-btn:hover { background:var(--bg3); color:var(--text); }
+    .filter-btn.active { background:var(--accent); border-color:var(--accent); color:white; }
+    .note-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; cursor:pointer; transition:box-shadow 0.15s; }
+    .note-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); border-color:#bfdbfe; }
+    .note-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .note-card-title { font-size:13px; font-weight:600; color:var(--text); margin:4px 0; }
+    .note-card-date { font-size:11px; font-family:var(--mono); color:var(--text2); white-space:nowrap; }
+    .note-card-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; }
+    .note-card-excerpt { font-size:12px; color:var(--text2); line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .modal-wide { width:560px; max-width:96vw; max-height:88vh; overflow-y:auto; }
+    .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
+    .note-textarea:focus { border-color:var(--accent); }
+    .note-rendered { font-size:13px; line-height:1.75; color:var(--text); }
+    .note-rendered h1,.note-rendered h2,.note-rendered h3 { font-weight:600; margin:12px 0 4px; color:var(--text); }
+    .note-rendered p { margin-bottom:8px; }
+    .note-rendered strong { font-weight:700; }
+    .note-rendered em { font-style:italic; }
+    .note-rendered ul { padding-left:18px; margin-bottom:8px; }
+    .note-rendered li { margin-bottom:3px; }
+    .note-rendered hr { border:none; border-top:1px solid var(--border); margin:12px 0; }
+    .notes-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 
     /* Settings Modal */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
@@ -431,17 +457,28 @@
     <!-- Trainer Team -->
     <section id="section-team" class="section">
       <div class="content">
-        <div class="card" style="margin-bottom:20px;background:var(--accent-light);border-color:#bfdbfe">
+        <div class="gh-setup-banner" id="ghSetupBanner" style="display:none">
           <div style="display:flex;align-items:center;gap:14px">
-            <span style="font-size:28px">✦</span>
+            <span style="font-size:24px">⚙</span>
             <div>
-              <div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:4px">Training Board · claude.ai</div>
-              <div style="font-size:12px;color:#1e40af;line-height:1.5">Dein KI-Trainer-Team lebt in einem separaten Claude Project. Öffne es auf claude.ai für Check-Ins, Trainingsplanung und Coaching-Gespräche.</div>
-              <a href="https://claude.ai" target="_blank" class="trainer-link" style="margin-top:10px;display:inline-block">✦ Training Board öffnen →</a>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub Notizen konfigurieren</div>
+              <div style="font-size:12px;color:#1e40af;line-height:1.5">Verbinde ein privates GitHub-Repo um Trainer-Notizen zu speichern. Token + Repo in den Einstellungen eintragen.</div>
+              <button class="trainer-link" onclick="showSettings()">⚙ Einstellungen öffnen →</button>
             </div>
           </div>
         </div>
         <div class="team-grid" id="teamGrid"></div>
+        <div id="notesSection" style="display:none">
+          <div class="notes-header">
+            <span class="card-title">Alle Notizen</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn" onclick="renderTeam()" title="Neu laden">↻</button>
+              <button class="btn" style="background:var(--accent);color:white;border-color:var(--accent);font-weight:600" onclick="openNoteEditor(null)">+ Neue Notiz</button>
+            </div>
+          </div>
+          <div class="note-filter-bar" id="noteFilters"></div>
+          <div id="notesList"><div class="notes-loading">Notizen werden geladen…</div></div>
+        </div>
       </div>
     </section>
 
@@ -563,9 +600,73 @@
       <label class="setup-label">API Key</label>
       <input class="setup-input" id="settingsApiKey" type="password">
     </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">GitHub Notizen (optional)</div>
+    <div class="setup-field">
+      <label class="setup-label">Personal Access Token</label>
+      <input class="setup-input" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
+      <div class="setup-hint">github.com → Settings → Developer settings → Personal access tokens → Scopes: <strong>repo</strong></div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Repository (Owner/Repo)</label>
+      <input class="setup-input" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
+      <div class="setup-hint">Muss ein privates Repo sein. Wird automatisch befüllt.</div>
+    </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1" onclick="saveSettingsModal()">Speichern</button>
       <button class="btn" style="flex:1" onclick="hideSettings()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Note Editor Modal -->
+<div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
+  <div class="modal modal-wide">
+    <h3 id="noteEditorHeading">Neue Notiz</h3>
+    <div class="setup-field" style="margin-top:16px">
+      <label class="setup-label">Trainer</label>
+      <select class="setup-input" id="noteEditorTrainer" style="cursor:pointer">
+        <option value="head-coach">⊙ Head Coach</option>
+        <option value="reha">🦺 Reha-Trainer</option>
+        <option value="kraft">💪 Kraft-Trainer</option>
+        <option value="ernaehrung">🥗 Sporternährung</option>
+        <option value="methodik">🏔 UA-Methodik</option>
+        <option value="allgemein">✦ Allgemein</option>
+      </select>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Titel</label>
+      <input class="setup-input" id="noteEditorTitleInput" type="text" placeholder="z.B. Morgen Check-In">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Inhalt (Markdown)</label>
+      <textarea class="note-textarea" id="noteEditorContent" placeholder="Notiz hier eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:2" onclick="saveNoteEditor()">Speichern</button>
+      <button class="btn" style="flex:1" onclick="closeNoteEditor()">Abbrechen</button>
+    </div>
+    <div class="setup-error" id="noteEditorError">Fehler beim Speichern.</div>
+  </div>
+</div>
+
+<!-- Note Viewer Modal -->
+<div class="modal-overlay" id="noteViewerModal" style="display:none" onclick="if(event.target===this)closeNoteViewer()">
+  <div class="modal modal-wide">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div style="flex:1">
+        <div id="noteViewerBadge" style="margin-bottom:6px"></div>
+        <div id="noteViewerTitle" style="font-size:17px;font-weight:600;color:var(--text)"></div>
+        <div id="noteViewerDate" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:4px"></div>
+      </div>
+      <button class="btn" onclick="closeNoteViewer()">✕</button>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin-bottom:14px">
+    <div class="note-rendered" id="noteViewerContent"></div>
+    <div style="display:flex;gap:8px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+      <button class="btn" onclick="editCurrentNote()">✎ Bearbeiten</button>
+      <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="deleteCurrentNote()">✕ Löschen</button>
+      <button class="setup-btn" style="margin-left:auto;padding:7px 20px;width:auto" onclick="closeNoteViewer()">Schließen</button>
     </div>
   </div>
 </div>
@@ -645,6 +746,8 @@ function isSessionValid() {
 const ICU_BASE = 'https://intervals.icu/api/v1';
 let athleteId = localStorage.getItem('icu_athlete_id') || '';
 let apiKey    = localStorage.getItem('icu_api_key') || '';
+let ghToken   = localStorage.getItem('gh_token') || '';
+let ghRepo    = localStorage.getItem('gh_repo')  || '';
 
 function authHeader() {
   return { 'Authorization': 'Basic ' + btoa('API_KEY:' + apiKey) };
@@ -687,16 +790,23 @@ function showApp() {
 function showSettings() {
   document.getElementById('settingsAthleteId').value = athleteId;
   document.getElementById('settingsApiKey').value = apiKey;
+  document.getElementById('settingsGhToken').value = ghToken;
+  document.getElementById('settingsGhRepo').value = ghRepo;
   document.getElementById('settingsModal').style.display = 'flex';
 }
 function hideSettings() { document.getElementById('settingsModal').style.display = 'none'; }
 function saveSettingsModal() {
   athleteId = document.getElementById('settingsAthleteId').value.trim();
   apiKey    = document.getElementById('settingsApiKey').value.trim();
+  ghToken   = document.getElementById('settingsGhToken').value.trim();
+  ghRepo    = document.getElementById('settingsGhRepo').value.trim();
   localStorage.setItem('icu_athlete_id', athleteId);
   localStorage.setItem('icu_api_key', apiKey);
+  localStorage.setItem('gh_token', ghToken);
+  localStorage.setItem('gh_repo', ghRepo);
   hideSettings();
   loadAll();
+  renderTeam();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -1125,22 +1235,273 @@ function renderHRVAnalysis(wellness, selectedDays) {
 // ─── Trainer Team ─────────────────────────────────────────────────────────────
 
 const TRAINERS = [
-  {icon:'⊙',name:'Head Coach',role:'Tagessteuerung & Planung',color:'#2563eb',desc:'HRV-Ampel, Check-In, Wochenplanung, Load-Management und Saisonplanung.'},
-  {icon:'🦺',name:'Reha-Trainer',role:'Verletzung & Prävention',color:'#dc2626',desc:'Gate-System, Protokolle für parallele Reha-Programme, Schmerzmonitoring.'},
-  {icon:'💪',name:'Kraft-Trainer',role:'Kraft & Stabilität',color:'#7c3aed',desc:'Ganzkörper-Programm, Posterior Chain, Progression, Heimtraining.'},
-  {icon:'🥗',name:'Sporternährung',role:'Ernährung & Supplements',color:'#16a34a',desc:'Basis-Protokoll, Race-Day-Ernährung, Taper, Protein-Strategie.'},
-  {icon:'🏔',name:'UA-Methodik',role:'Uphill Athlete Prinzipien',color:'#b45309',desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
+  {slug:'head-coach', icon:'⊙', name:'Head Coach',    role:'Tagessteuerung & Planung',       color:'#2563eb', desc:'HRV-Ampel, Check-In, Wochenplanung, Load-Management und Saisonplanung.'},
+  {slug:'reha',       icon:'🦺', name:'Reha-Trainer',  role:'Verletzung & Prävention',         color:'#dc2626', desc:'Gate-System, Protokolle für parallele Reha-Programme, Schmerzmonitoring.'},
+  {slug:'kraft',      icon:'💪', name:'Kraft-Trainer', role:'Kraft & Stabilität',              color:'#7c3aed', desc:'Ganzkörper-Programm, Posterior Chain, Progression, Heimtraining.'},
+  {slug:'ernaehrung', icon:'🥗', name:'Sporternährung',role:'Ernährung & Supplements',         color:'#16a34a', desc:'Basis-Protokoll, Race-Day-Ernährung, Taper, Protein-Strategie.'},
+  {slug:'methodik',   icon:'🏔', name:'UA-Methodik',   role:'Uphill Athlete Prinzipien',       color:'#b45309', desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
 ];
 
-function renderTeam() {
-  document.getElementById('teamGrid').innerHTML = TRAINERS.map(t=>`
-    <div class="trainer-card">
+// ─── GitHub Notes API ─────────────────────────────────────────────────────────
+
+const GH_NOTES_PATH = 'notes';
+let _notes = [];
+let _editingNote = null;
+let _viewingIndex = -1;
+
+function ghHeaders() {
+  return {
+    'Authorization': `Bearer ${ghToken}`,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+
+async function ghFetch(path, options = {}) {
+  const res = await fetch(`https://api.github.com${path}`, { ...options, headers: ghHeaders() });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err.message || `GitHub ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function b64enc(str) { return btoa(unescape(encodeURIComponent(str))); }
+function b64dec(str) { return decodeURIComponent(escape(atob(str.replace(/\n/g,'')))); }
+
+function parseFrontmatter(content) {
+  const fm = {};
+  let body = content;
+  const m = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
+  if (m) {
+    m[1].split('\n').forEach(line => {
+      const idx = line.indexOf(':');
+      if (idx > 0) fm[line.slice(0,idx).trim()] = line.slice(idx+1).trim();
+    });
+    body = m[2];
+  }
+  return { fm, body: body.trim() };
+}
+
+function buildNoteContent(body, trainer, title) {
+  const date = new Date().toISOString().slice(0, 16);
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}\n---\n\n${body}`;
+}
+
+async function loadNotes() {
+  if (!ghToken || !ghRepo) return [];
+  try {
+    let files;
+    try {
+      files = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}`);
+    } catch(e) {
+      if (e.message.includes('404') || e.message.includes('Not Found')) return [];
+      throw e;
+    }
+    if (!Array.isArray(files)) return [];
+    const mdFiles = files.filter(f => f.name.endsWith('.md'));
+    const notes = await Promise.all(mdFiles.map(async f => {
+      const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
+      const { fm, body } = parseFrontmatter(b64dec(file.content));
+      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'allgemein', title: fm.title || f.name.replace('.md',''), date: fm.date || '', body };
+    }));
+    return notes.sort((a,b) => b.date.localeCompare(a.date));
+  } catch(e) {
+    console.error('GitHub notes:', e);
+    return [];
+  }
+}
+
+async function saveNoteToGH(filename, content, sha) {
+  const payload = { message: sha ? `Update: ${filename}` : `Add: ${filename}`, content: b64enc(content) };
+  if (sha) payload.sha = sha;
+  return ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${filename}`, { method:'PUT', body:JSON.stringify(payload) });
+}
+
+async function deleteNoteFromGH(filename, sha) {
+  return ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${filename}`, {
+    method:'DELETE', body:JSON.stringify({ message:`Delete: ${filename}`, sha })
+  });
+}
+
+function renderMarkdown(text) {
+  const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const lines = e.split('\n');
+  let html = '', inList = false;
+  for (const raw of lines) {
+    const line = raw
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>');
+    if (/^### /.test(line)) { if(inList){html+='</ul>';inList=false;} html+=`<h3>${line.slice(4)}</h3>`; }
+    else if (/^## /.test(line))  { if(inList){html+='</ul>';inList=false;} html+=`<h2>${line.slice(3)}</h2>`; }
+    else if (/^# /.test(line))   { if(inList){html+='</ul>';inList=false;} html+=`<h1>${line.slice(2)}</h1>`; }
+    else if (/^[-*] /.test(line)){ if(!inList){html+='<ul>';inList=true;} html+=`<li>${line.slice(2)}</li>`; }
+    else if (/^---$/.test(raw))  { if(inList){html+='</ul>';inList=false;} html+=`<hr>`; }
+    else if (line.trim()==='')   { if(inList){html+='</ul>';inList=false;} html+=`<p></p>`; }
+    else                         { if(inList){html+='</ul>';inList=false;} html+=`<p>${line}</p>`; }
+  }
+  if (inList) html+='</ul>';
+  return html;
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtNoteDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ─── Team Tab Render ──────────────────────────────────────────────────────────
+
+async function renderTeam() {
+  const configured = !!(ghToken && ghRepo);
+  document.getElementById('ghSetupBanner').style.display = configured ? 'none' : 'block';
+  document.getElementById('notesSection').style.display  = configured ? 'block' : 'none';
+
+  if (configured) {
+    document.getElementById('notesList').innerHTML = '<div class="notes-loading">Notizen werden geladen…</div>';
+    _notes = await loadNotes();
+  }
+
+  const latestByTrainer = {};
+  _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
+
+  document.getElementById('teamGrid').innerHTML = TRAINERS.map(t => {
+    const latest = latestByTrainer[t.slug];
+    const latestHtml = configured
+      ? (latest
+          ? `<div class="trainer-latest">${escHtml(latest.title)}</div><div class="trainer-latest-date">${fmtNoteDate(latest.date)}</div>`
+          : `<div class="trainer-latest" style="opacity:0.45">Noch keine Notizen</div>`)
+      : '';
+    return `<div class="trainer-card" onclick="openNoteEditor('${t.slug}')">
       <div class="trainer-icon">${t.icon}</div>
       <div class="trainer-name">${t.name}</div>
       <div class="trainer-role" style="color:${t.color}">${t.role}</div>
       <div class="trainer-desc">${t.desc}</div>
-      <a href="https://claude.ai" target="_blank" class="trainer-link">Im Training Board besprechen →</a>
-    </div>`).join('');
+      ${latestHtml}
+      <button class="trainer-link">${configured ? '+ Neue Notiz' : 'Einstellungen →'}</button>
+    </div>`;
+  }).join('');
+
+  if (!configured) return;
+
+  const usedTrainers = [...new Set(_notes.map(n => n.trainer))];
+  document.getElementById('noteFilters').innerHTML =
+    `<button class="filter-btn active" onclick="filterNotes(this,'all')">Alle (${_notes.length})</button>` +
+    TRAINERS.filter(t => usedTrainers.includes(t.slug)).map(t =>
+      `<button class="filter-btn" onclick="filterNotes(this,'${t.slug}')">${t.icon} ${t.name}</button>`
+    ).join('');
+
+  renderNotesList(_notes);
+}
+
+function filterNotes(btn, filter) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderNotesList(filter === 'all' ? _notes : _notes.filter(n => n.trainer === filter));
+}
+
+function renderNotesList(notes) {
+  const el = document.getElementById('notesList');
+  if (notes.length === 0) {
+    el.innerHTML = `<div class="notes-loading">Noch keine Notizen — klicke "+ Neue Notiz" um zu starten.</div>`;
+    return;
+  }
+  el.innerHTML = notes.map(n => {
+    const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Allgemein', color:'#64748b'};
+    const idx = _notes.indexOf(n);
+    return `<div class="note-card" onclick="openNoteViewer(${idx})">
+      <div class="note-card-head">
+        <span class="note-card-badge" style="background:${t.color}20;color:${t.color}">${t.icon} ${t.name}</span>
+        <span class="note-card-date">${fmtNoteDate(n.date)}</span>
+      </div>
+      <div class="note-card-title">${escHtml(n.title)}</div>
+      <div class="note-card-excerpt">${escHtml(n.body.slice(0,160))}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Note Editor ──────────────────────────────────────────────────────────────
+
+function openNoteEditor(trainerSlug) {
+  if (!ghToken || !ghRepo) { showSettings(); return; }
+  _editingNote = null;
+  document.getElementById('noteEditorHeading').textContent = 'Neue Notiz';
+  document.getElementById('noteEditorTrainer').value = trainerSlug || 'head-coach';
+  document.getElementById('noteEditorTitleInput').value = '';
+  document.getElementById('noteEditorContent').value = '';
+  document.getElementById('noteEditorError').style.display = 'none';
+  document.getElementById('noteEditorModal').style.display = 'flex';
+}
+
+function closeNoteEditor() {
+  document.getElementById('noteEditorModal').style.display = 'none';
+  _editingNote = null;
+}
+
+async function saveNoteEditor() {
+  const trainer = document.getElementById('noteEditorTrainer').value;
+  const title   = document.getElementById('noteEditorTitleInput').value.trim();
+  const body    = document.getElementById('noteEditorContent').value.trim();
+  const errEl   = document.getElementById('noteEditorError');
+  if (!title || !body) { errEl.textContent = 'Titel und Inhalt erforderlich.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  const content  = buildNoteContent(body, trainer, title);
+  const filename = _editingNote ? _editingNote.filename : `${Date.now()}-${trainer}.md`;
+  const sha      = _editingNote ? _editingNote.sha : null;
+  try {
+    await saveNoteToGH(filename, content, sha);
+    closeNoteEditor();
+    await renderTeam();
+  } catch(e) {
+    errEl.textContent = 'Fehler: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// ─── Note Viewer ──────────────────────────────────────────────────────────────
+
+function openNoteViewer(index) {
+  _viewingIndex = index;
+  const n = _notes[index];
+  const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Allgemein', color:'#64748b'};
+  document.getElementById('noteViewerBadge').innerHTML =
+    `<span class="note-card-badge" style="background:${t.color}20;color:${t.color}">${t.icon} ${t.name}</span>`;
+  document.getElementById('noteViewerTitle').textContent = n.title;
+  document.getElementById('noteViewerDate').textContent  = fmtNoteDate(n.date);
+  document.getElementById('noteViewerContent').innerHTML = renderMarkdown(n.body);
+  document.getElementById('noteViewerModal').style.display = 'flex';
+}
+
+function closeNoteViewer() {
+  document.getElementById('noteViewerModal').style.display = 'none';
+  _viewingIndex = -1;
+}
+
+function editCurrentNote() {
+  const n = _notes[_viewingIndex];
+  closeNoteViewer();
+  _editingNote = { filename: n.filename, sha: n.sha };
+  document.getElementById('noteEditorHeading').textContent = 'Notiz bearbeiten';
+  document.getElementById('noteEditorTrainer').value = n.trainer;
+  document.getElementById('noteEditorTitleInput').value = n.title;
+  document.getElementById('noteEditorContent').value = n.body;
+  document.getElementById('noteEditorError').style.display = 'none';
+  document.getElementById('noteEditorModal').style.display = 'flex';
+}
+
+async function deleteCurrentNote() {
+  const n = _notes[_viewingIndex];
+  if (!confirm(`Notiz "${n.title}" wirklich löschen?`)) return;
+  try {
+    await deleteNoteFromGH(n.filename, n.sha);
+    closeNoteViewer();
+    await renderTeam();
+  } catch(e) {
+    alert('Fehler beim Löschen: ' + e.message);
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
