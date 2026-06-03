@@ -358,12 +358,11 @@
     <a class="nav-item" data-section="overview">▦ Übersicht</a>
     <a class="nav-item" data-section="activities">◎ Aktivitäten</a>
     <div class="nav-section">KI-Trainer</div>
-    <a class="nav-item" data-section="team">✦ Trainer Team</a>
-    <a class="nav-item nav-sub" data-section="trainer" data-trainer="head-coach">⊙ Head Coach</a>
-    <a class="nav-item nav-sub" data-section="trainer" data-trainer="reha">🦺 Reha-Trainer</a>
-    <a class="nav-item nav-sub" data-section="trainer" data-trainer="kraft">💪 Kraft-Trainer</a>
-    <a class="nav-item nav-sub" data-section="trainer" data-trainer="ernaehrung">🥗 Sporternährung</a>
-    <a class="nav-item nav-sub" data-section="trainer" data-trainer="methodik">🏔 UA-Methodik</a>
+    <a class="nav-item" data-section="trainer" data-trainer="head-coach">⊙ Head Coach</a>
+    <a class="nav-item" data-section="trainer" data-trainer="reha">🦺 Reha-Trainer</a>
+    <a class="nav-item" data-section="trainer" data-trainer="kraft">💪 Kraft-Trainer</a>
+    <a class="nav-item" data-section="trainer" data-trainer="ernaehrung">🥗 Sporternährung</a>
+    <a class="nav-item" data-section="trainer" data-trainer="methodik">🏔 UA-Methodik</a>
     <div class="nav-section">Analyse</div>
     <a class="nav-item" data-section="cardio">♡ Herz-Kreislauf</a>
     <a class="nav-item" data-section="zones">◉ HF-Zonen</a>
@@ -1468,18 +1467,15 @@ async function showTrainerDetail(slug) {
         <input class="setup-input" id="tnTitle" type="text" placeholder="Titel (z.B. Morgen Check-In)" onkeydown="if(event.key==='Enter')document.getElementById('tnContent').focus()">
       </div>
       <textarea class="note-textarea" id="tnContent" style="min-height:110px" placeholder="Notiz eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
         <button class="setup-btn" style="width:auto;padding:8px 20px" onclick="saveTrainerNote('${slug}')">Speichern</button>
-        <div class="setup-error" id="tnError" style="display:inline;margin:0"></div>
+        <button class="btn" id="copyTBtn_${slug}" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
+        <div class="setup-error" id="tnError" style="display:none;margin:0"></div>
       </div>
     </div>
 
     <div class="notes-header" style="margin-bottom:12px">
-      <span class="card-title">${trainerNotes.length} Notiz${trainerNotes.length !== 1 ? 'en' : ''}</span>
-      <div style="display:flex;gap:8px">
-        <button class="btn" onclick="refreshTrainerDetail('${slug}')" title="Neu laden">↻</button>
-        <button class="btn" id="copyTBtn_${slug}" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
-      </div>
+      <span class="card-title" id="trainerNotesCount">${trainerNotes.length} Notiz${trainerNotes.length !== 1 ? 'en' : ''}</span>
     </div>
     <div id="trainerNotesList">
       ${renderTrainerNotesHtml(trainerNotes)}
@@ -1515,9 +1511,22 @@ async function saveTrainerNote(slug) {
   try {
     const content  = buildNoteContent(body, slug, title);
     const filename = `${Date.now()}-${slug}.md`;
-    await saveNoteToGH(filename, content, null);
-    _notes = await loadNotes();
-    showTrainerDetail(slug);
+    const res = await saveNoteToGH(filename, content, null);
+    const newNote = {
+      filename,
+      sha:     res.content.sha,
+      trainer: slug,
+      title,
+      date:    new Date().toISOString().slice(0, 16),
+      body,
+    };
+    _notes.unshift(newNote);
+    document.getElementById('tnTitle').value   = '';
+    document.getElementById('tnContent').value = '';
+    const trainerNotes = _notes.filter(n => n.trainer === slug);
+    document.getElementById('trainerNotesCount').textContent =
+      `${trainerNotes.length} Notiz${trainerNotes.length !== 1 ? 'en' : ''}`;
+    document.getElementById('trainerNotesList').innerHTML = renderTrainerNotesHtml(trainerNotes);
   } catch(e) {
     errEl.textContent = 'Fehler: ' + e.message;
     errEl.style.display = 'block';
