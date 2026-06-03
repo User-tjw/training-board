@@ -505,7 +505,7 @@ async function checkPassword() {
   }
 }
 
-const SESSION_TIMEOUT_HOURS = 8; // Nach 8 Stunden automatisch abmelden
+const SESSION_TIMEOUT_HOURS = 0.5; // Nach 30 Minuten automatisch abmelden
 
 function logout() {
   sessionStorage.removeItem('tb_authenticated');
