@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Training Board</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f6f9; --bg2: #ffffff; --bg3: #eef1f5; --border: #dde2ea;
+      --accent: #2563eb; --accent-light: #eff4ff;
+      --text: #1a2035; --text2: #64748b;
+      --green: #16a34a; --green-light: #f0fdf4;
+      --red: #dc2626; --red-light: #fef2f2; --orange: #d97706;
+      --z1: #60a5fa; --z2: #34d399; --z3: #fbbf24; --z4: #f87171;
+      --font: 'Roboto', sans-serif; --mono: 'JetBrains Mono', monospace;
+      --sidebar-w: 230px; --radius: 10px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+    body.dark { --bg:#2b2d30; --bg2:#35373b; --bg3:#3d3f43; --border:#4a4c51; --text:#e0e2e6; --text2:#9da3ae; --accent-light:#1e3a6e; }
+
+    /* Setup Screen */
+    #setupScreen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .setup-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
+      padding: 40px; width: 420px; max-width: 95vw;
+    }
+    .setup-logo { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    .setup-sub { font-size: 13px; color: var(--text2); margin-bottom: 32px; }
+    .setup-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+    .setup-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
+    .setup-input {
+      padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+      font-family: var(--mono); font-size: 14px; background: var(--bg); color: var(--text); outline: none;
+    }
+    .setup-input:focus { border-color: var(--accent); }
+    .setup-hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
+    .setup-btn {
+      width: 100%; padding: 12px; border-radius: 8px; border: none;
+      background: var(--accent); color: white; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+    .setup-btn:hover { background: #1d4ed8; }
+    .setup-error { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
+
+    /* App */
+    .app { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 16px;
+      position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 28px; }
+    .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; }
+    .logo-titles { display: flex; flex-direction: column; gap: 1px; }
+    .logo-text { font-size: 18px; font-weight: 700; line-height: 1.2; }
+    .logo-sub { font-size: 10px; font-weight: 400; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; }
+    .nav-section { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text2); text-transform: uppercase; padding: 0 8px; margin: 16px 0 6px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 2px; cursor: pointer; transition: all 0.15s; }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: var(--accent-light); color: var(--accent); }
+    .sidebar-footer { margin-top: auto; padding: 12px 8px; border-top: 1px solid var(--border); }
+    .api-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); font-family: var(--mono); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text2); animation: pulse 2s infinite; }
+    .status-dot.live { background: var(--green); }
+    .status-dot.error { background: var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+    .main { margin-left: var(--sidebar-w); flex: 1; }
+    .topbar {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .page-title { font-size: 15px; font-weight: 600; }
+    .breadcrumb { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+    .topbar-right { display: flex; align-items: center; gap: 10px; }
+    .btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); font-family: var(--font); }
+    .btn:hover { background: var(--bg3); }
+    .content { padding: 16px 24px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
+    .card-meta { font-size: 11px; font-family: var(--mono); color: var(--text2); }
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+    .kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
+    .kpi-badge { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 4px; background: var(--accent-light); color: var(--accent); }
+    .kpi-badge-green { background: var(--green-light); color: var(--green); }
+    .kpi-badge-red { background: var(--red-light); color: var(--red); }
+    .kpi-value { font-size: 26px; font-weight: 600; font-family: var(--mono); line-height: 1; margin-bottom: 4px; }
+    .kpi-sub { font-size: 11px; color: var(--text2); }
+    .up { color: var(--green); } .down { color: var(--red); } .neutral { color: var(--orange); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 0; }
+    .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 0; }
+    .grid-2 .card, .grid-3-1 .card { margin-bottom: 14px; }
+    .trend-hero { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    .trend-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 6px; }
+    .trend-verdict { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .trend-desc { font-size: 12px; color: var(--text2); }
+    .trend-indicators { display: flex; gap: 24px; }
+    .trend-ind { text-align: center; }
+    .trend-ind-val { font-size: 22px; font-weight: 600; font-family: var(--mono); }
+    .trend-ind-label { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+    .recommendation { border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 12px; }
+    .recommendation.good { background: var(--green-light); border: 1px solid #bbf7d0; }
+    .recommendation.warn { background: #fffbeb; border: 1px solid #fde68a; }
+    .rec-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .rec-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+    .recommendation.good .rec-title { color: #15803d; }
+    .recommendation.warn .rec-title { color: #b45309; }
+    .rec-text { font-size: 12px; line-height: 1.5; }
+    .recommendation.good .rec-text { color: #166534; }
+    .recommendation.warn .rec-text { color: #92400e; }
+    .mix-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .mix-label { width: 70px; font-size: 12px; font-weight: 500; }
+    .mix-bar-wrap { flex: 1; background: var(--bg3); border-radius: 4px; height: 8px; }
+    .mix-bar { height: 8px; border-radius: 4px; }
+    .mix-val { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 35px; text-align: right; }
+    .mix-time { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 45px; text-align: right; }
+    .zone-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .input-group { display: flex; flex-direction: column; gap: 6px; }
+    .input-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
+    .input-field { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--mono); font-size: 16px; font-weight: 500; background: var(--bg); color: var(--text); outline: none; width: 100%; }
+    .input-field:focus { border-color: var(--accent); }
+    .input-hint { font-size: 11px; color: var(--text2); }
+    .zones-table { width: 100%; border-collapse: collapse; }
+    .zones-table th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .zones-table td { padding: 10px; border-bottom: 1px solid var(--bg3); font-size: 13px; }
+    .zones-table tr:last-child td { border-bottom: none; }
+    .zone-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+    .zone-name { font-weight: 600; }
+    .zone-range { font-family: var(--mono); font-size: 12px; }
+    .zone-desc { font-size: 12px; color: var(--text2); }
+    .dist-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .dist-label { width: 66px; }
+    .dist-zone { font-size: 12px; font-weight: 600; }
+    .dist-sub { font-size: 11px; color: var(--text2); }
+    .dist-bar-wrap { flex: 1; background: var(--bg3); border-radius: 4px; height: 9px; }
+    .dist-bar { height: 9px; border-radius: 4px; }
+    .dist-val { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 32px; text-align: right; }
+    .dist-time { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 44px; text-align: right; }
+    .act-table { width: 100%; border-collapse: collapse; }
+    .act-table th { text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .act-table td { padding: 10px 12px; border-bottom: 1px solid var(--bg3); font-size: 13px; }
+    .act-table tr:last-child td { border-bottom: none; }
+    .act-table tr:hover td { background: var(--bg3); }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; font-family: var(--mono); }
+    .tag-Run, .tag-TrailRun, .tag-VirtualRun { background: var(--accent-light); color: var(--accent); }
+    .tag-Ride, .tag-VirtualRide, .tag-EBikeRide { background: var(--green-light); color: var(--green); }
+    .tag-WeightTraining, .tag-Workout { background: #faf5ff; color: #7c3aed; }
+    .tag-Walk, .tag-Hike { background: #fff7ed; color: #c2410c; }
+    .mono { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+    .loading { color: var(--text2); font-family: var(--mono); font-size: 12px; padding: 20px; text-align: center; }
+    #zoneDonut, #zoneTrendChart { max-height: 140px !important; }
+
+    /* Team */
+    .team-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+    .trainer-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; transition: box-shadow 0.2s, transform 0.15s; display: flex; flex-direction: column; gap: 8px; }
+    .trainer-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .trainer-icon { font-size: 28px; margin-bottom: 4px; }
+    .trainer-name { font-size: 16px; font-weight: 600; }
+    .trainer-role { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; }
+    .trainer-desc { font-size: 12px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+    .trainer-link { display: inline-block; margin-top: 10px; padding: 8px 14px; border-radius: 7px; background: var(--accent-light); color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none; }
+    .trainer-link:hover { background: var(--accent); color: white; }
+
+    /* Settings Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
+    .modal { background: var(--bg2); border-radius: 14px; padding: 32px; width: 380px; max-width: 95vw; }
+    .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+
+    @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .grid-2, .grid-3-1 { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { :root { --sidebar-w: 0px; } .sidebar { display: none; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+
+<!-- Password Screen -->
+<div id="passwordScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)">
+  <div class="setup-card" style="width:360px">
+    <div class="setup-logo">🔒 Training Board</div>
+    <div class="setup-sub" id="pwSub">Bitte Passwort eingeben.</div>
+    <div class="setup-field">
+      <label class="setup-label">Passwort</label>
+      <input class="setup-input" id="pwInput" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')checkPassword()">
+    </div>
+    <button class="setup-btn" onclick="checkPassword()">Weiter →</button>
+    <div class="setup-error" id="pwError">Falsches Passwort.</div>
+  </div>
+</div>
+
+<!-- Setup Screen -->
+<div id="setupScreen" style="display:none">
+  <div class="setup-card">
+    <div class="setup-logo">🏔 Training Board</div>
+    <div class="setup-sub">Verbinde dein intervals.icu-Konto um loszulegen.</div>
+    <div class="setup-field">
+      <label class="setup-label">intervals.icu Athlete ID</label>
+      <input class="setup-input" id="setupAthleteId" type="text" placeholder="z.B. i12345">
+      <div class="setup-hint">Zu finden unter intervals.icu → Einstellungen → API</div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">API Key</label>
+      <input class="setup-input" id="setupApiKey" type="password" placeholder="Dein intervals.icu API Key">
+      <div class="setup-hint">intervals.icu → Einstellungen → API → API Key</div>
+    </div>
+    <button class="setup-btn" onclick="saveSetup()">Verbinden →</button>
+    <div class="setup-error" id="setupError">Verbindung fehlgeschlagen. Bitte Key und ID prüfen.</div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="app" id="appContainer" style="display:none">
+
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🏔</div>
+      <div class="logo-titles">
+        <span class="logo-text">Training Board</span>
+        <span class="logo-sub">Thomas Wagner</span>
+      </div>
+    </div>
+    <div class="nav-section">Dashboard</div>
+    <a class="nav-item active" data-section="cockpit">⊙ Cockpit</a>
+    <a class="nav-item" data-section="overview">▦ Übersicht</a>
+    <a class="nav-item" data-section="activities">◎ Aktivitäten</a>
+    <div class="nav-section">KI-Trainer</div>
+    <a class="nav-item" data-section="team">✦ Trainer Team</a>
+    <div class="nav-section">Analyse</div>
+    <a class="nav-item" data-section="cardio">♡ Herz-Kreislauf</a>
+    <a class="nav-item" data-section="zones">◉ HF-Zonen</a>
+    <a class="nav-item" data-section="fitness">↗ Fitness & Form</a>
+    <a class="nav-item" data-section="wellness">◑ Wellness</a>
+    <a class="nav-item" data-section="hrv">♥ HRV-Analyse</a>
+    <div class="sidebar-footer">
+      <div class="api-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Verbinde...</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="page-title" id="pageTitle">Cockpit</span>
+        <span class="breadcrumb" id="dateLabel"></span>
+      </div>
+      <div class="topbar-right">
+        <select class="btn" id="timeRange">
+          <option value="7">7 Tage</option>
+          <option value="30" selected>30 Tage</option>
+          <option value="90">90 Tage</option>
+          <option value="365">Alle</option>
+        </select>
+        <button class="btn" onclick="toggleTheme()">☀</button>
+        <button class="btn" onclick="showSettings()">⚙</button>
+        <button class="btn" onclick="logout()" title="Abmelden">⏻</button>
+      </div>
+    </header>
+
+    <!-- Cockpit -->
+    <section id="section-cockpit" class="section active">
+      <div class="content">
+        <div class="trend-hero">
+          <div class="trend-left">
+            <div class="trend-label" id="cockpitDate"></div>
+            <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
+            <div class="trend-desc" id="cockpitDesc"></div>
+          </div>
+          <div class="trend-indicators">
+            <div class="trend-ind"><div class="trend-ind-val" id="cockpitHRV">—</div><div class="trend-ind-label">HRV<br>ms</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="cockpitRHF">—</div><div class="trend-ind-label">Ruhepuls<br>bpm</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="cockpitTSB">—</div><div class="trend-ind-label">Form (TSB)<br>Punkte</div></div>
+          </div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Fitness (CTL)</span><span class="kpi-badge">aktuell</span></div><div class="kpi-value" id="cockpitCTL">—</div><div class="kpi-sub">Chronische Last</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Fatigue (ATL)</span><span class="kpi-badge">aktuell</span></div><div class="kpi-value" id="cockpitATL">—</div><div class="kpi-sub">Akute Last</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Diese Woche</span><span class="kpi-badge">Einheiten</span></div><div class="kpi-value" id="cockpitWeekSessions">—</div><div class="kpi-sub">Trainingseinheiten</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Diese Woche</span><span class="kpi-badge">Zeit</span></div><div class="kpi-value" id="cockpitWeekTime">—</div><div class="kpi-sub">Stunden</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Diese Woche</span><span class="card-meta" id="cockpitWeekLabel"></span></div>
+            <div id="cockpitWeekList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">80/20 Check · diese Woche</span><span class="card-meta">Uphill Athlete</span></div>
+            <div id="cockpitZoneCheck" style="padding:12px 0"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">HRV · letzte 7 Tage</span><span class="card-meta">Tagesstatus</span></div>
+          <div id="cockpitHRVDots" style="padding:12px 0;font-size:24px;letter-spacing:4px"></div>
+          <canvas id="cockpitHRVChart" height="35"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Übersicht -->
+    <section id="section-overview" class="section">
+      <div class="content">
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Aktivitäten</span><span class="kpi-badge" id="kpi-badge-days">30d</span></div><div class="kpi-value" id="kpi-activities">—</div><div class="kpi-sub">Einheiten</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Distanz</span><span class="kpi-badge" id="kpi-badge-days2">30d</span></div><div class="kpi-value" id="kpi-distance">—</div><div class="kpi-sub">Kilometer</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Trainingszeit</span><span class="kpi-badge">gesamt</span></div><div class="kpi-value" id="kpi-time">—</div><div class="kpi-sub">Stunden</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">HRV</span><span class="kpi-badge">heute</span></div><div class="kpi-value" id="kpi-hrv">—</div><div class="kpi-sub">ms</div></div>
+        </div>
+        <div class="grid-3-1">
+          <div class="card"><div class="card-header"><span class="card-title">Fitness · Fatigue · Form</span><span class="card-meta">CTL / ATL / TSB</span></div><canvas id="fitnessChart" height="65"></canvas></div>
+          <div class="card"><div class="card-header"><span class="card-title">Aktivitätstypen</span></div><canvas id="typeChart" height="65"></canvas></div>
+        </div>
+        <div class="card"><div class="card-header"><span class="card-title">Letzte Aktivitäten</span><span class="card-meta" id="periodLabel-overview"></span></div><div id="activityList"><div class="loading">Lade Daten...</div></div></div>
+      </div>
+    </section>
+
+    <!-- Aktivitäten -->
+    <section id="section-activities" class="section">
+      <div class="content">
+        <div class="card"><div class="card-header"><span class="card-title">Alle Aktivitäten</span><span class="card-meta" id="periodLabel-activities"></span></div><div id="allActivities"></div></div>
+      </div>
+    </section>
+
+    <!-- Trainer Team -->
+    <section id="section-team" class="section">
+      <div class="content">
+        <div class="card" style="margin-bottom:20px;background:var(--accent-light);border-color:#bfdbfe">
+          <div style="display:flex;align-items:center;gap:14px">
+            <span style="font-size:28px">✦</span>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--accent);margin-bottom:4px">Training Board · claude.ai</div>
+              <div style="font-size:12px;color:#1e40af;line-height:1.5">Dein KI-Trainer-Team lebt in einem separaten Claude Project. Öffne es auf claude.ai für Check-Ins, Trainingsplanung und Coaching-Gespräche.</div>
+              <a href="https://claude.ai" target="_blank" class="trainer-link" style="margin-top:10px;display:inline-block">✦ Training Board öffnen →</a>
+            </div>
+          </div>
+        </div>
+        <div class="team-grid" id="teamGrid"></div>
+      </div>
+    </section>
+
+    <!-- Herz-Kreislauf -->
+    <section id="section-cardio" class="section">
+      <div class="content">
+        <div class="trend-hero">
+          <div class="trend-left">
+            <div class="trend-label">Kardiovaskuläre Entwicklung</div>
+            <div class="trend-verdict" id="trendVerdict">Wird berechnet...</div>
+            <div class="trend-desc" id="trendDesc"></div>
+          </div>
+          <div class="trend-indicators">
+            <div class="trend-ind"><div class="trend-ind-val" id="rhfTrend">—</div><div class="trend-ind-label">RHF Trend<br>bpm</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="hrvTrend">—</div><div class="trend-ind-label">HRV Trend<br>ms</div></div>
+          </div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Ruhepuls heute</span><span class="kpi-badge" id="rhfBadge">—</span></div><div class="kpi-value" id="rhfToday">—</div><div class="kpi-sub">bpm</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">HRV heute</span><span class="kpi-badge" id="hrvBadge">—</span></div><div class="kpi-value" id="hrvToday">—</div><div class="kpi-sub">ms</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Ø Trainingspuls</span><span class="kpi-badge">Periode</span></div><div class="kpi-value" id="avgHR">—</div><div class="kpi-sub">bpm</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Schlaf Ø</span><span class="kpi-badge">Periode</span></div><div class="kpi-value" id="avgSleep">—</div><div class="kpi-sub">Stunden</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><div class="card-header"><span class="card-title">Ruheherzfrequenz — Verlauf</span><span class="card-meta">Ziel: sinkender Trend</span></div><canvas id="rhfChart" height="65"></canvas></div>
+          <div class="card"><div class="card-header"><span class="card-title">HRV — Verlauf</span><span class="card-meta">Ziel: steigender Trend</span></div><canvas id="hrvChart" height="65"></canvas></div>
+        </div>
+        <div class="grid-3-1">
+          <div class="card"><div class="card-header"><span class="card-title">Trainingsbelastung</span><span class="card-meta">CTL / ATL / TSB</span></div><canvas id="fitnessChart2" height="65"></canvas></div>
+          <div class="card"><div class="card-header"><span class="card-title">Aktivitätsmix</span></div><div id="activityMix" style="margin-top:8px"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HF-Zonen -->
+    <section id="section-zones" class="section">
+      <div class="content">
+        <div class="recommendation" id="zoneRecommendation" style="display:none"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Meine Schwellenwerte</span><span class="card-meta">Uphill Athlete · 4 Zonen</span></div>
+            <div class="zone-inputs">
+              <div class="input-group"><span class="input-label">Aerobe Schwelle (AeT)</span><input class="input-field" type="number" value="148" id="aet" oninput="updateZones()"><span class="input-hint">bpm · Nasenatemtest</span></div>
+              <div class="input-group"><span class="input-label">Anaerobe Schwelle (AnT)</span><input class="input-field" type="number" value="168" id="ant" oninput="updateZones()"><span class="input-hint">bpm · Laktatschwelle</span></div>
+            </div>
+            <table class="zones-table"><thead><tr><th>Zone</th><th>Bereich</th><th>Charakter</th></tr></thead><tbody id="zonesBody"></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Zonenverteilung</span><span class="card-meta" id="periodLabel-zones"></span></div>
+            <div id="distBars" style="margin-bottom:16px"></div>
+            <canvas id="zoneDonut" height="22"></canvas>
+          </div>
+        </div>
+        <div class="card"><div class="card-header"><span class="card-title">Zonenverteilung — Wochenverlauf</span><span class="card-meta">gestapelt in %</span></div><canvas id="zoneTrendChart" height="22"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Fitness & Form -->
+    <section id="section-fitness" class="section">
+      <div class="content">
+        <div class="card"><div class="card-header"><span class="card-title">Fitness Verlauf</span><span class="card-meta">CTL / ATL / TSB</span></div><canvas id="fitnessChart3" height="65"></canvas></div>
+      </div>
+    </section>
+
+    <!-- Wellness -->
+    <section id="section-wellness" class="section">
+      <div class="content">
+        <div class="grid-2">
+          <div class="card"><div class="card-header"><span class="card-title">HRV & Ruhepuls</span></div><canvas id="wellnessChart" height="65"></canvas></div>
+          <div class="card"><div class="card-header"><span class="card-title">Schlaf</span></div><canvas id="sleepChart" height="65"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HRV-Analyse -->
+    <section id="section-hrv" class="section">
+      <div class="content">
+        <div class="trend-hero">
+          <div class="trend-left">
+            <div class="trend-label">HRV-Status heute · Plews-Methode</div>
+            <div class="trend-verdict" id="hrvAmpelVerdict">Wird berechnet...</div>
+            <div class="trend-desc" id="hrvAmpelDesc"></div>
+          </div>
+          <div class="trend-indicators">
+            <div class="trend-ind"><div class="trend-ind-val" id="hrvAmpelToday">—</div><div class="trend-ind-label">HRV heute<br>ms</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="hrvAmpelAvg">—</div><div class="trend-ind-label">7-Tage Ø<br>ms</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="hrvAmpelDiff">—</div><div class="trend-ind-label">Abweichung<br>ms</div></div>
+          </div>
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">HRV heute</span></div><div class="kpi-value" id="hrvKpiToday">—</div><div class="kpi-sub">ms RMSSD</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">7-Tage Ø</span></div><div class="kpi-value" id="hrvKpiAvg7">—</div><div class="kpi-sub">ms Baseline</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">30-Tage Ø</span></div><div class="kpi-value" id="hrvKpiAvg30">—</div><div class="kpi-sub">ms Langzeittrend</div></div>
+          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Grüne Tage</span></div><div class="kpi-value" id="hrvKpiGreen">—</div><div class="kpi-sub">letzte 30 Tage</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title" id="hrvChartTitle">HRV Verlauf + 7-Tage-Ø</span><span class="card-meta">Plews-Methode</span></div>
+          <canvas id="hrvPlewsChart" height="60"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Tagesstatus Verlauf</span><span class="card-meta">Grün / Gelb / Rot</span></div>
+          <div id="hrvDayBars" style="padding:8px 0"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)hideSettings()">
+  <div class="modal">
+    <h3>⚙ Einstellungen</h3>
+    <div class="setup-field">
+      <label class="setup-label">Athlete ID</label>
+      <input class="setup-input" id="settingsAthleteId" type="text">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">API Key</label>
+      <input class="setup-input" id="settingsApiKey" type="password">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1" onclick="saveSettingsModal()">Speichern</button>
+      <button class="btn" style="flex:1" onclick="hideSettings()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Passwortschutz ──────────────────────────────────────────────────────────
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPassword() {
+  const input = document.getElementById('pwInput').value;
+  if (!input) return;
+  const hash = await sha256(input);
+  const stored = localStorage.getItem('tb_pw_hash');
+
+  if (!stored) {
+    // Erstes Mal: Passwort setzen
+    if (input.length < 4) {
+      document.getElementById('pwSub').textContent = 'Mindestens 4 Zeichen bitte.';
+      return;
+    }
+    localStorage.setItem('tb_pw_hash', hash);
+    unlockApp();
+  } else if (hash === stored) {
+    unlockApp();
+  } else {
+    document.getElementById('pwError').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+function logout() {
+  document.getElementById('appContainer').style.display = 'none';
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('passwordScreen').style.display = 'flex';
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+}
+
+function unlockApp() {
+  document.getElementById('passwordScreen').style.display = 'none';
+  // Weiter mit Setup oder App
+  if (athleteId && apiKey) {
+    showApp();
+  } else {
+    document.getElementById('setupScreen').style.display = 'flex';
+  }
+}
+
+// Beim ersten Besuch: Passwort setzen statt eingeben
+(function() {
+  const stored = localStorage.getItem('tb_pw_hash');
+  if (!stored) {
+    document.getElementById('pwSub').textContent = 'Lege beim ersten Besuch dein Passwort fest.';
+  }
+})();
+
+// ─── Config & Auth ────────────────────────────────────────────────────────────
+
+const ICU_BASE = 'https://intervals.icu/api/v1';
+let athleteId = localStorage.getItem('icu_athlete_id') || '';
+let apiKey    = localStorage.getItem('icu_api_key') || '';
+
+function authHeader() {
+  return { 'Authorization': 'Basic ' + btoa('API_KEY:' + apiKey) };
+}
+
+function icuFetch(path) {
+  return fetch(ICU_BASE + path, { headers: authHeader() }).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+// ─── Setup ───────────────────────────────────────────────────────────────────
+
+// App startet erst nach Passwort-Check (siehe unlockApp)
+
+async function saveSetup() {
+  const id  = document.getElementById('setupAthleteId').value.trim();
+  const key = document.getElementById('setupApiKey').value.trim();
+  if (!id || !key) return;
+  athleteId = id; apiKey = key;
+  // Quick test
+  try {
+    await fetch(`${ICU_BASE}/athlete/${id}/activities?oldest=${fmtDate(daysAgo(7))}`,
+      { headers: { 'Authorization': 'Basic ' + btoa('API_KEY:' + key) } }).then(r => { if (!r.ok) throw new Error(); });
+    localStorage.setItem('icu_athlete_id', id);
+    localStorage.setItem('icu_api_key', key);
+    showApp();
+  } catch(e) {
+    document.getElementById('setupError').style.display = 'block';
+  }
+}
+
+function showApp() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = 'flex';
+  init();
+}
+
+function showSettings() {
+  document.getElementById('settingsAthleteId').value = athleteId;
+  document.getElementById('settingsApiKey').value = apiKey;
+  document.getElementById('settingsModal').style.display = 'flex';
+}
+function hideSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+function saveSettingsModal() {
+  athleteId = document.getElementById('settingsAthleteId').value.trim();
+  apiKey    = document.getElementById('settingsApiKey').value.trim();
+  localStorage.setItem('icu_athlete_id', athleteId);
+  localStorage.setItem('icu_api_key', apiKey);
+  hideSettings();
+  loadAll();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+const CHART_FONT = 'JetBrains Mono';
+const CHART_GRID = '#dde2ea';
+const CHART_TEXT = '#64748b';
+let charts = {};
+
+function init() {
+  document.getElementById('dateLabel').textContent =
+    new Date().toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  setupNav();
+  renderTeam();
+  updateZones();
+  document.getElementById('timeRange').addEventListener('change', loadAll);
+  loadAll();
+}
+
+(function(){
+  if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+})();
+function toggleTheme() {
+  const dark = document.body.classList.toggle('dark');
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+}
+
+function setupNav() {
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const sec = item.dataset.section;
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      item.classList.add('active');
+      document.getElementById(`section-${sec}`).classList.add('active');
+      document.getElementById('pageTitle').textContent = item.textContent.trim();
+    });
+  });
+}
+
+// ─── Data Loading ─────────────────────────────────────────────────────────────
+
+async function loadAll() {
+  const days = parseInt(document.getElementById('timeRange').value);
+  const today = new Date();
+  const from  = daysAgo(days === 365 ? 365 : days);
+  const wellnessDays = Math.max(days, 90);
+
+  const fmt = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const rangeLabel = `${fmt(from)} – ${fmt(today)}`;
+  document.querySelectorAll('[id^="kpi-badge-days"]').forEach(el => el.textContent = days === 365 ? 'Alle' : days+'d');
+  document.querySelectorAll('[id^="periodLabel-"]').forEach(el => el.textContent = rangeLabel);
+
+  try {
+    const [activities, wellness, wellnessFull] = await Promise.all([
+      icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(from)}`),
+      icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(from)}`),
+      icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(wellnessDays))}`),
+    ]);
+
+    // CTL/ATL/TSB aus Wellness-Daten extrahieren (wie im Original-Backend)
+    const fitness = wellnessFull
+      .filter(d => d.ctl != null || d.atl != null)
+      .map(d => ({
+        date: d.id,
+        ctl: parseFloat((d.ctl || 0).toFixed(1)),
+        atl: parseFloat((d.atl || 0).toFixed(1)),
+        tsb: parseFloat(((d.ctl || 0) - (d.atl || 0)).toFixed(1)),
+      }));
+
+    setStatus(true);
+    renderCockpit(activities, wellnessFull, fitness);
+    renderOverview(activities, wellness, fitness);
+    renderCardio(activities, wellness, fitness);
+    renderZones(activities, days);
+    renderFitnessSection(fitness);
+    renderWellness(wellness);
+    renderHRVAnalysis(wellnessFull, days);
+  } catch(err) {
+    console.error(err);
+    setStatus(false);
+  }
+}
+
+function setStatus(ok) {
+  document.getElementById('statusDot').className = 'status-dot ' + (ok ? 'live' : 'error');
+  document.getElementById('statusText').textContent = ok ? 'Verbunden' : 'Fehler';
+}
+
+// ─── Cockpit ─────────────────────────────────────────────────────────────────
+
+function renderCockpit(activities, wellness, fitness) {
+  const allW = sortedWellness(wellness).filter(d => d.hrv || d.restingHR);
+  const latest = allW[allW.length-1] || {};
+  const latestF = fitness[fitness.length-1] || {};
+
+  document.getElementById('cockpitDate').textContent =
+    new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+  // HRV Ampel
+  const hrv7 = allW.slice(-7).map(d => d.hrv).filter(Boolean);
+  const hrv7avg = avg(hrv7);
+  const todayHRV = latest.hrv || 0;
+  const pct = hrv7avg ? ((todayHRV - hrv7avg) / hrv7avg) * 100 : 0;
+
+  let verdict, desc, cls;
+  if (!todayHRV) {
+    verdict = '⬜ Keine HRV-Daten'; desc = 'Noch kein HRV-Wert für heute.'; cls = 'neutral';
+  } else if (pct >= 0) {
+    verdict = '🟢 Bereit · Hart trainieren';
+    desc = `HRV ${Math.round(todayHRV)} ms liegt über dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Guter Tag für Qualitätseinheiten.`;
+    cls = 'up';
+  } else if (pct >= -5) {
+    verdict = '🟡 Moderat · Locker bleiben';
+    desc = `HRV ${Math.round(todayHRV)} ms leicht unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Nur lockeres Training.`;
+    cls = 'neutral';
+  } else {
+    verdict = '🔴 Erholen · Ruhetag';
+    desc = `HRV ${Math.round(todayHRV)} ms deutlich unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Erholung empfohlen.`;
+    cls = 'down';
+  }
+  const vEl = document.getElementById('cockpitVerdict');
+  vEl.textContent = verdict; vEl.className = 'trend-verdict ' + cls;
+  document.getElementById('cockpitDesc').textContent = desc;
+
+  document.getElementById('cockpitHRV').textContent = todayHRV ? Math.round(todayHRV) : '—';
+  document.getElementById('cockpitRHF').textContent = latest.restingHR || '—';
+  const tsb = latestF.tsb ?? null;
+  const tsbEl = document.getElementById('cockpitTSB');
+  tsbEl.textContent = tsb !== null ? (tsb > 0 ? '+' : '') + Math.round(tsb) : '—';
+  tsbEl.className = 'trend-ind-val ' + (tsb > 5 ? 'up' : tsb < -10 ? 'down' : 'neutral');
+  document.getElementById('cockpitCTL').textContent = latestF.ctl ? Math.round(latestF.ctl) : '—';
+  document.getElementById('cockpitATL').textContent = latestF.atl ? Math.round(latestF.atl) : '—';
+
+  // Diese Woche
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  weekStart.setHours(0,0,0,0);
+  const weekActs = activities.filter(a => new Date(a.start_date_local) >= weekStart);
+  document.getElementById('cockpitWeekSessions').textContent = weekActs.length;
+  const weekH = weekActs.reduce((s,a) => s + (a.moving_time||0), 0) / 3600;
+  document.getElementById('cockpitWeekTime').textContent = weekH.toFixed(1);
+  document.getElementById('cockpitWeekLabel').textContent =
+    `KW${getWeek(now)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – heute`;
+
+  // Wochenliste
+  const listEl = document.getElementById('cockpitWeekList');
+  const typeColors = { Laufen:'#2563eb', Radfahren:'#16a34a', Kraft:'#7c3aed', Sonstiges:'#94a3b8' };
+  listEl.innerHTML = weekActs.length === 0
+    ? '<div class="loading">Noch keine Aktivitäten diese Woche</div>'
+    : weekActs.map(a => {
+        const type = normalizeType(a.type);
+        const col = typeColors[type] || '#94a3b8';
+        const date = new Date(a.start_date_local).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
+        const km = a.distance ? (a.distance/1000).toFixed(1)+' km' : '';
+        const dur = a.moving_time ? formatDur(a.moving_time) : '';
+        const hr = a.average_heartrate ? Math.round(a.average_heartrate)+' bpm' : '';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="color:${col};font-size:18px">●</span>
+          <div style="flex:1">
+            <div style="font-weight:500;font-size:13px">${a.name||type}</div>
+            <div style="font-size:11px;color:#94a3b8">${date} · ${[km,dur,hr].filter(Boolean).join(' · ')}</div>
+          </div>
+        </div>`;
+      }).join('');
+
+  // 80/20 Check
+  const zones = window._zones;
+  const zoneEl = document.getElementById('cockpitZoneCheck');
+  if (zones && weekActs.length > 0) {
+    let easy = 0, hard = 0, total = 0;
+    weekActs.forEach(a => {
+      if (!a.average_heartrate || !a.moving_time) return;
+      total += a.moving_time;
+      if (a.average_heartrate <= zones[1].high) easy += a.moving_time;
+      else if (a.average_heartrate >= zones[3].low) hard += a.moving_time;
+    });
+    const ep = total ? Math.round(easy/total*100) : 0;
+    const hp = total ? Math.round(hard/total*100) : 0;
+    const ok = ep >= 70;
+    zoneEl.innerHTML = `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#16a34a;font-weight:600">Zone 1&2 · Locker</span><span style="font-size:12px;font-weight:600">${ep}%</span></div>
+        <div style="background:#e2e8f0;border-radius:4px;height:8px"><div style="background:#16a34a;width:${ep}%;height:8px;border-radius:4px"></div></div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:#ef4444;font-weight:600">Zone 4 · Hart</span><span style="font-size:12px;font-weight:600">${hp}%</span></div>
+        <div style="background:#e2e8f0;border-radius:4px;height:8px"><div style="background:#ef4444;width:${hp}%;height:8px;border-radius:4px"></div></div>
+      </div>
+      <div style="font-size:12px;padding:8px;border-radius:6px;background:${ok?'rgba(22,163,74,0.1)':'rgba(245,158,11,0.1)'};color:${ok?'#16a34a':'#d97706'}">
+        ${ok ? '✓ Gute 80/20-Verteilung diese Woche' : '⚠ Zu wenig lockeres Training – mehr Zone 1 & 2'}
+      </div>`;
+  } else {
+    zoneEl.innerHTML = '<div class="loading">Keine Daten</div>';
+  }
+
+  // HRV 7-Tage Minitrend
+  const hrv7data = allW.slice(-7);
+  const hrv7rolling = hrv7data.map((d,i) => {
+    const win = allW.slice(Math.max(0, allW.length-7+i-6), allW.length-7+i+1);
+    return avg(win.map(w=>w.hrv).filter(Boolean));
+  });
+  document.getElementById('cockpitHRVDots').innerHTML = hrv7data.map((d,i) => {
+    if (!d.hrv) return '<span style="color:#e2e8f0">●</span>';
+    const p = hrv7rolling[i] ? ((d.hrv-hrv7rolling[i])/hrv7rolling[i])*100 : 0;
+    const col = p >= 0 ? '#16a34a' : p >= -5 ? '#f59e0b' : '#ef4444';
+    const day = new Date(d.id).toLocaleDateString('de-DE',{weekday:'short'});
+    return `<span title="${day}: ${Math.round(d.hrv)} ms" style="color:${col};cursor:default">●</span>`;
+  }).join('');
+  renderChart('cockpitHRVChart', {
+    type:'line',
+    data:{ labels: hrv7data.map(d=>new Date(d.id).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit'})),
+      datasets:[
+        {label:'HRV',data:hrv7data.map(d=>d.hrv||null),borderColor:'#16a34a',borderWidth:2,pointRadius:3,tension:0.3},
+        {label:'7-Tage Ø',data:hrv7rolling.map(v=>Math.round(v)),borderColor:'#2563eb',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0.3}
+      ]},options:lineOptions()});
+}
+
+// ─── Übersicht ────────────────────────────────────────────────────────────────
+
+function renderOverview(activities, wellness, fitness) {
+  document.getElementById('kpi-activities').textContent = activities.length;
+  document.getElementById('kpi-distance').textContent = (activities.reduce((s,a)=>s+(a.distance||0),0)/1000).toFixed(1);
+  document.getElementById('kpi-time').textContent = (activities.reduce((s,a)=>s+(a.moving_time||0),0)/3600).toFixed(1);
+  const sw = sortedWellness(wellness);
+  document.getElementById('kpi-hrv').textContent = sw[sw.length-1]?.hrv ? Math.round(sw[sw.length-1].hrv) : '—';
+  renderActivityTable(activities,'activityList',5);
+  renderActivityTable(activities,'allActivities');
+  renderChart('fitnessChart',makeFitnessChart(fitness));
+  renderChart('typeChart',makeTypeChart(activities));
+}
+
+// ─── Herz-Kreislauf ───────────────────────────────────────────────────────────
+
+function renderCardio(activities, wellness, fitness) {
+  const sorted = sortedWellness(wellness);
+  const half = Math.floor(sorted.length/2);
+  const rhfFirst = avg(sorted.slice(0,half).map(d=>d.restingHR).filter(Boolean));
+  const rhfLast  = avg(sorted.slice(half).map(d=>d.restingHR).filter(Boolean));
+  const hrvFirst = avg(sorted.slice(0,half).map(d=>d.hrv).filter(Boolean));
+  const hrvLast  = avg(sorted.slice(half).map(d=>d.hrv).filter(Boolean));
+  const rhfDiff = Math.round(rhfLast - rhfFirst);
+  const hrvDiff = Math.round(hrvLast - hrvFirst);
+
+  const rhfEl = document.getElementById('rhfTrend');
+  const hrvEl = document.getElementById('hrvTrend');
+  rhfEl.textContent = (rhfDiff<=0?'':'+')+rhfDiff;
+  rhfEl.className = 'trend-ind-val '+(rhfDiff<0?'up':rhfDiff>0?'down':'neutral');
+  hrvEl.textContent = (hrvDiff>=0?'+':'')+hrvDiff;
+  hrvEl.className = 'trend-ind-val '+(hrvDiff>0?'up':hrvDiff<0?'down':'neutral');
+
+  const pos = rhfDiff<=0 && hrvDiff>=0;
+  const mixed = (rhfDiff<=0) !== (hrvDiff>=0);
+  const v = document.getElementById('trendVerdict');
+  const d = document.getElementById('trendDesc');
+  if (pos) { v.textContent='↑ Positive Entwicklung'; v.className='trend-verdict up'; d.textContent='Ruhepuls sinkt, HRV steigt — das Herz-Kreislauf-System verbessert sich.'; }
+  else if (mixed) { v.textContent='→ Gemischtes Bild'; v.className='trend-verdict neutral'; d.textContent='Ein Wert verbessert sich, der andere nicht. Mehr Daten nötig.'; }
+  else { v.textContent='↓ Noch keine Verbesserung'; v.className='trend-verdict down'; d.textContent='Ruhepuls steigt oder HRV sinkt. Mehr Erholung empfohlen.'; }
+
+  const latest = sorted[sorted.length-1] || {};
+  document.getElementById('rhfToday').textContent = latest.restingHR || '—';
+  document.getElementById('hrvToday').textContent  = latest.hrv ? Math.round(latest.hrv) : '—';
+  const rhfB = document.getElementById('rhfBadge');
+  const hrvB = document.getElementById('hrvBadge');
+  rhfB.textContent = rhfDiff<0?'↓ gut':rhfDiff>0?'↑ erhöht':'→ stabil';
+  rhfB.className = 'kpi-badge '+(rhfDiff<0?'kpi-badge-green':rhfDiff>0?'kpi-badge-red':'');
+  hrvB.textContent = hrvDiff>0?'↑ gut':hrvDiff<0?'↓ gesunken':'→ stabil';
+  hrvB.className = 'kpi-badge '+(hrvDiff>0?'kpi-badge-green':hrvDiff<0?'kpi-badge-red':'');
+
+  document.getElementById('avgHR').textContent = avg(activities.map(a=>a.average_heartrate).filter(Boolean)) ? Math.round(avg(activities.map(a=>a.average_heartrate).filter(Boolean))) : '—';
+  const aS = avg(sorted.map(d=>d.sleepSecs).filter(Boolean));
+  document.getElementById('avgSleep').textContent = aS ? (aS/3600).toFixed(1) : '—';
+
+  const labels = sorted.map(d=>d.id.slice(5));
+  renderChart('rhfChart',{type:'line',data:{labels,datasets:[{label:'Ruhepuls (bpm)',data:sorted.map(d=>d.restingHR||null),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
+  renderChart('hrvChart',{type:'line',data:{labels,datasets:[{label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
+  renderChart('fitnessChart2',makeFitnessChart(fitness));
+
+  const mix = {};
+  activities.forEach(a => { const t=normalizeType(a.type); mix[t]=(mix[t]||0)+(a.moving_time||0); });
+  const tot = Object.values(mix).reduce((s,v)=>s+v,0);
+  const mc = {Laufen:'#2563eb',Radfahren:'#16a34a',Kraft:'#7c3aed',Sonstiges:'#94a3b8'};
+  document.getElementById('activityMix').innerHTML = Object.entries(mix).map(([t,s])=>{
+    const p=tot?Math.round(s/tot*100):0;
+    return `<div class="mix-item"><div class="mix-label" style="color:${mc[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${mc[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
+  }).join('');
+}
+
+// ─── HF-Zonen ────────────────────────────────────────────────────────────────
+
+function updateZones() {
+  const aet = parseInt(document.getElementById('aet')?.value)||148;
+  const ant = parseInt(document.getElementById('ant')?.value)||168;
+  const zones = [
+    {low:Math.round(aet*0.80),high:Math.round(aet*0.90),name:'Zone 1',char:'Sehr leicht · aerobe Basis',color:'#60a5fa'},
+    {low:Math.round(aet*0.90),high:aet,                  name:'Zone 2',char:'Locker · aerobe Kapazität',color:'#34d399'},
+    {low:aet,                  high:ant,                  name:'Zone 3',char:'Mittel · Grauzone',color:'#fbbf24'},
+    {low:ant,                  high:'—',                  name:'Zone 4',char:'Hart · anaerob',color:'#f87171'},
+  ];
+  const tbody = document.getElementById('zonesBody');
+  if (!tbody) return;
+  tbody.innerHTML = zones.map(z=>`<tr><td><span class="zone-dot" style="background:${z.color}"></span><span class="zone-name">${z.name}</span></td><td class="zone-range">${z.low} – ${z.high} bpm</td><td class="zone-desc">${z.char}</td></tr>`).join('');
+  window._zones = zones;
+}
+
+function renderZones(activities, days) {
+  updateZones();
+  const zones = window._zones; if (!zones) return;
+  const dist=[0,0,0,0]; let total=0;
+  activities.forEach(a=>{
+    if (!a.average_heartrate||!a.moving_time) return;
+    const hr=a.average_heartrate,t=a.moving_time; total+=t;
+    if(hr<=zones[0].high)dist[0]+=t;
+    else if(hr<=zones[1].high)dist[1]+=t;
+    else if(hr<=zones[2].high)dist[2]+=t;
+    else dist[3]+=t;
+  });
+  const pcts = dist.map(d=>total?Math.round(d/total*100):0);
+  const zn=['Zone 1','Zone 2','Zone 3','Zone 4'],zs=['Basis','Aerob','Grauzone','Intensiv'],zc=['#60a5fa','#34d399','#fbbf24','#f87171'];
+  document.getElementById('distBars').innerHTML = pcts.map((p,i)=>`<div class="dist-item"><div class="dist-label"><div class="dist-zone" style="color:${zc[i]}">${zn[i]}</div><div class="dist-sub">${zs[i]}</div></div><div class="dist-bar-wrap"><div class="dist-bar" style="width:${p}%;background:${zc[i]}"></div></div><span class="dist-val">${p}%</span><span class="dist-time">${formatDur(dist[i])}</span></div>`).join('');
+  renderChart('zoneDonut',{type:'doughnut',data:{labels:zn,datasets:[{data:pcts,backgroundColor:zc,borderWidth:0}]},options:{cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},boxWidth:10,padding:10,color:CHART_TEXT}}}}});
+
+  const recEl = document.getElementById('zoneRecommendation');
+  if (pcts[2]>30) { recEl.style.display='flex'; recEl.className='recommendation warn'; recEl.innerHTML=`<div class="rec-icon">⚠</div><div><div class="rec-title">Zu viel Zone 3 — klassische „Grauzone"</div><div class="rec-text">${pcts[2]}% deines Trainings liegt in Zone 3. Mehr Zone 1 & 2 stärkt die kardiovaskuläre Basis.</div></div>`; }
+  else if (pcts[0]+pcts[1]>=70) { recEl.style.display='flex'; recEl.className='recommendation good'; recEl.innerHTML=`<div class="rec-icon">✓</div><div><div class="rec-title">Gute Zonenverteilung</div><div class="rec-text">${pcts[0]+pcts[1]}% in Zone 1 & 2. Ideal für die aerobe Basis.</div></div>`; }
+  else { recEl.style.display='none'; }
+
+  renderZoneTrend(activities);
+}
+
+function renderZoneTrend(activities) {
+  const zones = window._zones; if (!zones) return;
+  const weeks={};
+  activities.forEach(a=>{
+    if (!a.average_heartrate||!a.moving_time) return;
+    const d=new Date(a.start_date_local),kw=`KW${getWeek(d)}`;
+    if(!weeks[kw])weeks[kw]=[0,0,0,0];
+    const hr=a.average_heartrate,t=a.moving_time;
+    if(hr<=zones[0].high)weeks[kw][0]+=t;
+    else if(hr<=zones[1].high)weeks[kw][1]+=t;
+    else if(hr<=zones[2].high)weeks[kw][2]+=t;
+    else weeks[kw][3]+=t;
+  });
+  const labels=Object.keys(weeks);
+  const zc=['#60a5fa','#34d399','#fbbf24','#f87171'],zn=['Zone 1','Zone 2','Zone 3','Zone 4'];
+  renderChart('zoneTrendChart',{type:'bar',data:{labels,datasets:zc.map((c,i)=>({label:zn[i],data:labels.map(kw=>{const t=weeks[kw].reduce((s,v)=>s+v,0);return t?Math.round(weeks[kw][i]/t*100):0;}),backgroundColor:c,stack:'z'}))},options:{plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},boxWidth:10,color:CHART_TEXT}}},scales:{x:{grid:{display:false},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}},y:{stacked:true,max:100,grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,callback:v=>v+'%'}}}}});
+}
+
+// ─── Fitness ─────────────────────────────────────────────────────────────────
+
+function renderFitnessSection(fitness) { renderChart('fitnessChart3',makeFitnessChart(fitness)); }
+
+// ─── Wellness ────────────────────────────────────────────────────────────────
+
+function renderWellness(wellness) {
+  const sorted=sortedWellness(wellness);
+  const labels=sorted.map(d=>d.id.slice(5));
+  renderChart('wellnessChart',{type:'line',data:{labels,datasets:[
+    {label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#16a34a',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y'},
+    {label:'Ruhepuls',data:sorted.map(d=>d.restingHR||null),borderColor:'#2563eb',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y1'},
+  ]},options:{plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#16a34a'}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#2563eb'}}}}});
+  renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(37,99,235,0.3)',borderColor:'#2563eb',borderWidth:1,borderRadius:4}]},options:lineOptions()});
+}
+
+// ─── HRV-Analyse ─────────────────────────────────────────────────────────────
+
+function renderHRVAnalysis(wellness, selectedDays) {
+  const allSorted = sortedWellness(wellness).filter(d=>d.hrv);
+  if (allSorted.length < 2) return;
+  const sorted = selectedDays>=90 ? allSorted : allSorted.slice(-selectedDays);
+  const rolling7All = allSorted.map((d,i)=>{ const w=allSorted.slice(Math.max(0,i-6),i+1); return avg(w.map(x=>x.hrv)); });
+  const offset = allSorted.length - sorted.length;
+  const rolling7 = rolling7All.slice(offset);
+  const today = allSorted[allSorted.length-1];
+  const avg7 = rolling7All[rolling7All.length-1];
+  const avg30 = avg(allSorted.slice(-30).map(d=>d.hrv));
+  const diff = Math.round(today.hrv - avg7);
+  const pct = ((today.hrv - avg7) / avg7) * 100;
+
+  let verdict, desc, cls;
+  if (pct>=0){verdict='🟢 Bereit · Hart trainieren';desc=`HRV liegt ${Math.abs(diff)} ms über dem 7-Tage-Durchschnitt.`;cls='up';}
+  else if(pct>=-5){verdict='🟡 Moderat · Locker bleiben';desc=`HRV liegt ${Math.abs(diff)} ms unter dem 7-Tage-Durchschnitt.`;cls='neutral';}
+  else{verdict='🔴 Erholen · Ruhetag';desc=`HRV liegt ${Math.abs(diff)} ms unter dem 7-Tage-Durchschnitt.`;cls='down';}
+
+  const vEl=document.getElementById('hrvAmpelVerdict'); vEl.textContent=verdict; vEl.className='trend-verdict '+cls;
+  document.getElementById('hrvAmpelDesc').textContent=desc;
+  document.getElementById('hrvAmpelToday').textContent=Math.round(today.hrv);
+  document.getElementById('hrvAmpelAvg').textContent=Math.round(avg7);
+  const dEl=document.getElementById('hrvAmpelDiff'); dEl.textContent=(diff>=0?'+':'')+diff; dEl.className='trend-ind-val '+cls;
+  document.getElementById('hrvKpiToday').textContent=Math.round(today.hrv);
+  document.getElementById('hrvKpiAvg7').textContent=Math.round(avg7);
+  document.getElementById('hrvKpiAvg30').textContent=Math.round(avg30);
+  const last30=allSorted.slice(-30),off30=allSorted.length-last30.length;
+  document.getElementById('hrvKpiGreen').textContent=last30.filter((d,i)=>d.hrv>=rolling7All[off30+i]).length;
+  document.getElementById('hrvChartTitle').textContent=`HRV Verlauf + 7-Tage-Ø · letzte ${selectedDays} Tage`;
+
+  const labels=sorted.map(d=>d.id.slice(5));
+  renderChart('hrvPlewsChart',{type:'bar',data:{labels,datasets:[
+    {label:'HRV (ms)',data:sorted.map(d=>Math.round(d.hrv)),backgroundColor:sorted.map((d,i)=>{const p=((d.hrv-rolling7[i])/rolling7[i])*100;return p>=0?'rgba(22,163,74,0.6)':p>=-5?'rgba(251,191,36,0.6)':'rgba(239,68,68,0.6)';}),borderWidth:0,borderRadius:3,order:2},
+    {label:'7-Tage Ø',data:rolling7.map(v=>Math.round(v)),type:'line',borderColor:'#2563eb',borderWidth:2,pointRadius:0,tension:0.4,fill:false,order:1}
+  ]},options:lineOptions()});
+
+  document.getElementById('hrvDayBars').innerHTML = sorted.slice(-30).map((d,i,arr)=>{
+    const idx=sorted.indexOf(d); const p=((d.hrv-rolling7[idx])/rolling7[idx])*100;
+    const col=p>=0?'#16a34a':p>=-5?'#f59e0b':'#ef4444';
+    return `<span title="${d.id}: ${Math.round(d.hrv)} ms" style="color:${col};font-size:20px;margin:2px;cursor:default">●</span>`;
+  }).join('');
+}
+
+// ─── Trainer Team ─────────────────────────────────────────────────────────────
+
+const TRAINERS = [
+  {icon:'⊙',name:'Head Coach',role:'Tagessteuerung & Planung',color:'#2563eb',desc:'HRV-Ampel, Check-In, Wochenplanung, Load-Management und Saisonplanung.'},
+  {icon:'🦺',name:'Reha-Trainer',role:'Verletzung & Prävention',color:'#dc2626',desc:'Gate-System, Protokolle für parallele Reha-Programme, Schmerzmonitoring.'},
+  {icon:'💪',name:'Kraft-Trainer',role:'Kraft & Stabilität',color:'#7c3aed',desc:'Ganzkörper-Programm, Posterior Chain, Progression, Heimtraining.'},
+  {icon:'🥗',name:'Sporternährung',role:'Ernährung & Supplements',color:'#16a34a',desc:'Basis-Protokoll, Race-Day-Ernährung, Taper, Protein-Strategie.'},
+  {icon:'🏔',name:'UA-Methodik',role:'Uphill Athlete Prinzipien',color:'#b45309',desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
+];
+
+function renderTeam() {
+  document.getElementById('teamGrid').innerHTML = TRAINERS.map(t=>`
+    <div class="trainer-card">
+      <div class="trainer-icon">${t.icon}</div>
+      <div class="trainer-name">${t.name}</div>
+      <div class="trainer-role" style="color:${t.color}">${t.role}</div>
+      <div class="trainer-desc">${t.desc}</div>
+      <a href="https://claude.ai" target="_blank" class="trainer-link">Im Training Board besprechen →</a>
+    </div>`).join('');
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeFitnessChart(fitness) {
+  const labels=fitness.map(d=>d.date.slice(5));
+  return {type:'line',data:{labels,datasets:[
+    {label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#2563eb',borderWidth:2,pointRadius:0,tension:0.4},
+    {label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',borderWidth:2,pointRadius:0,tension:0.4},
+    {label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',borderWidth:2,pointRadius:0,tension:0.4},
+  ]},options:lineOptions()};
+}
+
+function makeTypeChart(activities) {
+  const counts={};
+  activities.forEach(a=>{const t=normalizeType(a.type);counts[t]=(counts[t]||0)+1;});
+  const colors={Laufen:'#2563eb',Radfahren:'#16a34a',Kraft:'#7c3aed',Sonstiges:'#94a3b8'};
+  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>colors[t]||'#94a3b8'),borderWidth:0}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
+}
+
+function renderActivityTable(activities, containerId, limit=null) {
+  const el=document.getElementById(containerId); if(!el) return;
+  const list=limit?activities.slice(0,limit):activities;
+  if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
+  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Höhenmeter</th></tr></thead><tbody>${list.map(a=>{
+    const date=new Date(a.start_date_local).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
+    const dur=a.moving_time?formatDur(a.moving_time):'—';
+    const hr=a.average_heartrate?Math.round(a.average_heartrate)+' bpm':'—';
+    const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
+    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono">${elev}</td></tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function renderChart(id, config) {
+  const canvas=document.getElementById(id); if(!canvas) return;
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(canvas,config);
+}
+
+function lineOptions() {
+  return {plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}}}};
+}
+
+function sortedWellness(w) { return [...w].sort((a,b)=>a.id>b.id?1:-1); }
+function avg(arr) { return arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0; }
+function formatDur(secs) { const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
+function normalizeType(type) {
+  if(!type) return 'Sonstiges';
+  if(type.match(/Run|Lauf/i)) return 'Laufen';
+  if(type.match(/Ride|Cycling|Bike/i)) return 'Radfahren';
+  if(type.match(/Weight|Workout|Strength|Kraft/i)) return 'Kraft';
+  return 'Sonstiges';
+}
+function daysAgo(n) { const d=new Date(); d.setDate(d.getDate()-n); return d; }
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+function getWeek(date) {
+  const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
+  d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
+  return Math.ceil((((d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/86400000)+1)/7);
+}
+</script>
+</body>
+</html>
