@@ -526,13 +526,10 @@ function unlockApp() {
 }
 
 // Beim ersten Besuch: Passwort setzen statt eingeben
-// Bei Reload: automatisch einloggen wenn bereits authentifiziert
 (function() {
   const stored = localStorage.getItem('tb_pw_hash');
   if (!stored) {
     document.getElementById('pwSub').textContent = 'Lege beim ersten Besuch dein Passwort fest.';
-  } else if (localStorage.getItem('tb_authenticated') === '1') {
-    unlockApp();
   }
 })();
 
@@ -541,6 +538,11 @@ function unlockApp() {
 const ICU_BASE = 'https://intervals.icu/api/v1';
 let athleteId = localStorage.getItem('icu_athlete_id') || '';
 let apiKey    = localStorage.getItem('icu_api_key') || '';
+
+// Bei Reload: automatisch einloggen wenn bereits authentifiziert
+if (localStorage.getItem('tb_pw_hash') && localStorage.getItem('tb_authenticated') === '1') {
+  unlockApp();
+}
 
 function authHeader() {
   return { 'Authorization': 'Basic ' + btoa('API_KEY:' + apiKey) };
