@@ -730,6 +730,8 @@ function logout() {
 function unlockApp() {
   sessionStorage.setItem('tb_authenticated', '1');
   sessionStorage.setItem('tb_login_time', Date.now().toString());
+  sessionStorage.removeItem('tb_active_section');
+  sessionStorage.removeItem('tb_active_trainer');
   document.getElementById('passwordScreen').style.display = 'none';
   // Weiter mit Setup oder App
   if (athleteId && apiKey) {
