@@ -506,6 +506,7 @@ async function checkPassword() {
 }
 
 function logout() {
+  localStorage.removeItem('tb_authenticated');
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('passwordScreen').style.display = 'flex';
@@ -514,6 +515,7 @@ function logout() {
 }
 
 function unlockApp() {
+  localStorage.setItem('tb_authenticated', '1');
   document.getElementById('passwordScreen').style.display = 'none';
   // Weiter mit Setup oder App
   if (athleteId && apiKey) {
@@ -524,10 +526,13 @@ function unlockApp() {
 }
 
 // Beim ersten Besuch: Passwort setzen statt eingeben
+// Bei Reload: automatisch einloggen wenn bereits authentifiziert
 (function() {
   const stored = localStorage.getItem('tb_pw_hash');
   if (!stored) {
     document.getElementById('pwSub').textContent = 'Lege beim ersten Besuch dein Passwort fest.';
+  } else if (localStorage.getItem('tb_authenticated') === '1') {
+    unlockApp();
   }
 })();
 
