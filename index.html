@@ -550,11 +550,6 @@ const ICU_BASE = 'https://intervals.icu/api/v1';
 let athleteId = localStorage.getItem('icu_athlete_id') || '';
 let apiKey    = localStorage.getItem('icu_api_key') || '';
 
-// Bei Reload: automatisch einloggen wenn Session noch gültig
-if (localStorage.getItem('tb_pw_hash') && isSessionValid()) {
-  unlockApp();
-}
-
 function authHeader() {
   return { 'Authorization': 'Basic ' + btoa('API_KEY:' + apiKey) };
 }
@@ -1096,6 +1091,11 @@ function getWeek(date) {
   const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
   d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
   return Math.ceil((((d-new Date(Date.UTC(d.getUTCFullYear(),0,1)))/86400000)+1)/7);
+}
+
+// Bei Reload: automatisch einloggen wenn Session noch gültig (muss am Ende stehen — nach allen const-Deklarationen)
+if (localStorage.getItem('tb_pw_hash') && isSessionValid()) {
+  unlockApp();
 }
 </script>
 </body>
