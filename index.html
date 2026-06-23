@@ -222,12 +222,11 @@
     .week-cal-row { display: grid; grid-template-columns: repeat(7, 1fr) 110px; gap: 1px; background: var(--border); }
     .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; }
     .week-cal-head-cell.today { background: var(--accent); color: #fff; }
-    .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 56px; font-family: var(--mono); }
+    .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 56px; font-family: var(--mono); text-align: center; }
     .week-cal-cell.today { background: var(--accent-light); }
     .week-cal-cell.week-band-sep { border-top: 2px solid var(--bg3); }
     .week-cal-cell-empty { color: #cbd5e1; font-size: 11px; }
-    .week-cal-type { display: flex; justify-content: space-between; gap: 4px; font-size: 9px; font-weight: 600; color: var(--text); }
-    .week-cal-check { color: var(--green); }
+    .week-cal-type { font-size: 9px; font-weight: 600; color: var(--text); }
     .week-cal-main { font-size: 11px; margin-top: 2px; color: var(--text); }
     .week-cal-sub { font-size: 8px; color: var(--text2); margin-top: 1px; }
     .week-cal-summary-cell { background: var(--bg3); }
@@ -965,7 +964,7 @@ function buildWeekCalendar(weekStart, weekActs) {
     const km = act.distance ? (act.distance/1000).toFixed(1)+' km' : '';
     const dur = act.moving_time ? formatDur(act.moving_time) : '';
     const hr = act.average_heartrate ? Math.round(act.average_heartrate)+' bpm' : '';
-    return `<div class="week-cal-type">${type.toUpperCase()} <span class="week-cal-check">✓</span></div>
+    return `<div class="week-cal-type">${type.toUpperCase()}</div>
       <div class="week-cal-main">${km || dur || '—'}</div>
       <div class="week-cal-sub">${[km?dur:'', hr].filter(Boolean).join(' · ')}</div>`;
   }
