@@ -17,7 +17,7 @@
       --red: #dc2626; --red-light: #fef2f2; --orange: #d97706;
       --z1: #60a5fa; --z2: #34d399; --z3: #fbbf24; --z4: #f87171;
       --font: 'Roboto', sans-serif; --mono: 'JetBrains Mono', monospace;
-      --sidebar-w: 230px; --radius: 10px;
+      --radius: 10px;
     }
     body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
     body.dark { --bg:#2b2d30; --bg2:#35373b; --bg3:#3d3f43; --border:#4a4c51; --text:#e0e2e6; --text2:#9da3ae; --accent-light:#1e3a6e; }
@@ -50,39 +50,41 @@
     .setup-error { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
 
     /* App */
-    .app { display: flex; min-height: 100vh; }
-    .sidebar {
-      width: var(--sidebar-w); background: var(--bg2); border-right: 1px solid var(--border);
-      display: flex; flex-direction: column; padding: 24px 16px;
-      position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    .topnav {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 20px; padding: 0 20px; height: 56px;
+      position: sticky; top: 0; z-index: 20;
     }
-    .logo { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 28px; }
-    .logo-icon { width: 36px; height: 36px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .logo-icon { width: 32px; height: 32px; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
     .logo-titles { display: flex; flex-direction: column; gap: 1px; }
-    .logo-text { font-size: 18px; font-weight: 700; line-height: 1.2; }
-    .logo-sub { font-size: 10px; font-weight: 400; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; }
-    .nav-section { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text2); text-transform: uppercase; padding: 0 8px; margin: 16px 0 6px; }
-    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; margin-bottom: 2px; cursor: pointer; transition: all 0.15s; }
+    .logo-text { font-size: 15px; font-weight: 700; line-height: 1.2; }
+    .logo-sub { font-size: 9px; font-weight: 400; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; }
+    .topnav-items { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; }
+    .nav-item { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
     .nav-item.active { background: var(--accent-light); color: var(--accent); }
-    .nav-sub { padding-left: 26px; font-size: 12px; }
-    .sidebar-footer { margin-top: auto; padding: 12px 8px; border-top: 1px solid var(--border); }
-    .api-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); font-family: var(--mono); }
+    .nav-dropdown { position: relative; }
+    .nav-toggle-arrow { font-size: 9px; transition: transform 0.15s; }
+    .nav-toggle-arrow.collapsed { transform: rotate(-90deg); }
+    .nav-dropdown-menu {
+      position: absolute; top: calc(100% + 4px); left: 0; min-width: 190px;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 30;
+    }
+    .nav-dropdown-menu.collapsed { display: none; }
+    .nav-dropdown-menu .nav-item { width: 100%; }
+    .topnav-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .api-status { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); font-family: var(--mono); }
     .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text2); animation: pulse 2s infinite; }
     .status-dot.live { background: var(--green); }
     .status-dot.error { background: var(--red); }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
-    .main { margin-left: var(--sidebar-w); flex: 1; }
-    .topbar {
-      background: var(--bg2); border-bottom: 1px solid var(--border);
-      padding: 0 24px; height: 56px;
-      display: flex; align-items: center; justify-content: space-between;
-      position: sticky; top: 0; z-index: 10;
-    }
-    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .main { flex: 1; }
+    .page-subbar { display: flex; align-items: baseline; gap: 12px; padding: 16px 24px 0; }
     .page-title { font-size: 15px; font-weight: 600; }
     .breadcrumb { font-size: 12px; color: var(--text2); font-family: var(--mono); }
-    .topbar-right { display: flex; align-items: center; gap: 10px; }
     .btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); font-family: var(--font); }
     .btn:hover { background: var(--bg3); }
     .content { padding: 16px 24px; }
@@ -93,6 +95,7 @@
     .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
     .card-meta { font-size: 11px; font-family: var(--mono); color: var(--text2); }
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+    .kpi-grid-6 { grid-template-columns: repeat(6, 1fr); }
     .kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
     .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
@@ -104,7 +107,10 @@
     .up { color: var(--green); } .down { color: var(--red); } .neutral { color: var(--orange); }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 0; }
     .grid-3-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 0; }
-    .grid-2 .card, .grid-3-1 .card { margin-bottom: 14px; }
+    .grid-2x2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 0; }
+    .chart-box { position: relative; height: 160px; }
+    .chart-box-sm { height: 70px; }
+    .grid-2 .card, .grid-3-1 .card, .grid-2x2 .card { margin-bottom: 14px; }
     .trend-hero { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
     .trend-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 6px; }
     .trend-verdict { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
@@ -208,8 +214,26 @@
     .modal { background: var(--bg2); border-radius: 14px; padding: 32px; width: 380px; max-width: 95vw; }
     .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
 
-    @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .grid-2, .grid-3-1 { grid-template-columns: 1fr; } }
-    @media (max-width: 700px) { :root { --sidebar-w: 0px; } .sidebar { display: none; } .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1000px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .grid-2, .grid-3-1, .grid-2x2 { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub { display: none; } }
+    @media (max-width: 900px) { .week-cal-row { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
+
+    .week-cal { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .week-cal-row { display: grid; grid-template-columns: repeat(7, 1fr) 110px; gap: 1px; background: var(--border); }
+    .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; }
+    .week-cal-head-cell.today { background: var(--accent); color: #fff; }
+    .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 56px; font-family: var(--mono); }
+    .week-cal-cell.today { background: var(--accent-light); }
+    .week-cal-cell.week-band-sep { border-top: 2px solid var(--bg3); }
+    .week-cal-cell-empty { color: #cbd5e1; font-size: 11px; }
+    .week-cal-type { display: flex; justify-content: space-between; gap: 4px; font-size: 9px; font-weight: 600; color: var(--text); }
+    .week-cal-check { color: var(--green); }
+    .week-cal-main { font-size: 11px; margin-top: 2px; color: var(--text); }
+    .week-cal-sub { font-size: 8px; color: var(--text2); margin-top: 1px; }
+    .week-cal-summary-cell { background: var(--bg3); }
+    .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
+    .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
+    .week-cal-summary-unit { font-size: 9px; color: var(--text2); font-weight: 400; }
   </style>
 </head>
 <body>
@@ -315,10 +339,10 @@
 <!-- Main App -->
 <div class="app" id="appContainer" style="display:none">
 
-  <aside class="sidebar">
+  <header class="topnav">
     <div class="logo">
       <div class="logo-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="36" height="36">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="32" height="32">
           <rect width="36" height="36" rx="8" fill="#060b18"/>
           <circle cx="4" cy="4" r="0.5" fill="white" opacity="0.8"/>
           <circle cx="11" cy="2" r="0.4" fill="white" opacity="0.6"/>
@@ -354,48 +378,47 @@
         <span class="logo-sub">Thomas Wagner</span>
       </div>
     </div>
-    <div class="nav-section">Dashboard</div>
-    <a class="nav-item active" data-section="cockpit">⊙ Cockpit</a>
-    <a class="nav-item" data-section="overview">▦ Übersicht</a>
-    <a class="nav-item" data-section="activities">◎ Aktivitäten</a>
-    <div class="nav-section">KI-Trainer</div>
-    <a class="nav-item" data-section="trainer" data-trainer="head-coach">⊙ Head Coach</a>
-    <a class="nav-item" data-section="trainer" data-trainer="reha">🦺 Reha-Trainer</a>
-    <a class="nav-item" data-section="trainer" data-trainer="kraft">💪 Kraft-Trainer</a>
-    <a class="nav-item" data-section="trainer" data-trainer="ernaehrung">🥗 Sporternährung</a>
-    <a class="nav-item" data-section="trainer" data-trainer="methodik">🏔 UA-Methodik</a>
-    <div class="nav-section">Analyse</div>
-    <a class="nav-item" data-section="cardio">♡ Herz-Kreislauf</a>
-    <a class="nav-item" data-section="zones">◉ HF-Zonen</a>
-    <a class="nav-item" data-section="fitness">↗ Fitness & Form</a>
-    <a class="nav-item" data-section="wellness">◑ Wellness</a>
-    <a class="nav-item" data-section="hrv">♥ HRV-Analyse</a>
-    <div class="sidebar-footer">
+
+    <nav class="topnav-items">
+      <a class="nav-item active" data-section="cockpit">⊙ Cockpit</a>
+      <a class="nav-item" data-section="activities">◎ Aktivitäten</a>
+      <div class="nav-dropdown">
+        <a class="nav-item" onclick="toggleNavGroup('kiTrainer')">KI-Trainer <span class="nav-toggle-arrow collapsed" id="kiTrainerArrow">▾</span></a>
+        <div class="nav-dropdown-menu collapsed" id="kiTrainerGroup">
+          <a class="nav-item" data-section="trainer" data-trainer="head-coach">⊙ Head Coach</a>
+          <a class="nav-item" data-section="trainer" data-trainer="reha">🦺 Reha-Trainer</a>
+          <a class="nav-item" data-section="trainer" data-trainer="kraft">💪 Kraft-Trainer</a>
+          <a class="nav-item" data-section="trainer" data-trainer="ernaehrung">🥗 Sporternährung</a>
+          <a class="nav-item" data-section="trainer" data-trainer="methodik">🏔 UA-Methodik</a>
+        </div>
+      </div>
+      <a class="nav-item" data-section="cardio">♡ Herz-Kreislauf</a>
+      <a class="nav-item" data-section="zones">◉ HF-Zonen</a>
+      <a class="nav-item" data-section="wellness">◑ Wellness</a>
+    </nav>
+
+    <div class="topnav-right">
       <div class="api-status">
         <span class="status-dot" id="statusDot"></span>
         <span id="statusText">Verbinde...</span>
       </div>
+      <select class="btn" id="timeRange">
+        <option value="7" selected>7 Tage</option>
+        <option value="30">30 Tage</option>
+        <option value="90">90 Tage</option>
+        <option value="365">Alle</option>
+      </select>
+      <button class="btn" onclick="toggleTheme()">☀</button>
+      <button class="btn" onclick="showSettings()">⚙</button>
+      <button class="btn" onclick="logout()" title="Abmelden">⏻</button>
     </div>
-  </aside>
+  </header>
 
   <main class="main">
-    <header class="topbar">
-      <div class="topbar-left">
-        <span class="page-title" id="pageTitle">Cockpit</span>
-        <span class="breadcrumb" id="dateLabel"></span>
-      </div>
-      <div class="topbar-right">
-        <select class="btn" id="timeRange">
-          <option value="7" selected>7 Tage</option>
-          <option value="30">30 Tage</option>
-          <option value="90">90 Tage</option>
-          <option value="365">Alle</option>
-        </select>
-        <button class="btn" onclick="toggleTheme()">☀</button>
-        <button class="btn" onclick="showSettings()">⚙</button>
-        <button class="btn" onclick="logout()" title="Abmelden">⏻</button>
-      </div>
-    </header>
+    <div class="page-subbar">
+      <span class="page-title" id="pageTitle">Cockpit</span>
+      <span class="breadcrumb" id="dateLabel"></span>
+    </div>
 
     <!-- Cockpit -->
     <section id="section-cockpit" class="section active">
@@ -418,38 +441,23 @@
           <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Diese Woche</span><span class="kpi-badge">Einheiten</span></div><div class="kpi-value" id="cockpitWeekSessions">—</div><div class="kpi-sub">Trainingseinheiten</div></div>
           <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Diese Woche</span><span class="kpi-badge">Zeit</span></div><div class="kpi-value" id="cockpitWeekTime">—</div><div class="kpi-sub">Stunden</div></div>
         </div>
-        <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Trainingswoche</span><span class="card-meta" id="cockpitWeekLabel"></span></div>
+          <div class="week-cal" id="cockpitWeekCal"></div>
+        </div>
+        <div class="grid-2x2">
+          <div class="card"><div class="card-header"><span class="card-title">Fitness · Fatigue · Form</span><span class="card-meta">CTL / ATL / TSB</span></div><div class="chart-box"><canvas id="fitnessChart"></canvas></div></div>
+          <div class="card"><div class="card-header"><span class="card-title">Aktivitätstypen</span></div><div class="chart-box"><canvas id="typeChart"></canvas></div></div>
           <div class="card">
-            <div class="card-header"><span class="card-title">Diese Woche</span><span class="card-meta" id="cockpitWeekLabel"></span></div>
-            <div id="cockpitWeekList"></div>
+            <div class="card-header"><span class="card-title">HRV · letzte 7 Tage</span><span class="card-meta">Tagesstatus</span></div>
+            <div id="cockpitHRVDots" style="padding:8px 0;font-size:20px;letter-spacing:4px"></div>
+            <div class="chart-box chart-box-sm"><canvas id="cockpitHRVChart"></canvas></div>
           </div>
           <div class="card">
             <div class="card-header"><span class="card-title">80/20 Check · diese Woche</span><span class="card-meta">Uphill Athlete</span></div>
-            <div id="cockpitZoneCheck" style="padding:12px 0"></div>
+            <div id="cockpitZoneCheck" style="padding:8px 0"></div>
           </div>
         </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">HRV · letzte 7 Tage</span><span class="card-meta">Tagesstatus</span></div>
-          <div id="cockpitHRVDots" style="padding:12px 0;font-size:24px;letter-spacing:4px"></div>
-          <canvas id="cockpitHRVChart" height="35"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- Übersicht -->
-    <section id="section-overview" class="section">
-      <div class="content">
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Aktivitäten</span><span class="kpi-badge" id="kpi-badge-days">30d</span></div><div class="kpi-value" id="kpi-activities">—</div><div class="kpi-sub">Einheiten</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Distanz</span><span class="kpi-badge" id="kpi-badge-days2">30d</span></div><div class="kpi-value" id="kpi-distance">—</div><div class="kpi-sub">Kilometer</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Trainingszeit</span><span class="kpi-badge">gesamt</span></div><div class="kpi-value" id="kpi-time">—</div><div class="kpi-sub">Stunden</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">HRV</span><span class="kpi-badge">heute</span></div><div class="kpi-value" id="kpi-hrv">—</div><div class="kpi-sub">ms</div></div>
-        </div>
-        <div class="grid-3-1">
-          <div class="card"><div class="card-header"><span class="card-title">Fitness · Fatigue · Form</span><span class="card-meta">CTL / ATL / TSB</span></div><canvas id="fitnessChart" height="65"></canvas></div>
-          <div class="card"><div class="card-header"><span class="card-title">Aktivitätstypen</span></div><canvas id="typeChart" height="65"></canvas></div>
-        </div>
-        <div class="card"><div class="card-header"><span class="card-title">Letzte Aktivitäten</span><span class="card-meta" id="periodLabel-overview"></span></div><div id="activityList"><div class="loading">Lade Daten...</div></div></div>
       </div>
     </section>
 
@@ -550,51 +558,12 @@
       </div>
     </section>
 
-    <!-- Fitness & Form -->
-    <section id="section-fitness" class="section">
-      <div class="content">
-        <div class="card"><div class="card-header"><span class="card-title">Fitness Verlauf</span><span class="card-meta">CTL / ATL / TSB</span></div><canvas id="fitnessChart3" height="65"></canvas></div>
-      </div>
-    </section>
-
     <!-- Wellness -->
     <section id="section-wellness" class="section">
       <div class="content">
         <div class="grid-2">
           <div class="card"><div class="card-header"><span class="card-title">HRV & Ruhepuls</span></div><canvas id="wellnessChart" height="65"></canvas></div>
           <div class="card"><div class="card-header"><span class="card-title">Schlaf</span></div><canvas id="sleepChart" height="65"></canvas></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- HRV-Analyse -->
-    <section id="section-hrv" class="section">
-      <div class="content">
-        <div class="trend-hero">
-          <div class="trend-left">
-            <div class="trend-label">HRV-Status heute · Plews-Methode</div>
-            <div class="trend-verdict" id="hrvAmpelVerdict">Wird berechnet...</div>
-            <div class="trend-desc" id="hrvAmpelDesc"></div>
-          </div>
-          <div class="trend-indicators">
-            <div class="trend-ind"><div class="trend-ind-val" id="hrvAmpelToday">—</div><div class="trend-ind-label">HRV heute<br>ms</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="hrvAmpelAvg">—</div><div class="trend-ind-label">7-Tage Ø<br>ms</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="hrvAmpelDiff">—</div><div class="trend-ind-label">Abweichung<br>ms</div></div>
-          </div>
-        </div>
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">HRV heute</span></div><div class="kpi-value" id="hrvKpiToday">—</div><div class="kpi-sub">ms RMSSD</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">7-Tage Ø</span></div><div class="kpi-value" id="hrvKpiAvg7">—</div><div class="kpi-sub">ms Baseline</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">30-Tage Ø</span></div><div class="kpi-value" id="hrvKpiAvg30">—</div><div class="kpi-sub">ms Langzeittrend</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Grüne Tage</span></div><div class="kpi-value" id="hrvKpiGreen">—</div><div class="kpi-sub">letzte 30 Tage</div></div>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title" id="hrvChartTitle">HRV Verlauf + 7-Tage-Ø</span><span class="card-meta">Plews-Methode</span></div>
-          <canvas id="hrvPlewsChart" height="60"></canvas>
-        </div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Tagesstatus Verlauf</span><span class="card-meta">Grün / Gelb / Rot</span></div>
-          <div id="hrvDayBars" style="padding:8px 0"></div>
         </div>
       </div>
     </section>
@@ -626,6 +595,8 @@
       <input class="setup-input" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
       <div class="setup-hint">Muss ein privates Repo sein. Wird automatisch befüllt.</div>
     </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">KI-Trainer (optional)</div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1" onclick="saveSettingsModal()">Speichern</button>
       <button class="btn" style="flex:1" onclick="hideSettings()">Abbrechen</button>
@@ -875,6 +846,7 @@ function setupNav() {
       document.getElementById(`section-${lastSection}`)?.classList.add('active');
       document.getElementById('pageTitle').textContent = savedItem.textContent.trim();
       if (lastSection === 'trainer' && lastTrainer) showTrainerDetail(lastTrainer);
+      if (lastSection === 'trainer') expandNavGroup('kiTrainer');
     }
   }
 
@@ -888,6 +860,7 @@ function setupNav() {
       item.classList.add('active');
       document.getElementById(`section-${sec}`).classList.add('active');
       document.getElementById('pageTitle').textContent = item.textContent.trim();
+      if (sec === 'trainer') expandNavGroup('kiTrainer');
       sessionStorage.setItem('tb_active_section', sec);
       if (trainer) {
         sessionStorage.setItem('tb_active_trainer', trainer);
@@ -896,6 +869,25 @@ function setupNav() {
     });
   });
 }
+
+function toggleNavGroup(id) {
+  document.getElementById(`${id}Group`).classList.toggle('collapsed');
+  document.getElementById(`${id}Arrow`).classList.toggle('collapsed');
+}
+
+function expandNavGroup(id) {
+  document.getElementById(`${id}Group`).classList.remove('collapsed');
+  document.getElementById(`${id}Arrow`).classList.remove('collapsed');
+}
+
+function collapseNavGroup(id) {
+  document.getElementById(`${id}Group`).classList.add('collapsed');
+  document.getElementById(`${id}Arrow`).classList.add('collapsed');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.nav-dropdown')) collapseNavGroup('kiTrainer');
+});
 
 // ─── Data Loading ─────────────────────────────────────────────────────────────
 
@@ -932,9 +924,7 @@ async function loadAll() {
     renderOverview(activities, wellness, fitness);
     renderCardio(activities, wellness, fitness);
     renderZones(activities, days);
-    renderFitnessSection(fitness);
     renderWellness(wellness);
-    renderHRVAnalysis(wellnessFull, days);
   } catch(err) {
     console.error(err);
     setStatus(false);
@@ -947,6 +937,54 @@ function setStatus(ok) {
 }
 
 // ─── Cockpit ─────────────────────────────────────────────────────────────────
+
+function buildWeekCalendar(weekStart, weekActs) {
+  const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
+  const todayStr = fmtDate(new Date());
+  const days = Array.from({length:7}, (_,i) => { const d=new Date(weekStart); d.setDate(weekStart.getDate()+i); return d; });
+
+  const byDay = days.map(d => {
+    const dStr = fmtDate(d);
+    const dayActs = weekActs.filter(a => fmtDate(new Date(a.start_date_local)) === dStr);
+    return {
+      isToday: dStr === todayStr,
+      endurance: dayActs.filter(a => normalizeType(a.type) !== 'Kraft'),
+      strength: dayActs.filter(a => normalizeType(a.type) === 'Kraft'),
+    };
+  });
+
+  function cell(act) {
+    if (!act) return `<div class="week-cal-cell-empty">—</div>`;
+    const type = normalizeType(act.type);
+    const km = act.distance ? (act.distance/1000).toFixed(1)+' km' : '';
+    const dur = act.moving_time ? formatDur(act.moving_time) : '';
+    const hr = act.average_heartrate ? Math.round(act.average_heartrate)+' bpm' : '';
+    return `<div class="week-cal-type">${type.toUpperCase()} <span class="week-cal-check">✓</span></div>
+      <div class="week-cal-main">${km || dur || '—'}</div>
+      <div class="week-cal-sub">${[km?dur:'', hr].filter(Boolean).join(' · ')}</div>`;
+  }
+
+  const head = days.map((d,i) => {
+    const today = byDay[i].isToday;
+    return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}${today?' · HEUTE':''}</div>`;
+  }).join('') + `<div class="week-cal-head-cell">WOCHE</div>`;
+
+  const enduranceRow = byDay.map(d => `<div class="week-cal-cell${d.isToday?' today':''}">${cell(d.endurance[0])}</div>`).join('');
+  const strengthRow = byDay.map(d => `<div class="week-cal-cell week-band-sep${d.isToday?' today':''}">${cell(d.strength[0])}</div>`).join('');
+
+  const totalH = weekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
+  const summaryTop = `<div class="week-cal-cell week-cal-summary-cell">
+      <div class="week-cal-summary-label">Diese Woche</div>
+      <div class="week-cal-summary-val">${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span></div>
+    </div>`;
+  const summaryBottom = `<div class="week-cal-cell week-cal-summary-cell week-band-sep">
+      <div class="week-cal-summary-label">${weekActs.length} Einheiten</div>
+    </div>`;
+
+  return `<div class="week-cal-row">${head}</div>
+    <div class="week-cal-row">${enduranceRow}${summaryTop}</div>
+    <div class="week-cal-row">${strengthRow}${summaryBottom}</div>`;
+}
 
 function renderCockpit(activities, wellness, fitness) {
   const allW = sortedWellness(wellness).filter(d => d.hrv || d.restingHR);
@@ -1003,26 +1041,8 @@ function renderCockpit(activities, wellness, fitness) {
   document.getElementById('cockpitWeekLabel').textContent =
     `KW${getWeek(now)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – heute`;
 
-  // Wochenliste
-  const listEl = document.getElementById('cockpitWeekList');
-  const typeColors = { Laufen:'#2563eb', Rennrad:'#16a34a', Mountainbike:'#ea580c', Kraft:'#7c3aed', Sonstiges:'#94a3b8' };
-  listEl.innerHTML = weekActs.length === 0
-    ? '<div class="loading">Noch keine Aktivitäten diese Woche</div>'
-    : weekActs.map(a => {
-        const type = normalizeType(a.type);
-        const col = typeColors[type] || '#94a3b8';
-        const date = new Date(a.start_date_local).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'2-digit'});
-        const km = a.distance ? (a.distance/1000).toFixed(1)+' km' : '';
-        const dur = a.moving_time ? formatDur(a.moving_time) : '';
-        const hr = a.average_heartrate ? Math.round(a.average_heartrate)+' bpm' : '';
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-          <span style="color:${col};font-size:18px">●</span>
-          <div style="flex:1">
-            <div style="font-weight:500;font-size:13px">${a.name||type}</div>
-            <div style="font-size:11px;color:#94a3b8">${date} · ${[km,dur,hr].filter(Boolean).join(' · ')}</div>
-          </div>
-        </div>`;
-      }).join('');
+  // Trainingswoche als Kalender (zwei Bänder: Ausdauer / Kraft)
+  document.getElementById('cockpitWeekCal').innerHTML = buildWeekCalendar(weekStart, weekActs);
 
   // 80/20 Check
   const zones = window._zones;
@@ -1067,27 +1087,24 @@ function renderCockpit(activities, wellness, fitness) {
     const day = new Date(d.id).toLocaleDateString('de-DE',{weekday:'short'});
     return `<span title="${day}: ${Math.round(d.hrv)} ms" style="color:${col};cursor:default">●</span>`;
   }).join('');
+  const hrvChartOptions = lineOptions(); hrvChartOptions.maintainAspectRatio = false;
   renderChart('cockpitHRVChart', {
     type:'line',
     data:{ labels: hrv7data.map(d=>new Date(d.id).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit'})),
       datasets:[
         {label:'HRV',data:hrv7data.map(d=>d.hrv||null),borderColor:'#16a34a',borderWidth:2,pointRadius:3,tension:0.3},
         {label:'7-Tage Ø',data:hrv7rolling.map(v=>Math.round(v)),borderColor:'#2563eb',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0.3}
-      ]},options:lineOptions()});
+      ]},options:hrvChartOptions});
 }
 
 // ─── Übersicht ────────────────────────────────────────────────────────────────
 
 function renderOverview(activities, wellness, fitness) {
-  document.getElementById('kpi-activities').textContent = activities.length;
-  document.getElementById('kpi-distance').textContent = (activities.reduce((s,a)=>s+(a.distance||0),0)/1000).toFixed(1);
-  document.getElementById('kpi-time').textContent = (activities.reduce((s,a)=>s+(a.moving_time||0),0)/3600).toFixed(1);
-  const sw = sortedWellness(wellness);
-  document.getElementById('kpi-hrv').textContent = sw[sw.length-1]?.hrv ? Math.round(sw[sw.length-1].hrv) : '—';
-  renderActivityTable(activities,'activityList',5);
   renderActivityTable(activities,'allActivities');
-  renderChart('fitnessChart',makeFitnessChart(fitness));
-  renderChart('typeChart',makeTypeChart(activities));
+  const fc = makeFitnessChart(fitness); fc.options.maintainAspectRatio = false;
+  renderChart('fitnessChart', fc);
+  const tc = makeTypeChart(activities); tc.options.maintainAspectRatio = false;
+  renderChart('typeChart', tc);
 }
 
 // ─── Herz-Kreislauf ───────────────────────────────────────────────────────────
@@ -1208,8 +1225,6 @@ function renderZoneTrend(activities) {
 
 // ─── Fitness ─────────────────────────────────────────────────────────────────
 
-function renderFitnessSection(fitness) { renderChart('fitnessChart3',makeFitnessChart(fitness)); }
-
 // ─── Wellness ────────────────────────────────────────────────────────────────
 
 function renderWellness(wellness) {
@@ -1220,51 +1235,6 @@ function renderWellness(wellness) {
     {label:'Ruhepuls',data:sorted.map(d=>d.restingHR||null),borderColor:'#2563eb',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y1'},
   ]},options:{plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#16a34a'}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#2563eb'}}}}});
   renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(37,99,235,0.3)',borderColor:'#2563eb',borderWidth:1,borderRadius:4}]},options:lineOptions()});
-}
-
-// ─── HRV-Analyse ─────────────────────────────────────────────────────────────
-
-function renderHRVAnalysis(wellness, selectedDays) {
-  const allSorted = sortedWellness(wellness).filter(d=>d.hrv);
-  if (allSorted.length < 2) return;
-  const sorted = selectedDays>=90 ? allSorted : allSorted.slice(-selectedDays);
-  const rolling7All = allSorted.map((d,i)=>{ const w=allSorted.slice(Math.max(0,i-6),i+1); return avg(w.map(x=>x.hrv)); });
-  const offset = allSorted.length - sorted.length;
-  const rolling7 = rolling7All.slice(offset);
-  const today = allSorted[allSorted.length-1];
-  const avg7 = rolling7All[rolling7All.length-1];
-  const avg30 = avg(allSorted.slice(-30).map(d=>d.hrv));
-  const diff = Math.round(today.hrv - avg7);
-  const pct = ((today.hrv - avg7) / avg7) * 100;
-
-  let verdict, desc, cls;
-  if (pct>=0){verdict='🟢 Bereit · Hart trainieren';desc=`HRV liegt ${Math.abs(diff)} ms über dem 7-Tage-Durchschnitt.`;cls='up';}
-  else if(pct>=-5){verdict='🟡 Moderat · Locker bleiben';desc=`HRV liegt ${Math.abs(diff)} ms unter dem 7-Tage-Durchschnitt.`;cls='neutral';}
-  else{verdict='🔴 Erholen · Ruhetag';desc=`HRV liegt ${Math.abs(diff)} ms unter dem 7-Tage-Durchschnitt.`;cls='down';}
-
-  const vEl=document.getElementById('hrvAmpelVerdict'); vEl.textContent=verdict; vEl.className='trend-verdict '+cls;
-  document.getElementById('hrvAmpelDesc').textContent=desc;
-  document.getElementById('hrvAmpelToday').textContent=Math.round(today.hrv);
-  document.getElementById('hrvAmpelAvg').textContent=Math.round(avg7);
-  const dEl=document.getElementById('hrvAmpelDiff'); dEl.textContent=(diff>=0?'+':'')+diff; dEl.className='trend-ind-val '+cls;
-  document.getElementById('hrvKpiToday').textContent=Math.round(today.hrv);
-  document.getElementById('hrvKpiAvg7').textContent=Math.round(avg7);
-  document.getElementById('hrvKpiAvg30').textContent=Math.round(avg30);
-  const last30=allSorted.slice(-30),off30=allSorted.length-last30.length;
-  document.getElementById('hrvKpiGreen').textContent=last30.filter((d,i)=>d.hrv>=rolling7All[off30+i]).length;
-  document.getElementById('hrvChartTitle').textContent=`HRV Verlauf + 7-Tage-Ø · letzte ${selectedDays} Tage`;
-
-  const labels=sorted.map(d=>d.id.slice(5));
-  renderChart('hrvPlewsChart',{type:'bar',data:{labels,datasets:[
-    {label:'HRV (ms)',data:sorted.map(d=>Math.round(d.hrv)),backgroundColor:sorted.map((d,i)=>{const p=((d.hrv-rolling7[i])/rolling7[i])*100;return p>=0?'rgba(22,163,74,0.6)':p>=-5?'rgba(251,191,36,0.6)':'rgba(239,68,68,0.6)';}),borderWidth:0,borderRadius:3,order:2},
-    {label:'7-Tage Ø',data:rolling7.map(v=>Math.round(v)),type:'line',borderColor:'#2563eb',borderWidth:2,pointRadius:0,tension:0.4,fill:false,order:1}
-  ]},options:lineOptions()});
-
-  document.getElementById('hrvDayBars').innerHTML = sorted.slice(-30).map((d,i,arr)=>{
-    const idx=sorted.indexOf(d); const p=((d.hrv-rolling7[idx])/rolling7[idx])*100;
-    const col=p>=0?'#16a34a':p>=-5?'#f59e0b':'#ef4444';
-    return `<span title="${d.id}: ${Math.round(d.hrv)} ms" style="color:${col};font-size:20px;margin:2px;cursor:default">●</span>`;
-  }).join('');
 }
 
 // ─── Trainer Team ─────────────────────────────────────────────────────────────
@@ -1726,7 +1696,7 @@ function makeTypeChart(activities) {
   const counts={};
   activities.forEach(a=>{const t=normalizeType(a.type);counts[t]=(counts[t]||0)+1;});
   const colors={Laufen:'#2563eb',Rennrad:'#16a34a',Mountainbike:'#ea580c',Kraft:'#7c3aed',Sonstiges:'#94a3b8'};
-  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>colors[t]||'#94a3b8'),borderWidth:0}]},options:{cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
+  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>colors[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
 }
 
 function renderActivityTable(activities, containerId, limit=null) {
