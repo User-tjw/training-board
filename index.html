@@ -408,7 +408,7 @@
         <option value="90">90 Tage</option>
         <option value="365">Alle</option>
       </select>
-      <button class="btn" onclick="toggleTheme()">☀</button>
+      <button class="btn" id="themeToggleBtn" onclick="toggleTheme()">☀</button>
       <button class="btn" onclick="showSettings()">⚙</button>
       <button class="btn" onclick="logout()" title="Abmelden">⏻</button>
     </div>
@@ -818,10 +818,16 @@ function init() {
 
 (function(){
   if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+  document.addEventListener('DOMContentLoaded', updateThemeIcon);
 })();
+function updateThemeIcon() {
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) btn.textContent = document.body.classList.contains('dark') ? '🌙' : '☀';
+}
 function toggleTheme() {
   const dark = document.body.classList.toggle('dark');
   localStorage.setItem('theme', dark ? 'dark' : 'light');
+  updateThemeIcon();
 }
 
 function setupNav() {
@@ -1735,7 +1741,9 @@ function normalizeType(type) {
   return 'Sonstiges';
 }
 function daysAgo(n) { const d=new Date(); d.setDate(d.getDate()-n); return d; }
-function fmtDate(d) { return d.toISOString().slice(0,10); }
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function getWeek(date) {
   const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
   d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));
