@@ -200,9 +200,10 @@
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
     .mood-picker { display:flex; gap:8px; }
-    .mood-btn { flex:1; padding:9px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg); font-size:20px; cursor:pointer; text-align:center; font-family:var(--font); }
-    .mood-btn.active { border-color:var(--accent); background:var(--accent-light); }
-    .mood-btn-label { display:block; font-size:9px; color:var(--text2); margin-top:2px; }
+    .mood-btn { flex:1; padding:9px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text2); cursor:pointer; text-align:center; font-family:var(--font); display:flex; flex-direction:column; align-items:center; }
+    .mood-btn svg { display:block; }
+    .mood-btn.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
+    .mood-btn-label { display:block; font-size:9px; color:inherit; margin-top:2px; }
     .note-rendered { font-size:13px; line-height:1.75; color:var(--text); }
     .note-rendered h1,.note-rendered h2,.note-rendered h3 { font-weight:600; margin:12px 0 4px; color:var(--text); }
     .note-rendered p { margin-bottom:8px; }
@@ -660,6 +661,10 @@
       <button class="btn" style="flex:1" onclick="closeNoteEditor()">Abbrechen</button>
     </div>
     <div class="setup-error" id="noteEditorError">Fehler beim Speichern.</div>
+    <div id="localDayNotesSection" style="display:none;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:10px">Bisherige Einträge (nur lokal in diesem Browser)</div>
+      <div id="localDayNotesList"></div>
+    </div>
   </div>
 </div>
 
@@ -961,10 +966,14 @@ async function loadAll() {
         tsb: parseFloat(((d.ctl || 0) - (d.atl || 0)).toFixed(1)),
       }));
 
+    // Für die Fitness-Diagramme: auf den gewählten Zeitraum begrenzen,
+    // CTL/ATL werden trotzdem aus der vollen Historie (wellnessDays) berechnet.
+    const fitnessRange = fitness.filter(d => new Date(d.date) >= from);
+
     setStatus(true);
     renderCockpit(wellnessFull, fitness, activitiesFull);
-    renderOverview(activities, wellness, fitness);
-    renderCardio(activities, wellness, fitness);
+    renderOverview(activities, wellness, fitnessRange);
+    renderCardio(activities, wellness, fitnessRange);
     renderZones(activities, days);
     renderWellness(wellness);
   } catch(err) {
@@ -1106,9 +1115,7 @@ function renderCockpit(wellness, fitness, activitiesFull) {
   const latestWeight = allWeight[allWeight.length-1];
   document.getElementById('cockpitWeight').textContent = latestWeight ? latestWeight.weight.toFixed(1) : '—';
 
-  const todayStr = fmtDate(new Date());
-  const todayMoodNote = _notes.find(n => n.trainer === 'allgemein' && n.date && n.date.slice(0,10) === todayStr && n.mood);
-  document.getElementById('cockpitMood').textContent = todayMoodNote ? (MOOD_EMOJI[todayMoodNote.mood] || '—') : '—';
+  refreshCockpitMoodTile();
 
   // Trainingswoche (navigierbar) als Kalender (zwei Bänder: Ausdauer / Kraft)
   renderCockpitWeek();
@@ -1324,13 +1331,46 @@ const TRAINERS = [
 ];
 
 const MOOD_OPTIONS = [
-  {v:1, e:'😞', l:'Schlecht'},
-  {v:2, e:'🙁', l:'Mäßig'},
-  {v:3, e:'😐', l:'Ok'},
-  {v:4, e:'🙂', l:'Gut'},
-  {v:5, e:'😄', l:'Sehr gut'},
+  {v:1, l:'Schlecht'},
+  {v:2, l:'Mäßig'},
+  {v:3, l:'Ok'},
+  {v:4, l:'Gut'},
+  {v:5, l:'Sehr gut'},
 ];
-const MOOD_EMOJI = Object.fromEntries(MOOD_OPTIONS.map(m => [m.v, m.e]));
+const MOOD_MOUTHS = {
+  1: 'M8 16 Q12 12 16 16',
+  2: 'M8 15.5 Q12 13.5 16 15.5',
+  3: 'M8 15 H16',
+  4: 'M8 14.5 Q12 16.5 16 14.5',
+  5: 'M7 13 Q12 19 17 13',
+};
+function moodIcon(v, size) {
+  size = size || 20;
+  const mouth = MOOD_MOUTHS[v] || MOOD_MOUTHS[3];
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><path d="${mouth}"/></svg>`;
+}
+
+// ─── Tagesnotizen lokal (Fallback ohne GitHub) ────────────────────────────────
+
+let _localDayNotes = JSON.parse(localStorage.getItem('tb_day_notes') || '[]');
+
+function saveLocalDayNotes() {
+  localStorage.setItem('tb_day_notes', JSON.stringify(_localDayNotes));
+}
+
+function todaysMoodValue() {
+  const todayStr = fmtDate(new Date());
+  const all = [..._notes, ..._localDayNotes];
+  const note = all.find(n => n.trainer === 'allgemein' && n.date && n.date.slice(0,10) === todayStr && n.mood);
+  return note ? note.mood : null;
+}
+
+function refreshCockpitMoodTile() {
+  const moodEl = document.getElementById('cockpitMood');
+  if (!moodEl) return;
+  const mood = todaysMoodValue();
+  moodEl.innerHTML = mood ? moodIcon(mood, 24) : '—';
+}
 
 // ─── GitHub Notes API ─────────────────────────────────────────────────────────
 
@@ -1693,7 +1733,7 @@ async function copyForClaude() {
 
 function renderMoodPicker(selected) {
   document.getElementById('moodPicker').innerHTML = MOOD_OPTIONS.map(m =>
-    `<button type="button" class="mood-btn${m.v===selected?' active':''}" data-mood="${m.v}" onclick="selectMood(${m.v})">${m.e}<span class="mood-btn-label">${m.l}</span></button>`
+    `<button type="button" class="mood-btn${m.v===selected?' active':''}" data-mood="${m.v}" onclick="selectMood(${m.v})">${moodIcon(m.v,22)}<span class="mood-btn-label">${m.l}</span></button>`
   ).join('');
   document.getElementById('moodPicker').dataset.selected = selected || '';
 }
@@ -1703,8 +1743,13 @@ function selectMood(v) {
   document.getElementById('moodPicker').dataset.selected = v;
 }
 
+let _noteEditorLocalMode = false;
+let _editingLocalNoteId = null;
+
 function openNoteEditor(trainerSlug) {
   if (!ghToken || !ghRepo) { showSettings(); return; }
+  _noteEditorLocalMode = false;
+  _editingLocalNoteId = null;
   _editingNote = null;
   document.getElementById('noteEditorHeading').textContent = 'Neue Notiz';
   document.getElementById('noteEditorTrainer').value = trainerSlug || 'head-coach';
@@ -1713,26 +1758,67 @@ function openNoteEditor(trainerSlug) {
   document.getElementById('noteEditorContent').value = '';
   renderMoodPicker(null);
   document.getElementById('noteEditorError').style.display = 'none';
+  document.getElementById('localDayNotesSection').style.display = 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
 }
 
-function openDayNoteEditor() {
-  openNoteEditor('allgemein');
-  document.getElementById('noteEditorHeading').textContent = '✎ Notiz / Tagesbefinden';
-  document.getElementById('noteEditorTitleInput').value = 'Tagesnotiz';
+function openDayNoteEditor(localNoteId) {
+  if (ghToken && ghRepo) {
+    openNoteEditor('allgemein');
+    document.getElementById('noteEditorHeading').textContent = '✎ Notiz / Tagesbefinden';
+    document.getElementById('noteEditorTitleInput').value = 'Tagesnotiz';
+    return;
+  }
+  _editingNote = null;
+  _noteEditorLocalMode = true;
+  _editingLocalNoteId = localNoteId || null;
+  const n = localNoteId ? _localDayNotes.find(x => x.id === localNoteId) : null;
+  document.getElementById('noteEditorHeading').textContent = n ? '✎ Notiz bearbeiten' : '✎ Notiz / Tagesbefinden';
+  document.getElementById('noteEditorTrainer').value = 'allgemein';
+  document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
+  document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
+  document.getElementById('noteEditorContent').value = n ? n.body : '';
+  renderMoodPicker(n ? n.mood : null);
+  document.getElementById('noteEditorError').style.display = 'none';
+  document.getElementById('localDayNotesSection').style.display = 'block';
+  renderLocalDayNotesList();
+  document.getElementById('noteEditorModal').style.display = 'flex';
 }
 
 function closeNoteEditor() {
   document.getElementById('noteEditorModal').style.display = 'none';
   _editingNote = null;
+  _noteEditorLocalMode = false;
+  _editingLocalNoteId = null;
 }
 
-function refreshCockpitMoodTile() {
-  const moodEl = document.getElementById('cockpitMood');
-  if (!moodEl) return;
-  const todayStr = fmtDate(new Date());
-  const todayMoodNote = _notes.find(n => n.trainer === 'allgemein' && n.date && n.date.slice(0,10) === todayStr && n.mood);
-  moodEl.textContent = todayMoodNote ? (MOOD_EMOJI[todayMoodNote.mood] || '—') : '—';
+function renderLocalDayNotesList() {
+  const el = document.getElementById('localDayNotesList');
+  if (!el) return;
+  if (_localDayNotes.length === 0) { el.innerHTML = '<div class="setup-hint">Noch keine Einträge.</div>'; return; }
+  el.innerHTML = _localDayNotes.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(n => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:10px;color:var(--text2)">
+        ${moodIcon(n.mood || 3, 20)}
+        <div>
+          <div class="mono" style="font-size:10px">${new Date(n.date).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+          <div style="font-size:12px;color:var(--text)">${escHtml((n.body||'').slice(0,60)) || '<span style="color:var(--text2)">(keine Notiz)</span>'}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn" style="padding:4px 8px" onclick="openDayNoteEditor(${n.id})" title="Bearbeiten">✎</button>
+        <button class="btn" style="padding:4px 8px;color:var(--red);border-color:var(--red)" onclick="deleteLocalDayNote(${n.id})" title="Löschen">✕</button>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function deleteLocalDayNote(id) {
+  if (!confirm('Eintrag wirklich löschen?')) return;
+  _localDayNotes = _localDayNotes.filter(n => n.id !== id);
+  saveLocalDayNotes();
+  renderLocalDayNotesList();
+  refreshCockpitMoodTile();
 }
 
 async function saveNoteEditor() {
@@ -1744,8 +1830,23 @@ async function saveNoteEditor() {
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood    = moodSel ? parseInt(moodSel) : null;
   const errEl   = document.getElementById('noteEditorError');
-  if (!title || !body) { errEl.textContent = 'Titel und Inhalt erforderlich.'; errEl.style.display='block'; return; }
+  if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
+
+  if (_noteEditorLocalMode) {
+    if (_editingLocalNoteId) {
+      const n = _localDayNotes.find(x => x.id === _editingLocalNoteId);
+      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; }
+    } else {
+      _localDayNotes.unshift({ id: Date.now(), trainer: 'allgemein', title, body, date, mood });
+    }
+    saveLocalDayNotes();
+    closeNoteEditor();
+    refreshCockpitMoodTile();
+    return;
+  }
+
+  if (!body) { errEl.textContent = 'Inhalt erforderlich.'; errEl.style.display='block'; return; }
   const content  = buildNoteContent(body, trainer, title, date, mood);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-${trainer}.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
@@ -1774,7 +1875,7 @@ function openNoteViewer(index) {
   const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Allgemein', color:'#64748b'};
   document.getElementById('noteViewerBadge').innerHTML =
     `<span class="note-card-badge" style="background:${t.color}20;color:${t.color}">${t.icon} ${t.name}</span>`;
-  document.getElementById('noteViewerTitle').textContent = n.title + (n.mood ? ' ' + MOOD_EMOJI[n.mood] : '');
+  document.getElementById('noteViewerTitle').innerHTML = escHtml(n.title) + (n.mood ? ` <span style="color:var(--text2);vertical-align:-4px">${moodIcon(n.mood,16)}</span>` : '');
   document.getElementById('noteViewerDate').textContent  = fmtNoteDate(n.date);
   document.getElementById('noteViewerContent').innerHTML = renderMarkdown(n.body);
   document.getElementById('noteViewerModal').style.display = 'flex';
@@ -1788,12 +1889,15 @@ function closeNoteViewer() {
 function editCurrentNote() {
   const n = _notes[_viewingIndex];
   closeNoteViewer();
+  _noteEditorLocalMode = false;
+  _editingLocalNoteId = null;
   _editingNote = { filename: n.filename, sha: n.sha };
   document.getElementById('noteEditorHeading').textContent = 'Notiz bearbeiten';
   document.getElementById('noteEditorTrainer').value = n.trainer;
   document.getElementById('noteEditorTitleInput').value = n.title;
   document.getElementById('noteEditorDate').value = (n.date || fmtDate(new Date())).slice(0,10);
   document.getElementById('noteEditorContent').value = n.body;
+  document.getElementById('localDayNotesSection').style.display = 'none';
   renderMoodPicker(n.mood || null);
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
