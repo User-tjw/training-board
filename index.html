@@ -199,6 +199,10 @@
     .modal-wide { width:560px; max-width:96vw; max-height:88vh; overflow-y:auto; }
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
+    .mood-picker { display:flex; gap:8px; }
+    .mood-btn { flex:1; padding:9px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg); font-size:20px; cursor:pointer; text-align:center; font-family:var(--font); }
+    .mood-btn.active { border-color:var(--accent); background:var(--accent-light); }
+    .mood-btn-label { display:block; font-size:9px; color:var(--text2); margin-top:2px; }
     .note-rendered { font-size:13px; line-height:1.75; color:var(--text); }
     .note-rendered h1,.note-rendered h2,.note-rendered h3 { font-weight:600; margin:12px 0 4px; color:var(--text); }
     .note-rendered p { margin-bottom:8px; }
@@ -407,6 +411,7 @@
         <option value="90">90 Tage</option>
         <option value="365">Alle</option>
       </select>
+      <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
       <button class="btn" id="themeToggleBtn" onclick="toggleTheme()">☀</button>
       <button class="btn" onclick="showSettings()">⚙</button>
       <button class="btn" onclick="logout()" title="Abmelden">⏻</button>
@@ -432,6 +437,8 @@
             <div class="trend-ind"><div class="trend-ind-val" id="cockpitHRV">—</div><div class="trend-ind-label">HRV<br>ms</div></div>
             <div class="trend-ind"><div class="trend-ind-val" id="cockpitRHF">—</div><div class="trend-ind-label">Ruhepuls<br>bpm</div></div>
             <div class="trend-ind"><div class="trend-ind-val" id="cockpitTSB">—</div><div class="trend-ind-label">Form (TSB)<br>Punkte</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="cockpitWeight">—</div><div class="trend-ind-label">Gewicht<br>kg</div></div>
+            <div class="trend-ind"><div class="trend-ind-val" id="cockpitMood">—</div><div class="trend-ind-label">Befinden<br>heute</div></div>
           </div>
         </div>
         <div class="kpi-grid">
@@ -441,7 +448,15 @@
           <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Diese Woche</span><span class="kpi-badge">Zeit</span></div><div class="kpi-value" id="cockpitWeekTime">—</div><div class="kpi-sub">Stunden</div></div>
         </div>
         <div class="card">
-          <div class="card-header"><span class="card-title">Trainingswoche</span><span class="card-meta" id="cockpitWeekLabel"></span></div>
+          <div class="card-header">
+            <span class="card-title">Trainingswoche</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
+              <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
+              <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
+              <span class="card-meta" id="cockpitWeekLabel"></span>
+            </div>
+          </div>
           <div class="week-cal" id="cockpitWeekCal"></div>
         </div>
         <div class="grid-2x2">
@@ -595,6 +610,12 @@
       <div class="setup-hint">Muss ein privates Repo sein. Wird automatisch befüllt.</div>
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">Trainingsziel (optional)</div>
+    <div class="setup-field">
+      <textarea class="note-textarea" id="settingsTrainingGoal" style="min-height:80px" placeholder="z.B. Halbmarathon am 12.09., Zielzeit 1:45..."></textarea>
+      <div class="setup-hint">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">KI-Trainer (optional)</div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1" onclick="saveSettingsModal()">Speichern</button>
@@ -621,6 +642,14 @@
     <div class="setup-field">
       <label class="setup-label">Titel</label>
       <input class="setup-input" id="noteEditorTitleInput" type="text" placeholder="z.B. Morgen Check-In">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Datum</label>
+      <input class="setup-input" id="noteEditorDate" type="date">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Tagesbefinden (optional)</label>
+      <div class="mood-picker" id="moodPicker"></div>
     </div>
     <div class="setup-field">
       <label class="setup-label">Inhalt (Markdown)</label>
@@ -781,6 +810,7 @@ function showSettings() {
   document.getElementById('settingsApiKey').value = apiKey;
   document.getElementById('settingsGhToken').value = ghToken;
   document.getElementById('settingsGhRepo').value = ghRepo;
+  document.getElementById('settingsTrainingGoal').value = localStorage.getItem('training_goal') || '';
   document.getElementById('settingsModal').style.display = 'flex';
 }
 function hideSettings() { document.getElementById('settingsModal').style.display = 'none'; }
@@ -789,10 +819,12 @@ function saveSettingsModal() {
   apiKey    = document.getElementById('settingsApiKey').value.trim();
   ghToken   = document.getElementById('settingsGhToken').value.trim();
   ghRepo    = document.getElementById('settingsGhRepo').value.trim();
+  const trainingGoal = document.getElementById('settingsTrainingGoal').value.trim();
   localStorage.setItem('icu_athlete_id', athleteId);
   localStorage.setItem('icu_api_key', apiKey);
   localStorage.setItem('gh_token', ghToken);
   localStorage.setItem('gh_repo', ghRepo);
+  localStorage.setItem('training_goal', trainingGoal);
   hideSettings();
   loadAll();
   renderTeam();
@@ -907,12 +939,17 @@ async function loadAll() {
   document.querySelectorAll('[id^="kpi-badge-days"]').forEach(el => el.textContent = days === 365 ? 'Alle' : days+'d');
   document.querySelectorAll('[id^="periodLabel-"]').forEach(el => el.textContent = rangeLabel);
 
+  const activitiesFullDays = 120;
+
   try {
-    const [activities, wellness, wellnessFull] = await Promise.all([
+    const [activities, wellness, wellnessFull, activitiesFull] = await Promise.all([
       icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(from)}`),
       icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(from)}`),
       icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(wellnessDays))}`),
+      icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(daysAgo(activitiesFullDays))}`),
     ]);
+
+    if (ghToken && ghRepo && _notes.length === 0) _notes = await loadNotes();
 
     // CTL/ATL/TSB aus Wellness-Daten extrahieren (wie im Original-Backend)
     const fitness = wellnessFull
@@ -925,7 +962,7 @@ async function loadAll() {
       }));
 
     setStatus(true);
-    renderCockpit(activities, wellnessFull, fitness);
+    renderCockpit(wellnessFull, fitness, activitiesFull);
     renderOverview(activities, wellness, fitness);
     renderCardio(activities, wellness, fitness);
     renderZones(activities, days);
@@ -991,7 +1028,38 @@ function buildWeekCalendar(weekStart, weekActs) {
     <div class="week-cal-row">${strengthRow}${summaryBottom}</div>`;
 }
 
-function renderCockpit(activities, wellness, fitness) {
+function renderCockpitWeek() {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1) + cockpitWeekOffset*7);
+  weekStart.setHours(0,0,0,0);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+7);
+  const weekActs = _cockpitActivitiesFull.filter(a => {
+    const d = new Date(a.start_date_local);
+    return d >= weekStart && d < weekEnd;
+  });
+
+  document.getElementById('cockpitWeekSessions').textContent = weekActs.length;
+  const weekH = weekActs.reduce((s,a) => s + (a.moving_time||0), 0) / 3600;
+  document.getElementById('cockpitWeekTime').textContent = weekH.toFixed(1);
+  document.getElementById('cockpitWeekLabel').textContent =
+    `KW${getWeek(weekStart)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – ${new Date(weekEnd-1).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}`;
+  document.getElementById('cockpitWeekCal').innerHTML = buildWeekCalendar(weekStart, weekActs);
+
+  const nextBtn = document.getElementById('cockpitWeekNextBtn');
+  if (nextBtn) nextBtn.disabled = cockpitWeekOffset >= 0;
+}
+
+function navCockpitWeek(delta) {
+  cockpitWeekOffset = delta === 0 ? 0 : Math.min(0, cockpitWeekOffset + delta);
+  renderCockpitWeek();
+}
+
+let cockpitWeekOffset = 0;
+let _cockpitActivitiesFull = [];
+
+function renderCockpit(wellness, fitness, activitiesFull) {
+  _cockpitActivitiesFull = activitiesFull;
   const allW = sortedWellness(wellness).filter(d => d.hrv || d.restingHR);
   const latest = allW[allW.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
@@ -1034,22 +1102,23 @@ function renderCockpit(activities, wellness, fitness) {
   document.getElementById('cockpitCTL').textContent = latestF.ctl ? Math.round(latestF.ctl) : '—';
   document.getElementById('cockpitATL').textContent = latestF.atl ? Math.round(latestF.atl) : '—';
 
-  // Diese Woche
+  const allWeight = sortedWellness(wellness).filter(d => d.weight != null);
+  const latestWeight = allWeight[allWeight.length-1];
+  document.getElementById('cockpitWeight').textContent = latestWeight ? latestWeight.weight.toFixed(1) : '—';
+
+  const todayStr = fmtDate(new Date());
+  const todayMoodNote = _notes.find(n => n.trainer === 'allgemein' && n.date && n.date.slice(0,10) === todayStr && n.mood);
+  document.getElementById('cockpitMood').textContent = todayMoodNote ? (MOOD_EMOJI[todayMoodNote.mood] || '—') : '—';
+
+  // Trainingswoche (navigierbar) als Kalender (zwei Bänder: Ausdauer / Kraft)
+  renderCockpitWeek();
+
+  // 80/20 Check — immer bezogen auf die aktuelle (echte) Woche, unabhängig von der Navigation
   const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
-  weekStart.setHours(0,0,0,0);
-  const weekActs = activities.filter(a => new Date(a.start_date_local) >= weekStart);
-  document.getElementById('cockpitWeekSessions').textContent = weekActs.length;
-  const weekH = weekActs.reduce((s,a) => s + (a.moving_time||0), 0) / 3600;
-  document.getElementById('cockpitWeekTime').textContent = weekH.toFixed(1);
-  document.getElementById('cockpitWeekLabel').textContent =
-    `KW${getWeek(now)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – heute`;
-
-  // Trainingswoche als Kalender (zwei Bänder: Ausdauer / Kraft)
-  document.getElementById('cockpitWeekCal').innerHTML = buildWeekCalendar(weekStart, weekActs);
-
-  // 80/20 Check
+  const currentWeekStart = new Date(now);
+  currentWeekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  currentWeekStart.setHours(0,0,0,0);
+  const weekActs = activitiesFull.filter(a => new Date(a.start_date_local) >= currentWeekStart);
   const zones = window._zones;
   const zoneEl = document.getElementById('cockpitZoneCheck');
   if (zones && weekActs.length > 0) {
@@ -1105,7 +1174,9 @@ function renderCockpit(activities, wellness, fitness) {
 // ─── Übersicht ────────────────────────────────────────────────────────────────
 
 function renderOverview(activities, wellness, fitness) {
-  renderActivityTable(activities,'allActivities');
+  const weightByDate = {};
+  wellness.forEach(d => { if (d.weight != null) weightByDate[d.id] = d.weight; });
+  renderActivityTable(activities,'allActivities',null,weightByDate);
   const fc = makeFitnessChart(fitness); fc.options.maintainAspectRatio = false;
   renderChart('fitnessChart', fc);
   const tc = makeTypeChart(activities); tc.options.maintainAspectRatio = false;
@@ -1252,6 +1323,15 @@ const TRAINERS = [
   {slug:'methodik',   icon:'🏔', name:'UA-Methodik',   role:'Uphill Athlete Prinzipien',       color:'#b45309', desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
 ];
 
+const MOOD_OPTIONS = [
+  {v:1, e:'😞', l:'Schlecht'},
+  {v:2, e:'🙁', l:'Mäßig'},
+  {v:3, e:'😐', l:'Ok'},
+  {v:4, e:'🙂', l:'Gut'},
+  {v:5, e:'😄', l:'Sehr gut'},
+];
+const MOOD_EMOJI = Object.fromEntries(MOOD_OPTIONS.map(m => [m.v, m.e]));
+
 // ─── GitHub Notes API ─────────────────────────────────────────────────────────
 
 const GH_NOTES_PATH = 'notes';
@@ -1295,9 +1375,10 @@ function parseFrontmatter(content) {
   return { fm, body: body.trim() };
 }
 
-function buildNoteContent(body, trainer, title) {
-  const date = new Date().toISOString().slice(0, 16);
-  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}\n---\n\n${body}`;
+function buildNoteContent(body, trainer, title, date, mood) {
+  date = date || new Date().toISOString().slice(0, 16);
+  const moodLine = mood ? `\nmood: ${mood}` : '';
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
 }
 
 async function loadNotes() {
@@ -1315,7 +1396,7 @@ async function loadNotes() {
     const notes = await Promise.all(mdFiles.map(async f => {
       const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
       const { fm, body } = parseFrontmatter(b64dec(file.content));
-      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'allgemein', title: fm.title || f.name.replace('.md',''), date: fm.date || '', body };
+      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'allgemein', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, body };
     }));
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
@@ -1561,13 +1642,16 @@ async function copyForClaude() {
   const all    = recent.length > 0 ? recent : _notes.slice(0, 10);
 
   const today = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const trainingGoal = localStorage.getItem('training_goal') || '';
   const lines = [
     `# Training Board Kontext — ${today}`,
     `**Athlet:** Thomas Wagner | 50J | 74.6 kg | FTP 250W | Max-HF 183`,
     '',
-    `## Trainer-Notizen (letzte 7 Tage)`,
-    '',
   ];
+  if (trainingGoal) {
+    lines.push(`## Trainingsziel`, trainingGoal, '');
+  }
+  lines.push(`## Trainer-Notizen (letzte 7 Tage)`, '');
 
   if (all.length === 0) {
     lines.push('_Noch keine Notizen vorhanden._');
@@ -1607,15 +1691,35 @@ async function copyForClaude() {
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
 
+function renderMoodPicker(selected) {
+  document.getElementById('moodPicker').innerHTML = MOOD_OPTIONS.map(m =>
+    `<button type="button" class="mood-btn${m.v===selected?' active':''}" data-mood="${m.v}" onclick="selectMood(${m.v})">${m.e}<span class="mood-btn-label">${m.l}</span></button>`
+  ).join('');
+  document.getElementById('moodPicker').dataset.selected = selected || '';
+}
+
+function selectMood(v) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('active', +b.dataset.mood === v));
+  document.getElementById('moodPicker').dataset.selected = v;
+}
+
 function openNoteEditor(trainerSlug) {
   if (!ghToken || !ghRepo) { showSettings(); return; }
   _editingNote = null;
   document.getElementById('noteEditorHeading').textContent = 'Neue Notiz';
   document.getElementById('noteEditorTrainer').value = trainerSlug || 'head-coach';
   document.getElementById('noteEditorTitleInput').value = '';
+  document.getElementById('noteEditorDate').value = fmtDate(new Date());
   document.getElementById('noteEditorContent').value = '';
+  renderMoodPicker(null);
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
+}
+
+function openDayNoteEditor() {
+  openNoteEditor('allgemein');
+  document.getElementById('noteEditorHeading').textContent = '✎ Notiz / Tagesbefinden';
+  document.getElementById('noteEditorTitleInput').value = 'Tagesnotiz';
 }
 
 function closeNoteEditor() {
@@ -1623,20 +1727,39 @@ function closeNoteEditor() {
   _editingNote = null;
 }
 
+function refreshCockpitMoodTile() {
+  const moodEl = document.getElementById('cockpitMood');
+  if (!moodEl) return;
+  const todayStr = fmtDate(new Date());
+  const todayMoodNote = _notes.find(n => n.trainer === 'allgemein' && n.date && n.date.slice(0,10) === todayStr && n.mood);
+  moodEl.textContent = todayMoodNote ? (MOOD_EMOJI[todayMoodNote.mood] || '—') : '—';
+}
+
 async function saveNoteEditor() {
   const trainer = document.getElementById('noteEditorTrainer').value;
   const title   = document.getElementById('noteEditorTitleInput').value.trim();
   const body    = document.getElementById('noteEditorContent').value.trim();
+  const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
+  const date    = dateVal + 'T00:00';
+  const moodSel = document.getElementById('moodPicker').dataset.selected;
+  const mood    = moodSel ? parseInt(moodSel) : null;
   const errEl   = document.getElementById('noteEditorError');
   if (!title || !body) { errEl.textContent = 'Titel und Inhalt erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
-  const content  = buildNoteContent(body, trainer, title);
+  const content  = buildNoteContent(body, trainer, title, date, mood);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-${trainer}.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
   try {
-    await saveNoteToGH(filename, content, sha);
+    const res = await saveNoteToGH(filename, content, sha);
+    if (_editingNote) {
+      const n = _notes.find(x => x.filename === filename);
+      if (n) { n.trainer = trainer; n.title = title; n.body = body; n.date = date; n.mood = mood; n.sha = res.content.sha; }
+    } else {
+      _notes.unshift({ filename, sha: res.content.sha, trainer, title, date, mood, body });
+    }
     closeNoteEditor();
     await renderTeam();
+    refreshCockpitMoodTile();
   } catch(e) {
     errEl.textContent = 'Fehler: ' + e.message;
     errEl.style.display = 'block';
@@ -1651,7 +1774,7 @@ function openNoteViewer(index) {
   const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Allgemein', color:'#64748b'};
   document.getElementById('noteViewerBadge').innerHTML =
     `<span class="note-card-badge" style="background:${t.color}20;color:${t.color}">${t.icon} ${t.name}</span>`;
-  document.getElementById('noteViewerTitle').textContent = n.title;
+  document.getElementById('noteViewerTitle').textContent = n.title + (n.mood ? ' ' + MOOD_EMOJI[n.mood] : '');
   document.getElementById('noteViewerDate').textContent  = fmtNoteDate(n.date);
   document.getElementById('noteViewerContent').innerHTML = renderMarkdown(n.body);
   document.getElementById('noteViewerModal').style.display = 'flex';
@@ -1669,7 +1792,9 @@ function editCurrentNote() {
   document.getElementById('noteEditorHeading').textContent = 'Notiz bearbeiten';
   document.getElementById('noteEditorTrainer').value = n.trainer;
   document.getElementById('noteEditorTitleInput').value = n.title;
+  document.getElementById('noteEditorDate').value = (n.date || fmtDate(new Date())).slice(0,10);
   document.getElementById('noteEditorContent').value = n.body;
+  renderMoodPicker(n.mood || null);
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
 }
@@ -1679,8 +1804,10 @@ async function deleteCurrentNote() {
   if (!confirm(`Notiz "${n.title}" wirklich löschen?`)) return;
   try {
     await deleteNoteFromGH(n.filename, n.sha);
+    _notes = _notes.filter(x => x.filename !== n.filename);
     closeNoteViewer();
     await renderTeam();
+    refreshCockpitMoodTile();
   } catch(e) {
     alert('Fehler beim Löschen: ' + e.message);
   }
@@ -1704,17 +1831,23 @@ function makeTypeChart(activities) {
   return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>colors[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
 }
 
-function renderActivityTable(activities, containerId, limit=null) {
+function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
   const el=document.getElementById(containerId); if(!el) return;
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
-  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Höhenmeter</th></tr></thead><tbody>${list.map(a=>{
+  const weightCol = weightByDate ? '<th>Gewicht</th>' : '';
+  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Höhenmeter</th>${weightCol}</tr></thead><tbody>${list.map(a=>{
     const date=new Date(a.start_date_local).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
     const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
     const dur=a.moving_time?formatDur(a.moving_time):'—';
     const hr=a.average_heartrate?Math.round(a.average_heartrate)+' bpm':'—';
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
-    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono">${elev}</td></tr>`;
+    let weightCell = '';
+    if (weightByDate) {
+      const w = weightByDate[fmtDate(new Date(a.start_date_local))];
+      weightCell = `<td class="mono">${w!=null?w.toFixed(1)+' kg':'—'}</td>`;
+    }
+    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono">${elev}</td>${weightCell}</tr>`;
   }).join('')}</tbody></table>`;
 }
 
