@@ -13,9 +13,12 @@ Kein Backend, kein Server, kein Deployment nötig.
 ```
 TrainingBoard/
 ├── index.html            ← Die gesamte App (HTML + CSS + JS)
+├── favicon.svg           ← App-Icon
 ├── Start-Dashboard.bat   ← Lokaler Start auf PC (http://localhost:8765)
 ├── CLAUDE.md             ← Diese Datei
-└── cowork/               ← KI-Trainer Dateien für Claude Cowork
+├── .claude/
+│   └── launch.json       ← Dev-Server-Konfig für Browser-Vorschau
+└── cowork/               ← Trainingscoach-Material für Claude Cowork
     ├── athletenprofil.md
     ├── projekt-anweisung.md
     ├── skill-training-management.md
@@ -23,8 +26,11 @@ TrainingBoard/
     ├── skill-reha-management.md
     ├── skill-krafttraining.md
     ├── skill-ernaehrung.md
-    └── skill-intervals-icu.md
+    ├── skill-intervals-icu.md
+    └── training-board_lauftechnik-bergauf-bergab.md
 ```
+
+**Konvention:** Alles, was inhaltlich für den Trainingscoach/Claude Cowork bestimmt ist (Recherche, Notizen, Skills), gehört nach `cowork/` — nicht ins Projekt-Root.
 
 ## Zugriff
 
@@ -66,10 +72,10 @@ Bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) schreibt die App Noti
 
 ## Arbeitsaufteilung
 
-- **Claude Code** → index.html weiterentwickeln (Features, Code)
-- **Claude Cowork** → KI-Trainer Personas und Trainingsberatung (cowork/ Ordner)
+- **Claude Code** → `index.html` weiterentwickeln (Features, Code)
+- **Claude Cowork** → KI-Trainer Personas und Trainingsberatung, ausschließlich im `cowork/`-Ordner (siehe Konvention oben unter Projektstruktur)
 
 ## Inspiration
 
-- harlerunner.de — KI-Trainerteam Konzept + Loop UI
-- Uphill Athlete Trainingsprinzipien
+- [harlerunner.de](https://harlerunner.de) — KI-Trainerteam Konzept + Loop UI
+- [uphillathlete.com](https://uphillathlete.com) — Uphill Athlete Trainingsprinzipien
