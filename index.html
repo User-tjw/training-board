@@ -41,6 +41,10 @@
       font-family: var(--mono); font-size: 14px; background: var(--bg); color: var(--text); outline: none;
     }
     .setup-input:focus { border-color: var(--accent); }
+    .setup-input[type="date"] { color-scheme: light; appearance: none; -webkit-appearance: none; }
+    body.dark .setup-input[type="date"] { color-scheme: dark; }
+    .setup-input[type="date"]::-webkit-calendar-picker-indicator { filter: var(--date-icon-filter, none); cursor: pointer; }
+    body.dark .setup-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
     .setup-hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
     .setup-btn {
       width: 100%; padding: 12px; border-radius: 8px; border: none;

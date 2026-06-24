@@ -1,5 +1,12 @@
 # Training Board — Projektdokumentation
 
+## Arbeitshinweise
+
+- Arbeite effizient und Tokken-Sparrend
+- keine Live-Schreibtests mehr gegen dein echtes Repo ohne ausdrückliche Erlaubnis - nutze nur lokale Daten
+- visuelle Verifikation immer Nachfragen, z.B. keine Screenshots/Browser-Tests bei reinen Code-/Text-Änderungen, 
+- Antworten kurz halten, keine Zusammenfassungen am Ende
+
 ## Konzept
 
 Persönliches Trainings-Dashboard für Thomas Wagner (50J, 74.6kg, Max-HF 183, FTP 250W).
