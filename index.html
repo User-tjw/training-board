@@ -419,7 +419,6 @@
         <span class="status-dot" id="statusDot"></span>
         <span id="statusText">Verbinde...</span>
       </div>
-      <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
       <button class="btn" id="themeToggleBtn" onclick="toggleTheme()">☀</button>
       <button class="btn" onclick="showSettings()">⚙</button>
       <button class="btn" onclick="logout()" title="Abmelden">⏻</button>
@@ -465,6 +464,7 @@
               <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
               <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
               <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
+              <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
               <span class="card-meta" id="cockpitWeekLabel"></span>
             </div>
           </div>
@@ -1474,7 +1474,7 @@ function saveLocalDayNotes() {
 function todaysMoodValue() {
   const todayStr = fmtDate(new Date());
   const all = [..._notes, ..._localDayNotes];
-  const note = all.find(n => n.trainer === 'allgemein' && n.date && n.date.slice(0,10) === todayStr && n.mood);
+  const note = all.find(n => n.date && n.date.slice(0,10) === todayStr && n.mood);
   return note ? note.mood : null;
 }
 
@@ -1632,8 +1632,10 @@ function fmtNoteDate(d) {
 async function renderTeam() {
   const configured = !!(ghToken && ghRepo);
   document.getElementById('ghSetupBanner').style.display = configured ? 'none' : 'block';
+  document.getElementById('notesSection').style.display = configured ? 'block' : 'none';
 
   if (configured && _notes.length === 0) _notes = await loadNotes();
+  if (configured) { renderNoteFilters(); renderNotesList(_notes); }
 
   const latestByTrainer = {};
   _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
@@ -1665,6 +1667,17 @@ function filterNotes(btn, filter) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderNotesList(filter === 'all' ? _notes : _notes.filter(n => n.trainer === filter));
+}
+
+function renderNoteFilters() {
+  const el = document.getElementById('noteFilters');
+  if (!el) return;
+  const present = [...new Set(_notes.map(n => n.trainer))];
+  const known = [...TRAINERS.map(t => ({slug:t.slug, name:t.name})), {slug:'allgemein', name:'Allgemein'}]
+    .filter(f => present.includes(f.slug));
+  el.innerHTML = [`<button class="filter-btn active" onclick="filterNotes(this,'all')">Alle</button>`]
+    .concat(known.map(f => `<button class="filter-btn" onclick="filterNotes(this,'${f.slug}')">${f.name}</button>`))
+    .join('');
 }
 
 function renderNotesList(notes) {
