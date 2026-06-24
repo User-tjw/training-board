@@ -644,23 +644,23 @@
     </div>
     <div class="setup-field" style="display:flex;flex-direction:row;align-items:flex-end;gap:14px">
       <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Laufen</label>
-        <input class="setup-input" id="settingsGoalLaufen" type="number" step="0.5" min="0">
+        <label class="setup-label" style="white-space:nowrap">Laufen %</label>
+        <input class="setup-input" id="settingsGoalLaufenPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
       <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Rennrad</label>
-        <input class="setup-input" id="settingsGoalRennrad" type="number" step="0.5" min="0">
+        <label class="setup-label" style="white-space:nowrap">Rennrad %</label>
+        <input class="setup-input" id="settingsGoalRennradPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
       <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Kraft</label>
-        <input class="setup-input" id="settingsGoalKraft" type="number" step="0.5" min="0">
+        <label class="setup-label" style="white-space:nowrap">Kraft %</label>
+        <input class="setup-input" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
       <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Mountainbike</label>
-        <input class="setup-input" id="settingsGoalMountainbike" type="number" step="0.5" min="0">
+        <label class="setup-label" style="white-space:nowrap">Mountainbike %</label>
+        <input class="setup-input" id="settingsGoalMountainbikePct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
     </div>
-    <div class="setup-hint">Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
+    <div class="setup-hint" id="settingsGoalPctHint">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">KI-Trainer (optional)</div>
     <div style="display:flex;gap:10px;margin-top:8px">
@@ -867,11 +867,20 @@ function showSettings() {
   document.getElementById('settingsTrainingGoal').value = localStorage.getItem('training_goal') || '';
   const plan = getTrainingPlan();
   document.getElementById('settingsGoalWeekHours').value = plan.weekHours ?? '';
-  document.getElementById('settingsGoalLaufen').value = plan.byType?.Laufen ?? '';
-  document.getElementById('settingsGoalRennrad').value = plan.byType?.Rennrad ?? '';
-  document.getElementById('settingsGoalKraft').value = plan.byType?.Kraft ?? '';
-  document.getElementById('settingsGoalMountainbike').value = plan.byType?.Mountainbike ?? '';
+  document.getElementById('settingsGoalLaufenPct').value = plan.byTypePct?.Laufen ?? '';
+  document.getElementById('settingsGoalRennradPct').value = plan.byTypePct?.Rennrad ?? '';
+  document.getElementById('settingsGoalKraftPct').value = plan.byTypePct?.Kraft ?? '';
+  document.getElementById('settingsGoalMountainbikePct').value = plan.byTypePct?.Mountainbike ?? '';
   document.getElementById('settingsModal').style.display = 'flex';
+  updateGoalPctHint();
+}
+function updateGoalPctHint() {
+  const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; };
+  const sum = num('settingsGoalLaufenPct') + num('settingsGoalRennradPct') + num('settingsGoalKraftPct') + num('settingsGoalMountainbikePct');
+  const hint = document.getElementById('settingsGoalPctHint');
+  hint.textContent = sum > 0
+    ? `Summe: ${sum}% der Wochenstunden gesamt.${sum > 100 ? ' Achtung: über 100%.' : ''}`
+    : 'Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.';
 }
 function hideSettings() { document.getElementById('settingsModal').style.display = 'none'; }
 function saveSettingsModal() {
@@ -887,13 +896,16 @@ function saveSettingsModal() {
   localStorage.setItem('training_goal', trainingGoal);
 
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
+  const weekHours = num('settingsGoalWeekHours');
+  const byTypePct = {};
+  const lf = num('settingsGoalLaufenPct'), rr = num('settingsGoalRennradPct'), kr = num('settingsGoalKraftPct'), mb = num('settingsGoalMountainbikePct');
+  if (lf !== null) byTypePct.Laufen = lf;
+  if (rr !== null) byTypePct.Rennrad = rr;
+  if (kr !== null) byTypePct.Kraft = kr;
+  if (mb !== null) byTypePct.Mountainbike = mb;
   const byType = {};
-  const lf = num('settingsGoalLaufen'), rr = num('settingsGoalRennrad'), kr = num('settingsGoalKraft'), mb = num('settingsGoalMountainbike');
-  if (lf !== null) byType.Laufen = lf;
-  if (rr !== null) byType.Rennrad = rr;
-  if (kr !== null) byType.Kraft = kr;
-  if (mb !== null) byType.Mountainbike = mb;
-  const plan = { weekHours: num('settingsGoalWeekHours'), byType, updatedAt: fmtDate(new Date()) };
+  if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
+  const plan = { weekHours, byTypePct, byType, updatedAt: fmtDate(new Date()) };
   localStorage.setItem('training_plan', JSON.stringify(plan));
   if (ghToken && ghRepo) saveTrainingPlanToGH(plan).catch(e => console.error('GitHub training plan save:', e));
 
