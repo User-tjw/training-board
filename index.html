@@ -884,6 +884,7 @@ function saveSettingsModal() {
   if (mb !== null) byType.Mountainbike = mb;
   const plan = { weekHours: num('settingsGoalWeekHours'), byType, updatedAt: fmtDate(new Date()) };
   localStorage.setItem('training_plan', JSON.stringify(plan));
+  if (ghToken && ghRepo) saveTrainingPlanToGH(plan).catch(e => console.error('GitHub training plan save:', e));
 
   hideSettings();
   loadAll();
@@ -903,6 +904,7 @@ function init() {
   setupNav();
   renderTeam();
   updateZones();
+  syncTrainingPlanFromGH();
   document.getElementById('timeRange').addEventListener('change', loadAll);
   loadAll();
 }
@@ -1471,6 +1473,8 @@ function refreshCockpitMoodTile() {
 // ─── GitHub Notes API ─────────────────────────────────────────────────────────
 
 const GH_NOTES_PATH = 'notes';
+const GH_PLAN_FILE = 'settings/training-plan.json';
+let _planSha = null;
 let _notes = [];
 let _editingNote = null;
 let _viewingIndex = -1;
@@ -1551,6 +1555,34 @@ async function deleteNoteFromGH(filename, sha) {
   return ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${filename}`, {
     method:'DELETE', body:JSON.stringify({ message:`Delete: ${filename}`, sha })
   });
+}
+
+async function loadTrainingPlanFromGH() {
+  if (!ghToken || !ghRepo) return null;
+  try {
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`);
+    _planSha = file.sha;
+    return JSON.parse(b64dec(file.content));
+  } catch(e) {
+    if (!e.message.includes('404') && !e.message.includes('Not Found')) console.error('GitHub training plan:', e);
+    return null;
+  }
+}
+
+async function saveTrainingPlanToGH(plan) {
+  if (!ghToken || !ghRepo) return;
+  const payload = { message: 'Update training plan', content: b64enc(JSON.stringify(plan, null, 2)) };
+  if (_planSha) payload.sha = _planSha;
+  const res = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`, { method:'PUT', body:JSON.stringify(payload) });
+  _planSha = res.content.sha;
+}
+
+async function syncTrainingPlanFromGH() {
+  const remote = await loadTrainingPlanFromGH();
+  if (remote) {
+    localStorage.setItem('training_plan', JSON.stringify(remote));
+    renderCockpitWeek();
+  }
 }
 
 function renderMarkdown(text) {
