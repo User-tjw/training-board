@@ -1603,6 +1603,13 @@ async function loadTrainingPlanFromGH() {
 
 async function saveTrainingPlanToGH(plan) {
   if (!ghToken || !ghRepo) return;
+  try {
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`);
+    _planSha = file.sha;
+  } catch(e) {
+    if (!e.message.includes('404') && !e.message.includes('Not Found')) throw e;
+    _planSha = null;
+  }
   const payload = { message: 'Update training plan', content: b64enc(JSON.stringify(plan, null, 2)) };
   if (_planSha) payload.sha = _planSha;
   const res = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`, { method:'PUT', body:JSON.stringify(payload) });
