@@ -225,13 +225,13 @@
     @media (max-width: 560px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub { display: none; } }
     @media (max-width: 720px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 460px) { .team-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 900px) { .week-cal-row { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
+    @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
 
-    .week-cal { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .week-cal-row { display: grid; grid-template-columns: repeat(7, 1fr) 110px; gap: 1px; background: var(--border); }
+    .week-cal { display: grid; grid-template-columns: repeat(7, 1fr) 150px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .week-cal-summary-span { grid-row: span 2; }
     .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; }
     .week-cal-head-cell.today { background: var(--accent); color: #fff; }
-    .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 56px; font-family: var(--mono); text-align: center; }
+    .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 72px; font-family: var(--mono); text-align: center; }
     .week-cal-cell.today:not(.week-cal-cell-tinted) { background: var(--accent-light); }
     .week-cal-cell.week-band-sep { border-top: 2px solid var(--bg3); }
     .week-cal-cell-empty { color: #cbd5e1; font-size: 11px; }
@@ -242,10 +242,11 @@
     .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
     .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
     .week-cal-summary-unit { font-size: 9px; color: var(--text2); font-weight: 400; }
-    .week-cal-bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 26px; margin-top: 6px; }
-    .week-cal-bar { width: 7px; border-radius: 2px 2px 0 0; }
-    .week-cal-bar-track { width: 7px; height: 26px; border-radius: 2px; position: relative; overflow: hidden; align-self: flex-end; }
-    .week-cal-bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; border-radius: 2px 2px 0 0; }
+    .week-cal-hbars { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; width: 100%; }
+    .week-cal-hbar-row { display: flex; align-items: center; gap: 6px; }
+    .week-cal-hbar-label { font-size: 9px; font-family: var(--mono); font-weight: 600; width: 38px; flex-shrink: 0; text-align: right; }
+    .week-cal-hbar-track { flex: 1; height: 7px; border-radius: 3px; position: relative; overflow: hidden; }
+    .week-cal-hbar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
   </style>
 </head>
 <body>
@@ -1086,41 +1087,39 @@ function buildWeekCalendar(weekStart, weekActs) {
   const head = days.map((d,i) => {
     const today = byDay[i].isToday;
     return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>`;
-  }).join('') + `<div class="week-cal-head-cell">WOCHE</div>`;
+  }).join('') + `<div class="week-cal-head-cell">DIESE WOCHE</div>`;
 
   const enduranceRow = byDay.map(d => cellWrap(cell(d.endurance[0]), d.isToday?' today':'')).join('');
   const strengthRow = byDay.map(d => cellWrap(cell(d.strength[0]), ' week-band-sep'+(d.isToday?' today':''))).join('');
 
+  const plan = getTrainingPlan();
   const totalH = weekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
-  const summaryTop = `<div class="week-cal-cell week-cal-summary-cell">
-      <div class="week-cal-summary-label">Diese Woche</div>
-      <div class="week-cal-summary-val">${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span></div>
-    </div>`;
+  const totalVal = plan.weekHours
+    ? `${totalH.toFixed(1)}<span class="week-cal-summary-unit">/${plan.weekHours} h</span>`
+    : `${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span>`;
   const typeTotals = {};
   weekActs.forEach(a => { const t = normalizeType(a.type); typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
-  const plan = getTrainingPlan();
   const maxTypeT = Math.max(1, ...Object.values(typeTotals));
-  const typeBars = Object.entries(typeTotals).map(([t,s]) => {
+  const typeHBars = Object.entries(typeTotals).map(([t,s]) => {
     const color = TYPE_COLORS[t] || '#94a3b8';
     const targetH = plan.byType?.[t];
-    if (targetH) {
-      const targetS = targetH * 3600;
-      const pct = Math.min(100, Math.round(s/targetS*100));
-      const title = `${t}: ${formatDur(s)} von ${targetH} h Soll (${pct}%)`;
-      return `<div class="week-cal-bar-track" title="${title}" style="background:${color}30">
-        <div class="week-cal-bar-fill" style="height:${pct}%;background:${color}"></div>
-      </div>`;
-    }
-    return `<div class="week-cal-bar" title="${t}: ${formatDur(s)}" style="height:${Math.max(4,Math.round(s/maxTypeT*26))}px;background:${color}"></div>`;
+    const istH = (s/3600).toFixed(1);
+    const pct = targetH ? Math.min(100, Math.round(s/(targetH*3600)*100)) : Math.round(s/maxTypeT*100);
+    const label = targetH ? `${istH}/${targetH}h` : `${istH}h`;
+    const title = targetH ? `${t}: ${formatDur(s)} von ${targetH} h Soll` : `${t}: ${formatDur(s)}`;
+    return `<div class="week-cal-hbar-row" title="${title}">
+      <span class="week-cal-hbar-label" style="color:${color}">${label}</span>
+      <div class="week-cal-hbar-track" style="background:${color}30">
+        <div class="week-cal-hbar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+    </div>`;
   }).join('');
-  const summaryBottom = `<div class="week-cal-cell week-cal-summary-cell week-band-sep">
-      <div class="week-cal-summary-label">${weekActs.length} Einheiten</div>
-      <div class="week-cal-bars">${typeBars}</div>
+  const summarySpan = `<div class="week-cal-cell week-cal-summary-cell week-cal-summary-span">
+      <div class="week-cal-summary-val">${totalVal}</div>
+      <div class="week-cal-hbars">${typeHBars}</div>
     </div>`;
 
-  return `<div class="week-cal-row">${head}</div>
-    <div class="week-cal-row">${enduranceRow}${summaryTop}</div>
-    <div class="week-cal-row">${strengthRow}${summaryBottom}</div>`;
+  return head + enduranceRow + summarySpan + strengthRow;
 }
 
 function renderCockpitWeek() {
