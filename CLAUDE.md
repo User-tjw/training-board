@@ -40,6 +40,13 @@ Doppelklick auf `Start-Dashboard.bat` → öffnet http://localhost:8765 im Brows
 - Intervals.icu Athlete-ID: `i226237`
 - API-Key: wird beim ersten Start abgefragt, in `localStorage` gespeichert
 - Kein hardcodiertes Passwort (Setup-Screen beim ersten Start)
+- KI-Trainer-Notizen: werden bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) direkt per GitHub-API in das private Repo `user-tjw/training-notes` (Ordner `notes/`) geschrieben — kein lokaler Zwischenschritt
+
+## ⚠️ Vorsicht beim Testen
+
+Die Browser-Vorschau (z. B. `Start-Dashboard.bat` / lokaler Server) nutzt denselben `localStorage` wie die echte App. Ist dort bereits ein GitHub-Token konfiguriert, schreiben auch "lokale" Testaktionen (z. B. `openDayNoteEditor`, `saveNoteEditor`) **echte Commits** ins private Notizen-Repo — der vermeintliche Offline-Fallback (`_localDayNotes`) greift nur, wenn kein Token gesetzt ist.
+
+**Vor jedem Schreibtest:** prüfen, ob `ghToken`/`ghRepo` im `localStorage` gesetzt sind. Falls ja, vor dem Anlegen von Testnotizen explizit nachfragen oder Token temporär entfernen, statt automatisch von einem rein lokalen Test auszugehen.
 
 ## Aktuelle Features
 
