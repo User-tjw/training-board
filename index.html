@@ -120,6 +120,10 @@
     .trend-ind { text-align: center; }
     .trend-ind-val { font-size: 22px; font-weight: 600; font-family: var(--mono); }
     .trend-ind-label { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+    .trend-kpi-row { display: flex; gap: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .trend-kpi-item { text-align: center; }
+    .trend-kpi-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text2); }
+    .trend-kpi-val { font-size: 16px; font-weight: 600; font-family: var(--mono); margin-top: 4px; }
     .recommendation { border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 12px; }
     .recommendation.good { background: var(--green-light); border: 1px solid #bbf7d0; }
     .recommendation.warn { background: #fffbeb; border: 1px solid #fde68a; }
@@ -415,12 +419,6 @@
         <span class="status-dot" id="statusDot"></span>
         <span id="statusText">Verbinde...</span>
       </div>
-      <select class="btn" id="timeRange">
-        <option value="7" selected>7 Tage</option>
-        <option value="30">30 Tage</option>
-        <option value="90">90 Tage</option>
-        <option value="365">Alle</option>
-      </select>
       <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
       <button class="btn" id="themeToggleBtn" onclick="toggleTheme()">☀</button>
       <button class="btn" onclick="showSettings()">⚙</button>
@@ -437,26 +435,28 @@
     <!-- Cockpit -->
     <section id="section-cockpit" class="section active">
       <div class="content">
-        <div class="trend-hero">
-          <div class="trend-left">
-            <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
-            <div class="trend-label" id="cockpitDate"></div>
-            <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
-            <div class="trend-desc" id="cockpitDesc"></div>
+        <div class="trend-hero" style="flex-direction:column;align-items:stretch;gap:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div class="trend-left">
+              <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
+              <div class="trend-label" id="cockpitDate"></div>
+              <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
+              <div class="trend-desc" id="cockpitDesc"></div>
+            </div>
+            <div class="trend-indicators">
+              <div class="trend-ind"><div class="trend-ind-val" id="cockpitHRV">—</div><div class="trend-ind-label">HRV<br>ms</div></div>
+              <div class="trend-ind"><div class="trend-ind-val" id="cockpitRHF">—</div><div class="trend-ind-label">Ruhepuls<br>bpm</div></div>
+              <div class="trend-ind"><div class="trend-ind-val" id="cockpitTSB">—</div><div class="trend-ind-label">Form (TSB)<br>Punkte</div></div>
+              <div class="trend-ind"><div class="trend-ind-val" id="cockpitWeight">—</div><div class="trend-ind-label">Gewicht<br>kg</div></div>
+              <div class="trend-ind"><div class="trend-ind-val" id="cockpitMood">—</div><div class="trend-ind-label">Befinden<br>heute</div></div>
+            </div>
           </div>
-          <div class="trend-indicators">
-            <div class="trend-ind"><div class="trend-ind-val" id="cockpitHRV">—</div><div class="trend-ind-label">HRV<br>ms</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="cockpitRHF">—</div><div class="trend-ind-label">Ruhepuls<br>bpm</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="cockpitTSB">—</div><div class="trend-ind-label">Form (TSB)<br>Punkte</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="cockpitWeight">—</div><div class="trend-ind-label">Gewicht<br>kg</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="cockpitMood">—</div><div class="trend-ind-label">Befinden<br>heute</div></div>
+          <div class="trend-kpi-row">
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Fitness CTL</div><div class="trend-kpi-val" id="cockpitCTL">—</div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Fatigue ATL</div><div class="trend-kpi-val" id="cockpitATL">—</div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Einheiten Woche</div><div class="trend-kpi-val" id="cockpitFixedSessions">—</div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Stunden Woche</div><div class="trend-kpi-val" id="cockpitFixedTime">—</div></div>
           </div>
-        </div>
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Fitness (CTL)</span><span class="kpi-badge">aktuell</span></div><div class="kpi-value" id="cockpitCTL">—</div><div class="kpi-sub">Chronische Last</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Fatigue (ATL)</span><span class="kpi-badge">aktuell</span></div><div class="kpi-value" id="cockpitATL">—</div><div class="kpi-sub">Akute Last</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Trainingseinheiten</span><span class="kpi-badge">Einheiten</span></div><div class="kpi-value" id="cockpitWeekSessions">—</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Stunden</span><span class="kpi-badge">Zeit</span></div><div class="kpi-value" id="cockpitWeekTime">—</div></div>
         </div>
         <div class="card">
           <div class="card-header">
@@ -471,7 +471,12 @@
           <div class="week-cal" id="cockpitWeekCal"></div>
         </div>
         <div class="grid-2x2">
-          <div class="card"><div class="card-header"><span class="card-title">Fitness · Fatigue · Form</span><span class="card-meta">CTL / ATL / TSB</span></div><div class="chart-box"><canvas id="fitnessChart"></canvas></div></div>
+          <div class="card"><div class="card-header"><span class="card-title">Fitness · Fatigue · Form</span><div style="display:flex;align-items:center;gap:8px"><span class="card-meta">CTL / ATL / TSB</span><select class="btn" id="timeRange" style="font-size:11px;padding:4px 8px">
+            <option value="7" selected>7 Tage</option>
+            <option value="30">30 Tage</option>
+            <option value="90">90 Tage</option>
+            <option value="365">Alle</option>
+          </select></div></div><div class="chart-box"><canvas id="fitnessChart"></canvas></div></div>
           <div class="card"><div class="card-header"><span class="card-title">Aktivitätstypen</span></div><div class="chart-box"><canvas id="typeChart"></canvas></div></div>
           <div class="card">
             <div class="card-header"><span class="card-title">HRV · letzte 7 Tage</span><span class="card-meta">Tagesstatus</span></div>
@@ -1133,9 +1138,6 @@ function renderCockpitWeek() {
     return d >= weekStart && d < weekEnd;
   });
 
-  document.getElementById('cockpitWeekSessions').textContent = weekActs.length;
-  const weekH = weekActs.reduce((s,a) => s + (a.moving_time||0), 0) / 3600;
-  document.getElementById('cockpitWeekTime').textContent = weekH.toFixed(1);
   document.getElementById('cockpitWeekLabel').textContent =
     `KW${getWeek(weekStart)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – ${new Date(weekEnd-1).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}`;
   document.getElementById('cockpitWeekCal').innerHTML = buildWeekCalendar(weekStart, weekActs);
@@ -1154,6 +1156,20 @@ let _cockpitActivitiesFull = [];
 
 function renderCockpit(wellness, fitness, activitiesFull) {
   _cockpitActivitiesFull = activitiesFull;
+
+  const now0 = new Date();
+  const curWeekStart = new Date(now0);
+  curWeekStart.setDate(now0.getDate() - now0.getDay() + (now0.getDay() === 0 ? -6 : 1));
+  curWeekStart.setHours(0,0,0,0);
+  const curWeekEnd = new Date(curWeekStart); curWeekEnd.setDate(curWeekStart.getDate()+7);
+  const curWeekActs = activitiesFull.filter(a => {
+    const d = new Date(a.start_date_local);
+    return d >= curWeekStart && d < curWeekEnd;
+  });
+  document.getElementById('cockpitFixedSessions').textContent = curWeekActs.length;
+  document.getElementById('cockpitFixedTime').textContent =
+    (curWeekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600).toFixed(1);
+
   const allW = sortedWellness(wellness).filter(d => d.hrv || d.restingHR);
   const latest = allW[allW.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
