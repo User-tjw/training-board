@@ -36,6 +36,7 @@
     .setup-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
     .setup-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
     .setup-input {
+      width: 100%; box-sizing: border-box;
       padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
       font-family: var(--mono); font-size: 14px; background: var(--bg); color: var(--text); outline: none;
     }
@@ -197,7 +198,7 @@
     .note-card-date { font-size:11px; font-family:var(--mono); color:var(--text2); white-space:nowrap; }
     .note-card-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; }
     .note-card-excerpt { font-size:12px; color:var(--text2); line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-    .modal-wide { width:560px; max-width:96vw; max-height:88vh; overflow-y:auto; }
+    .modal.modal-wide { width:560px; max-width:96vw; max-height:88vh; overflow-y:auto; }
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
     .mood-picker { display:flex; gap:8px; }
@@ -231,7 +232,7 @@
     .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; }
     .week-cal-head-cell.today { background: var(--accent); color: #fff; }
     .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 56px; font-family: var(--mono); text-align: center; }
-    .week-cal-cell.today { background: var(--accent-light); }
+    .week-cal-cell.today:not(.week-cal-cell-tinted) { background: var(--accent-light); }
     .week-cal-cell.week-band-sep { border-top: 2px solid var(--bg3); }
     .week-cal-cell-empty { color: #cbd5e1; font-size: 11px; }
     .week-cal-type { font-size: 9px; font-weight: 600; color: var(--text); }
@@ -241,6 +242,10 @@
     .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
     .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
     .week-cal-summary-unit { font-size: 9px; color: var(--text2); font-weight: 400; }
+    .week-cal-bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 26px; margin-top: 6px; }
+    .week-cal-bar { width: 7px; border-radius: 2px 2px 0 0; }
+    .week-cal-bar-track { width: 7px; height: 26px; border-radius: 2px; position: relative; overflow: hidden; align-self: flex-end; }
+    .week-cal-bar-fill { position: absolute; bottom: 0; left: 0; width: 100%; border-radius: 2px 2px 0 0; }
   </style>
 </head>
 <body>
@@ -592,7 +597,7 @@
 
 <!-- Settings Modal -->
 <div class="modal-overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)hideSettings()">
-  <div class="modal">
+  <div class="modal modal-wide">
     <h3>⚙ Einstellungen</h3>
     <div class="setup-field">
       <label class="setup-label">Athlete ID</label>
@@ -620,6 +625,31 @@
       <textarea class="note-textarea" id="settingsTrainingGoal" style="min-height:80px" placeholder="z.B. Halbmarathon am 12.09., Zielzeit 1:45..."></textarea>
       <div class="setup-hint">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
     </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">Trainings-Soll (optional)</div>
+    <div class="setup-field">
+      <label class="setup-label">Wochenstunden gesamt</label>
+      <input class="setup-input" id="settingsGoalWeekHours" type="number" step="0.5" min="0" placeholder="z.B. 8">
+    </div>
+    <div class="setup-field" style="display:flex;flex-direction:row;align-items:flex-end;gap:14px">
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="setup-label" style="white-space:nowrap">Laufen</label>
+        <input class="setup-input" id="settingsGoalLaufen" type="number" step="0.5" min="0">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="setup-label" style="white-space:nowrap">Rennrad</label>
+        <input class="setup-input" id="settingsGoalRennrad" type="number" step="0.5" min="0">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="setup-label" style="white-space:nowrap">Kraft</label>
+        <input class="setup-input" id="settingsGoalKraft" type="number" step="0.5" min="0">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="setup-label" style="white-space:nowrap">Mountainbike</label>
+        <input class="setup-input" id="settingsGoalMountainbike" type="number" step="0.5" min="0">
+      </div>
+    </div>
+    <div class="setup-hint">Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
     <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">KI-Trainer (optional)</div>
     <div style="display:flex;gap:10px;margin-top:8px">
@@ -814,12 +844,22 @@ function showApp() {
   init();
 }
 
+function getTrainingPlan() {
+  try { return JSON.parse(localStorage.getItem('training_plan') || '{}'); } catch(e) { return {}; }
+}
+
 function showSettings() {
   document.getElementById('settingsAthleteId').value = athleteId;
   document.getElementById('settingsApiKey').value = apiKey;
   document.getElementById('settingsGhToken').value = ghToken;
   document.getElementById('settingsGhRepo').value = ghRepo;
   document.getElementById('settingsTrainingGoal').value = localStorage.getItem('training_goal') || '';
+  const plan = getTrainingPlan();
+  document.getElementById('settingsGoalWeekHours').value = plan.weekHours ?? '';
+  document.getElementById('settingsGoalLaufen').value = plan.byType?.Laufen ?? '';
+  document.getElementById('settingsGoalRennrad').value = plan.byType?.Rennrad ?? '';
+  document.getElementById('settingsGoalKraft').value = plan.byType?.Kraft ?? '';
+  document.getElementById('settingsGoalMountainbike').value = plan.byType?.Mountainbike ?? '';
   document.getElementById('settingsModal').style.display = 'flex';
 }
 function hideSettings() { document.getElementById('settingsModal').style.display = 'none'; }
@@ -834,6 +874,17 @@ function saveSettingsModal() {
   localStorage.setItem('gh_token', ghToken);
   localStorage.setItem('gh_repo', ghRepo);
   localStorage.setItem('training_goal', trainingGoal);
+
+  const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
+  const byType = {};
+  const lf = num('settingsGoalLaufen'), rr = num('settingsGoalRennrad'), kr = num('settingsGoalKraft'), mb = num('settingsGoalMountainbike');
+  if (lf !== null) byType.Laufen = lf;
+  if (rr !== null) byType.Rennrad = rr;
+  if (kr !== null) byType.Kraft = kr;
+  if (mb !== null) byType.Mountainbike = mb;
+  const plan = { weekHours: num('settingsGoalWeekHours'), byType, updatedAt: fmtDate(new Date()) };
+  localStorage.setItem('training_plan', JSON.stringify(plan));
+
   hideSettings();
   loadAll();
   renderTeam();
@@ -994,6 +1045,8 @@ function setStatus(ok) {
 
 // ─── Cockpit ─────────────────────────────────────────────────────────────────
 
+const TYPE_COLORS = {Laufen:'#2563eb',Rennrad:'#16a34a',Mountainbike:'#ea580c',Kraft:'#7c3aed',Sonstiges:'#94a3b8'};
+
 function buildWeekCalendar(weekStart, weekActs) {
   const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
   const todayStr = fmtDate(new Date());
@@ -1010,31 +1063,57 @@ function buildWeekCalendar(weekStart, weekActs) {
   });
 
   function cell(act) {
-    if (!act) return `<div class="week-cal-cell-empty">—</div>`;
+    if (!act) return { html: `<div class="week-cal-cell-empty">—</div>`, color: null };
     const type = normalizeType(act.type);
+    const color = TYPE_COLORS[type] || '#94a3b8';
     const km = act.distance ? (act.distance/1000).toFixed(1)+' km' : '';
     const dur = act.moving_time ? formatDur(act.moving_time) : '';
     const hr = act.average_heartrate ? Math.round(act.average_heartrate)+' bpm' : '';
-    return `<div class="week-cal-type">${type.toUpperCase()}</div>
+    const html = `<div class="week-cal-type" style="color:${color}">${type.toUpperCase()}</div>
       <div class="week-cal-main">${km || dur || '—'}</div>
       <div class="week-cal-sub">${[km?dur:'', hr].filter(Boolean).join(' · ')}</div>`;
+    return { html, color };
+  }
+
+  function cellWrap(c, extraClass) {
+    const style = c.color ? ` style="background:${c.color}12"` : '';
+    const cls = c.color ? ` week-cal-cell-tinted` : '';
+    return `<div class="week-cal-cell${extraClass}${cls}"${style}>${c.html}</div>`;
   }
 
   const head = days.map((d,i) => {
     const today = byDay[i].isToday;
-    return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}${today?' · HEUTE':''}</div>`;
+    return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>`;
   }).join('') + `<div class="week-cal-head-cell">WOCHE</div>`;
 
-  const enduranceRow = byDay.map(d => `<div class="week-cal-cell${d.isToday?' today':''}">${cell(d.endurance[0])}</div>`).join('');
-  const strengthRow = byDay.map(d => `<div class="week-cal-cell week-band-sep${d.isToday?' today':''}">${cell(d.strength[0])}</div>`).join('');
+  const enduranceRow = byDay.map(d => cellWrap(cell(d.endurance[0]), d.isToday?' today':'')).join('');
+  const strengthRow = byDay.map(d => cellWrap(cell(d.strength[0]), ' week-band-sep'+(d.isToday?' today':''))).join('');
 
   const totalH = weekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
   const summaryTop = `<div class="week-cal-cell week-cal-summary-cell">
       <div class="week-cal-summary-label">Diese Woche</div>
       <div class="week-cal-summary-val">${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span></div>
     </div>`;
+  const typeTotals = {};
+  weekActs.forEach(a => { const t = normalizeType(a.type); typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
+  const plan = getTrainingPlan();
+  const maxTypeT = Math.max(1, ...Object.values(typeTotals));
+  const typeBars = Object.entries(typeTotals).map(([t,s]) => {
+    const color = TYPE_COLORS[t] || '#94a3b8';
+    const targetH = plan.byType?.[t];
+    if (targetH) {
+      const targetS = targetH * 3600;
+      const pct = Math.min(100, Math.round(s/targetS*100));
+      const title = `${t}: ${formatDur(s)} von ${targetH} h Soll (${pct}%)`;
+      return `<div class="week-cal-bar-track" title="${title}" style="background:${color}30">
+        <div class="week-cal-bar-fill" style="height:${pct}%;background:${color}"></div>
+      </div>`;
+    }
+    return `<div class="week-cal-bar" title="${t}: ${formatDur(s)}" style="height:${Math.max(4,Math.round(s/maxTypeT*26))}px;background:${color}"></div>`;
+  }).join('');
   const summaryBottom = `<div class="week-cal-cell week-cal-summary-cell week-band-sep">
       <div class="week-cal-summary-label">${weekActs.length} Einheiten</div>
+      <div class="week-cal-bars">${typeBars}</div>
     </div>`;
 
   return `<div class="week-cal-row">${head}</div>
@@ -1244,10 +1323,9 @@ function renderCardio(activities, wellness, fitness) {
   const mix = {};
   activities.forEach(a => { const t=normalizeType(a.type); mix[t]=(mix[t]||0)+(a.moving_time||0); });
   const tot = Object.values(mix).reduce((s,v)=>s+v,0);
-  const mc = {Laufen:'#2563eb',Rennrad:'#16a34a',Mountainbike:'#ea580c',Kraft:'#7c3aed',Sonstiges:'#94a3b8'};
   document.getElementById('activityMix').innerHTML = Object.entries(mix).map(([t,s])=>{
     const p=tot?Math.round(s/tot*100):0;
-    return `<div class="mix-item"><div class="mix-label" style="color:${mc[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${mc[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
+    return `<div class="mix-item"><div class="mix-label" style="color:${TYPE_COLORS[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${TYPE_COLORS[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
   }).join('');
 }
 
@@ -1949,8 +2027,7 @@ function makeFitnessChart(fitness) {
 function makeTypeChart(activities) {
   const counts={};
   activities.forEach(a=>{const t=normalizeType(a.type);counts[t]=(counts[t]||0)+1;});
-  const colors={Laufen:'#2563eb',Rennrad:'#16a34a',Mountainbike:'#ea580c',Kraft:'#7c3aed',Sonstiges:'#94a3b8'};
-  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>colors[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
+  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>TYPE_COLORS[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
 }
 
 function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
