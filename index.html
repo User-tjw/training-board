@@ -2123,7 +2123,21 @@ function makeFitnessChart(fitness) {
 function makeTypeChart(activities) {
   const counts={};
   activities.forEach(a=>{const t=normalizeType(a.type);counts[t]=(counts[t]||0)+1;});
-  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>TYPE_COLORS[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10}}}}};
+  const total=Object.values(counts).reduce((s,v)=>s+v,0)||1;
+  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>TYPE_COLORS[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{
+    legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10,
+      generateLabels(chart){
+        const data=chart.data;
+        return data.labels.map((label,i)=>({
+          text:`${label} ${Math.round(data.datasets[0].data[i]/total*100)}%`,
+          fillStyle:data.datasets[0].backgroundColor[i],
+          strokeStyle:data.datasets[0].backgroundColor[i],
+          index:i
+        }));
+      }
+    }},
+    tooltip:{callbacks:{label(ctx){return `${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed/total*100)}%)`;}}}
+  }}};
 }
 
 function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
