@@ -26,48 +26,43 @@ TrainingBoard/
     └── skill-intervals-icu.md
 ```
 
-## Lokaler Start (PC)
-
-Doppelklick auf `Start-Dashboard.bat` → öffnet http://localhost:8765 im Browser.
-
 ## Zugriff
 
-- **PC**: Start-Dashboard.bat → http://localhost:8765
-- **iPad**: GitHub Pages (privates Repo, geplant)
+- **PC**: Doppelklick auf `Start-Dashboard.bat` → öffnet http://localhost:8765
+- **iPad/überall**: GitHub Pages, live auf https://user-tjw.github.io/training-board/
 
 ## App-Zugangsdaten
 
 - Intervals.icu Athlete-ID: `i226237`
 - API-Key: wird beim ersten Start abgefragt, in `localStorage` gespeichert
 - Kein hardcodiertes Passwort (Setup-Screen beim ersten Start)
-- KI-Trainer-Notizen: werden bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) direkt per GitHub-API in das private Repo `user-tjw/training-notes` (Ordner `notes/`) geschrieben — kein lokaler Zwischenschritt
 
-## ⚠️ Vorsicht beim Testen
+## GitHub-Notizen (KI-Trainer)
 
-Die Browser-Vorschau (z. B. `Start-Dashboard.bat` / lokaler Server) nutzt denselben `localStorage` wie die echte App. Ist dort bereits ein GitHub-Token konfiguriert, schreiben auch "lokale" Testaktionen (z. B. `openDayNoteEditor`, `saveNoteEditor`) **echte Commits** ins private Notizen-Repo — der vermeintliche Offline-Fallback (`_localDayNotes`) greift nur, wenn kein Token gesetzt ist.
+Bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) schreibt die App Notizen direkt per GitHub-API ins private Repo `user-tjw/training-notes` (Ordner `notes/`) — es gibt **keinen** rein lokalen Zwischenschritt. Der Offline-Fallback (`_localDayNotes`) greift nur, wenn kein Token gesetzt ist.
 
-**Vor jedem Schreibtest:** prüfen, ob `ghToken`/`ghRepo` im `localStorage` gesetzt sind. Falls ja, vor dem Anlegen von Testnotizen explizit nachfragen oder Token temporär entfernen, statt automatisch von einem rein lokalen Test auszugehen.
+⚠️ **Beim Testen:** Die Browser-Vorschau nutzt denselben `localStorage` wie die echte App. Vor Schreibtests (`openDayNoteEditor`, `saveNoteEditor` o.ä.) prüfen, ob `ghToken`/`ghRepo` gesetzt sind — sonst landen Testnotizen als echte Commits im privaten Repo. Im Zweifel vorher nachfragen.
 
 ## Aktuelle Features
 
 - Setup-Screen (API-Key Eingabe beim ersten Start)
-- Übersicht: KPI-Karten, Fitness/Fatigue/Form Chart, Aktivitätstypen
+- Cockpit: Tagesbericht, HRV-Ampel (7-Tage-Rolling-Average), KPI-Kacheln, Trainingswoche mit Soll-Ist-Balken
+- Übersicht: Fitness/Fatigue/Form Chart, Aktivitätstypen
 - Aktivitäten: Liste aller Trainingseinheiten
 - Herz-Kreislauf: RHF, HRV, Trends
 - HF-Zonen: Uphill Athlete 4-Zonen-System (AeT/AnT einstellbar)
 - Fitness & Form: CTL/ATL/TSB Verlauf
 - Wellness: HRV, Ruhepuls, Schlaf
+- KI-Trainer: 5 Trainer-Personas (Head Coach, Reha, Kraft, Ernährung, UA-Methodik), Notizen-System mit GitHub-Sync, "Für Claude kopieren" für Cowork-Übergabe
+- Trainings-Soll geräteübergreifend über GitHub synchronisiert
 - Hell/Dunkel-Modus
 - Zeiträume: 7 / 30 / 90 / 365 Tage
 
-## Geplante Features (Priorität)
+## Geplante Features
 
-1. HRV-Analyse nach Plews-Methode (RMSSD, Rolling Average, Ampelsystem)
-2. Cockpit-Tab (Tagesübersicht: Form, Fitness, HRV, Empfehlung)
-3. KI-Trainer mit Claude API (direkt im Browser)
-4. Garmin Connect Integration
-5. Mobile-Ansicht optimieren
-6. Export PDF/CSV
+1. Garmin Connect Integration
+2. Mobile-Ansicht optimieren
+3. Export PDF/CSV
 
 ## Arbeitsaufteilung
 
