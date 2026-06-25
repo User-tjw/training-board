@@ -254,14 +254,15 @@
     .week-cal-main { font-size: 11px; margin-top: 2px; color: var(--text); }
     .week-cal-sub { font-size: 8px; color: var(--text2); margin-top: 1px; }
     .week-cal-benefit { font-size: 8px; color: var(--text2); margin-top: 1px; font-weight: 600; }
-    .week-cal-summary-cell { background: var(--bg3); padding: 9px 12px; text-align: left; }
+    .week-cal-summary-cell { background: var(--bg3); padding: 9px 12px; text-align: left; display: flex; align-items: flex-start; }
     .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
     .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
     .week-cal-summary-unit { font-size: 9px; color: var(--text2); font-weight: 400; }
-    .week-cal-hbars { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; width: 100%; }
+    .week-cal-title-total { font-size: 12px; font-weight: 500; color: var(--text2); font-family: var(--mono); margin-left: 4px; }
+    .week-cal-hbars { display: flex; flex-direction: column; gap: 8px; margin-top: 0; width: 100%; }
     .week-cal-hbar-row { display: flex; align-items: center; gap: 7px; }
     .week-cal-hbar-label { font-size: 9px; font-family: var(--mono); font-weight: 600; width: 54px; min-width: 54px; max-width: 54px; flex-shrink: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .week-cal-hbar-track { flex: 1; height: 7px; border-radius: 3px; position: relative; overflow: hidden; }
+    .week-cal-hbar-track { flex: 1; height: 11px; border-radius: 4px; position: relative; overflow: hidden; }
     .week-cal-hbar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
   </style>
 </head>
@@ -467,7 +468,7 @@
         </div>
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Trainingswoche</span>
+            <span class="card-title">Trainingswoche <span class="week-cal-title-total" id="cockpitWeekTotal"></span></span>
             <div style="display:flex;align-items:center;gap:8px">
               <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
               <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
@@ -1172,11 +1173,10 @@ function buildWeekCalendar(weekStart, weekActs) {
     </div>`;
   }).join('');
   const summarySpan = `<div class="week-cal-cell week-cal-summary-cell week-cal-summary-span">
-      <div class="week-cal-summary-val">${totalVal}</div>
       <div class="week-cal-hbars">${typeHBars}</div>
     </div>`;
 
-  return head + enduranceRow + summarySpan + strengthRow;
+  return { html: head + enduranceRow + summarySpan + strengthRow, totalHtml: totalVal };
 }
 
 function renderCockpitWeek() {
@@ -1192,7 +1192,9 @@ function renderCockpitWeek() {
 
   document.getElementById('cockpitWeekLabel').textContent =
     `KW${getWeek(weekStart)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – ${new Date(weekEnd-1).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}`;
-  document.getElementById('cockpitWeekCal').innerHTML = buildWeekCalendar(weekStart, weekActs);
+  const built = buildWeekCalendar(weekStart, weekActs);
+  document.getElementById('cockpitWeekCal').innerHTML = built.html;
+  document.getElementById('cockpitWeekTotal').innerHTML = built.totalHtml;
 
   const nextBtn = document.getElementById('cockpitWeekNextBtn');
   if (nextBtn) nextBtn.disabled = cockpitWeekOffset >= 0;
