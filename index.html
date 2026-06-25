@@ -124,10 +124,15 @@
     .trend-ind { text-align: center; }
     .trend-ind-val { font-size: 22px; font-weight: 600; font-family: var(--mono); }
     .trend-ind-label { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
-    .trend-kpi-row { display: flex; gap: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .trend-kpi-row { display: flex; flex-wrap: wrap; gap: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
     .trend-kpi-item { text-align: center; }
+    .trend-kpi-sep { width: 1px; background: var(--border); align-self: stretch; }
     .trend-kpi-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text2); }
     .trend-kpi-val { font-size: 16px; font-weight: 600; font-family: var(--mono); margin-top: 4px; }
+    .trend-kpi-trend { font-size: 12px; font-weight: 700; }
+    .trend-kpi-trend.up { color: #16a34a; }
+    .trend-kpi-trend.down { color: #ef4444; }
+    .trend-kpi-trend.flat { color: var(--text2); }
     .recommendation { border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 12px; }
     .recommendation.good { background: var(--green-light); border: 1px solid #bbf7d0; }
     .recommendation.warn { background: #fffbeb; border: 1px solid #fde68a; }
@@ -236,24 +241,26 @@
     @media (max-width: 460px) { .team-grid { grid-template-columns: 1fr; } }
     @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
 
-    .week-cal { display: grid; grid-template-columns: repeat(7, 1fr) 150px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .week-cal { display: grid; grid-template-columns: repeat(7, 0.86fr) 210px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .week-cal-summary-span { grid-row: span 2; }
-    .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; }
+    .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; text-align: center; }
     .week-cal-head-cell.today { background: var(--accent); color: #fff; }
     .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 72px; font-family: var(--mono); text-align: center; }
     .week-cal-cell.today:not(.week-cal-cell-tinted) { background: var(--accent-light); }
     .week-cal-cell.week-band-sep { border-top: 2px solid var(--bg3); }
     .week-cal-cell-empty { color: #cbd5e1; font-size: 11px; }
     .week-cal-type { font-size: 9px; font-weight: 600; color: var(--text); }
+    .week-cal-goal { font-size: 8px; font-weight: 500; opacity: 0.85; margin-top: 1px; }
     .week-cal-main { font-size: 11px; margin-top: 2px; color: var(--text); }
     .week-cal-sub { font-size: 8px; color: var(--text2); margin-top: 1px; }
-    .week-cal-summary-cell { background: var(--bg3); }
+    .week-cal-benefit { font-size: 8px; color: var(--text2); margin-top: 1px; font-weight: 600; }
+    .week-cal-summary-cell { background: var(--bg3); padding: 9px 12px; text-align: left; }
     .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
     .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
     .week-cal-summary-unit { font-size: 9px; color: var(--text2); font-weight: 400; }
-    .week-cal-hbars { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; width: 100%; }
-    .week-cal-hbar-row { display: flex; align-items: center; gap: 6px; }
-    .week-cal-hbar-label { font-size: 9px; font-family: var(--mono); font-weight: 600; width: 38px; flex-shrink: 0; text-align: right; }
+    .week-cal-hbars { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; width: 100%; }
+    .week-cal-hbar-row { display: flex; align-items: center; gap: 7px; }
+    .week-cal-hbar-label { font-size: 9px; font-family: var(--mono); font-weight: 600; width: 54px; min-width: 54px; max-width: 54px; flex-shrink: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .week-cal-hbar-track { flex: 1; height: 7px; border-radius: 3px; position: relative; overflow: hidden; }
     .week-cal-hbar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
   </style>
@@ -440,26 +447,22 @@
     <section id="section-cockpit" class="section active">
       <div class="content">
         <div class="trend-hero" style="flex-direction:column;align-items:stretch;gap:18px">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <div class="trend-left">
-              <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
-              <div class="trend-label" id="cockpitDate"></div>
-              <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
-              <div class="trend-desc" id="cockpitDesc"></div>
-            </div>
-            <div class="trend-indicators">
-              <div class="trend-ind"><div class="trend-ind-val" id="cockpitHRV">—</div><div class="trend-ind-label">HRV<br>ms</div></div>
-              <div class="trend-ind"><div class="trend-ind-val" id="cockpitRHF">—</div><div class="trend-ind-label">Ruhepuls<br>bpm</div></div>
-              <div class="trend-ind"><div class="trend-ind-val" id="cockpitTSB">—</div><div class="trend-ind-label">Form (TSB)<br>Punkte</div></div>
-              <div class="trend-ind"><div class="trend-ind-val" id="cockpitWeight">—</div><div class="trend-ind-label">Gewicht<br>kg</div></div>
-              <div class="trend-ind"><div class="trend-ind-val" id="cockpitMood">—</div><div class="trend-ind-label">Befinden<br>heute</div></div>
-            </div>
+          <div class="trend-left">
+            <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
+            <div class="trend-label" id="cockpitDate"></div>
+            <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
+            <div class="trend-desc" id="cockpitDesc"></div>
           </div>
           <div class="trend-kpi-row">
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Fitness CTL</div><div class="trend-kpi-val" id="cockpitCTL">—</div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Fatigue ATL</div><div class="trend-kpi-val" id="cockpitATL">—</div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Einheiten Woche</div><div class="trend-kpi-val" id="cockpitFixedSessions">—</div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Stunden Woche</div><div class="trend-kpi-val" id="cockpitFixedTime">—</div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">HRV</div><div class="trend-kpi-val" id="cockpitHRV">— <span class="trend-kpi-trend" id="cockpitHRVTrend"></span></div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Ruhepuls</div><div class="trend-kpi-val" id="cockpitRHF">— <span class="trend-kpi-trend" id="cockpitRHFTrend"></span></div></div>
+            <div class="trend-kpi-sep"></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Fitness CTL</div><div class="trend-kpi-val" id="cockpitCTL">— <span class="trend-kpi-trend" id="cockpitCTLTrend"></span></div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Fatigue ATL</div><div class="trend-kpi-val" id="cockpitATL">— <span class="trend-kpi-trend" id="cockpitATLTrend"></span></div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Form TSB</div><div class="trend-kpi-val" id="cockpitFormTSB">— <span class="trend-kpi-trend" id="cockpitFormTSBTrend"></span></div></div>
+            <div class="trend-kpi-sep"></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Gewicht</div><div class="trend-kpi-val" id="cockpitWeight">— <span class="trend-kpi-trend" id="cockpitWeightTrend"></span></div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Befinden</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
           </div>
         </div>
         <div class="card">
@@ -1087,6 +1090,33 @@ function buildWeekCalendar(weekStart, weekActs) {
     };
   });
 
+  function mainBenefit(act, type) {
+    if (type === 'Laufen' && act.average_speed) {
+      const secPerKm = 1000 / act.average_speed;
+      const m = Math.floor(secPerKm/60), s = Math.round(secPerKm%60);
+      return `${m}:${String(s).padStart(2,'0')}/km`;
+    }
+    const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
+    if ((type === 'Rennrad' || type === 'Mountainbike') && watts) {
+      return `${Math.round(watts)} W`;
+    }
+    if (type === 'Kraft' && act.icu_training_load) {
+      return `Load ${Math.round(act.icu_training_load)}`;
+    }
+    if (act.icu_training_load) return `Load ${Math.round(act.icu_training_load)}`;
+    return '';
+  }
+
+  function goalLabel(act, type) {
+    if (type === 'Kraft') return 'Kraft/Mobilität';
+    const zones = window._zones;
+    const hr = act.average_heartrate;
+    if (!zones || !hr) return '';
+    if (hr <= zones[1].high) return 'Ausdauer';
+    if (hr <= zones[2].high) return 'Entwicklung';
+    return 'Schwelle';
+  }
+
   function cell(act) {
     if (!act) return { html: `<div class="week-cal-cell-empty">—</div>`, color: null };
     const type = normalizeType(act.type);
@@ -1094,9 +1124,13 @@ function buildWeekCalendar(weekStart, weekActs) {
     const km = act.distance ? (act.distance/1000).toFixed(1)+' km' : '';
     const dur = act.moving_time ? formatDur(act.moving_time) : '';
     const hr = act.average_heartrate ? Math.round(act.average_heartrate)+' bpm' : '';
+    const benefit = mainBenefit(act, type);
+    const goal = goalLabel(act, type);
     const html = `<div class="week-cal-type" style="color:${color}">${type.toUpperCase()}</div>
+      ${goal ? `<div class="week-cal-goal" style="color:${color}">${goal}</div>` : ''}
       <div class="week-cal-main">${km || dur || '—'}</div>
-      <div class="week-cal-sub">${[km?dur:'', hr].filter(Boolean).join(' · ')}</div>`;
+      <div class="week-cal-sub">${[km?dur:'', hr].filter(Boolean).join(' · ')}</div>
+      ${benefit ? `<div class="week-cal-benefit" style="color:${color}">${benefit}</div>` : ''}`;
     return { html, color };
   }
 
@@ -1120,6 +1154,7 @@ function buildWeekCalendar(weekStart, weekActs) {
     ? `${totalH.toFixed(1)}<span class="week-cal-summary-unit">/${plan.weekHours} h</span>`
     : `${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span>`;
   const typeTotals = {};
+  Object.keys(TYPE_COLORS).filter(t => t !== 'Sonstiges').forEach(t => { typeTotals[t] = 0; });
   weekActs.forEach(a => { const t = normalizeType(a.type); typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
   const maxTypeT = Math.max(1, ...Object.values(typeTotals));
   const typeHBars = Object.entries(typeTotals).map(([t,s]) => {
@@ -1174,19 +1209,6 @@ let _cockpitActivitiesFull = [];
 function renderCockpit(wellness, fitness, activitiesFull) {
   _cockpitActivitiesFull = activitiesFull;
 
-  const now0 = new Date();
-  const curWeekStart = new Date(now0);
-  curWeekStart.setDate(now0.getDate() - now0.getDay() + (now0.getDay() === 0 ? -6 : 1));
-  curWeekStart.setHours(0,0,0,0);
-  const curWeekEnd = new Date(curWeekStart); curWeekEnd.setDate(curWeekStart.getDate()+7);
-  const curWeekActs = activitiesFull.filter(a => {
-    const d = new Date(a.start_date_local);
-    return d >= curWeekStart && d < curWeekEnd;
-  });
-  document.getElementById('cockpitFixedSessions').textContent = curWeekActs.length;
-  document.getElementById('cockpitFixedTime').textContent =
-    (curWeekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600).toFixed(1);
-
   const allW = sortedWellness(wellness).filter(d => d.hrv || d.restingHR);
   const latest = allW[allW.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
@@ -1220,18 +1242,31 @@ function renderCockpit(wellness, fitness, activitiesFull) {
   vEl.textContent = verdict; vEl.className = 'trend-verdict ' + cls;
   document.getElementById('cockpitDesc').textContent = desc;
 
-  document.getElementById('cockpitHRV').textContent = todayHRV ? Math.round(todayHRV) : '—';
-  document.getElementById('cockpitRHF').textContent = latest.restingHR || '—';
-  const tsb = latestF.tsb ?? null;
-  const tsbEl = document.getElementById('cockpitTSB');
-  tsbEl.textContent = tsb !== null ? (tsb > 0 ? '+' : '') + Math.round(tsb) : '—';
-  tsbEl.className = 'trend-ind-val ' + (tsb > 5 ? 'up' : tsb < -10 ? 'down' : 'neutral');
-  document.getElementById('cockpitCTL').textContent = latestF.ctl ? Math.round(latestF.ctl) : '—';
-  document.getElementById('cockpitATL').textContent = latestF.atl ? Math.round(latestF.atl) : '—';
+  function trendArrow(curr, prev) {
+    if (curr == null || prev == null) return '';
+    const diff = curr - prev;
+    if (Math.abs(diff) < 0.5) return '<span class="trend-kpi-trend flat">→</span>';
+    return diff > 0 ? '<span class="trend-kpi-trend up">↑</span>' : '<span class="trend-kpi-trend down">↓</span>';
+  }
+  const prevF = fitness[fitness.length-8] || null;
+  const prevW = allW[allW.length-8] || null;
+
+  document.getElementById('cockpitHRV').innerHTML =
+    (todayHRV ? Math.round(todayHRV) : '—') + ' ' + trendArrow(todayHRV || null, prevW?.hrv);
+  document.getElementById('cockpitRHF').innerHTML =
+    (latest.restingHR || '—') + ' ' + trendArrow(latest.restingHR, prevW?.restingHR);
+  document.getElementById('cockpitCTL').innerHTML =
+    (latestF.ctl ? Math.round(latestF.ctl) : '—') + ' ' + trendArrow(latestF.ctl, prevF?.ctl);
+  document.getElementById('cockpitATL').innerHTML =
+    (latestF.atl ? Math.round(latestF.atl) : '—') + ' ' + trendArrow(latestF.atl, prevF?.atl);
+  document.getElementById('cockpitFormTSB').innerHTML =
+    (latestF.tsb != null ? (latestF.tsb > 0 ? '+' : '') + Math.round(latestF.tsb) : '—') + ' ' + trendArrow(latestF.tsb, prevF?.tsb);
 
   const allWeight = sortedWellness(wellness).filter(d => d.weight != null);
   const latestWeight = allWeight[allWeight.length-1];
-  document.getElementById('cockpitWeight').textContent = latestWeight ? latestWeight.weight.toFixed(1) : '—';
+  const prevWeight = allWeight[allWeight.length-8] || null;
+  document.getElementById('cockpitWeight').innerHTML =
+    (latestWeight ? latestWeight.weight.toFixed(1) : '—') + ' ' + trendArrow(latestWeight?.weight, prevWeight?.weight);
 
   refreshCockpitMoodTile();
 

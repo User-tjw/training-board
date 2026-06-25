@@ -86,3 +86,5 @@ Bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) schreibt die App Noti
 
 - [harlerunner.de](https://harlerunner.de) — KI-Trainerteam Konzept + Loop UI
 - [uphillathlete.com](https://uphillathlete.com) — Uphill Athlete Trainingsprinzipien
+- [liebscher-pracht.com] https://www.liebscher-bracht.com/
+
