@@ -70,16 +70,6 @@
     .nav-item { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
     .nav-item.active { background: var(--accent-light); color: var(--accent); }
-    .nav-dropdown { position: relative; }
-    .nav-toggle-arrow { font-size: 9px; transition: transform 0.15s; }
-    .nav-toggle-arrow.collapsed { transform: rotate(-90deg); }
-    .nav-dropdown-menu {
-      position: absolute; top: calc(100% + 4px); left: 0; min-width: 190px;
-      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
-      padding: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 30;
-    }
-    .nav-dropdown-menu.collapsed { display: none; }
-    .nav-dropdown-menu .nav-item { width: 100%; }
     .topnav-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
     .api-status { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); font-family: var(--mono); }
     .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text2); animation: pulse 2s infinite; }
@@ -430,20 +420,11 @@
 
     <nav class="topnav-items">
       <a class="nav-item active" data-section="cockpit">Cockpit</a>
-      <a class="nav-item" data-section="activities">Aktivitäten</a>
-      <div class="nav-dropdown">
-        <a class="nav-item" data-section="team" onclick="toggleNavGroup('kiTrainer')">KI-Trainer <span class="nav-toggle-arrow collapsed" id="kiTrainerArrow">▾</span></a>
-        <div class="nav-dropdown-menu collapsed" id="kiTrainerGroup">
-          <a class="nav-item" data-section="trainer" data-trainer="head-coach">Head Coach</a>
-          <a class="nav-item" data-section="trainer" data-trainer="reha">Reha-Trainer</a>
-          <a class="nav-item" data-section="trainer" data-trainer="kraft">Kraft-Trainer</a>
-          <a class="nav-item" data-section="trainer" data-trainer="ernaehrung">Sporternährung</a>
-          <a class="nav-item" data-section="trainer" data-trainer="methodik">UA-Methodik</a>
-        </div>
-      </div>
+      <a class="nav-item" data-section="team">KI-Trainer</a>
       <a class="nav-item" data-section="cardio">Herz-Kreislauf</a>
       <a class="nav-item" data-section="zones">HF-Zonen</a>
       <a class="nav-item" data-section="wellness">Wellness</a>
+      <a class="nav-item" data-section="activities">Aktivitäten</a>
     </nav>
 
     <div class="topnav-right">
@@ -525,20 +506,7 @@
               <div class="card-title" style="margin-bottom:12px">80/20 Check</div>
               <div id="cockpitZoneCheck" style="padding:8px 0"></div>
             </div>
-          </div>
-        </div>
-        <div class="group-card">
-          <div class="group-card-header">
-            <span class="group-card-title">Aktivitätstypen</span>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta overview-range-meta"></span><select class="btn range-select" data-key="overview" data-default="90" style="font-size:11px;padding:4px 8px">
-              <option value="7">7 Tage</option>
-              <option value="30">30 Tage</option>
-              <option value="90">90 Tage</option>
-              <option value="365">Alle</option>
-            </select></div>
-          </div>
-          <div class="group-card-body" style="--cols:1">
-            <div class="group-card-section"><div class="chart-box"><canvas id="typeChart"></canvas></div></div>
+            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Aktivitäten</div><div id="cockpitActivityMix" style="margin-top:8px"></div></div>
           </div>
         </div>
       </div>
@@ -547,7 +515,7 @@
     <!-- Aktivitäten -->
     <section id="section-activities" class="section">
       <div class="content">
-        <div class="card"><div class="card-header"><span class="card-title">Alle Aktivitäten</span><div style="display:flex;align-items:center;gap:8px"><span class="card-meta overview-range-meta"></span><select class="btn range-select" data-key="overview" data-default="90" style="font-size:11px;padding:4px 8px">
+        <div class="card"><div class="card-header"><span class="card-title">Alle Aktivitäten</span><div style="display:flex;align-items:center;gap:8px"><span class="card-meta overview-range-meta"></span><select class="btn range-select" data-key="overview" data-default="30" style="font-size:11px;padding:4px 8px">
           <option value="7">7 Tage</option>
           <option value="30">30 Tage</option>
           <option value="90">90 Tage</option>
@@ -626,10 +594,6 @@
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Ruheherzfrequenz — Verlauf</div><canvas id="rhfChart" height="65"></canvas></div>
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">HRV — Verlauf</div><canvas id="hrvChart" height="65"></canvas></div>
           </div>
-          <div class="group-card-body" style="--cols:1;border-top:1px solid var(--border)">
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Trainingsbelastung</div><canvas id="fitnessChart2" height="65"></canvas></div>
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Aktivitätsmix</div><div id="activityMix" style="margin-top:8px"></div></div>
-          </div>
         </div>
       </div>
     </section>
@@ -649,7 +613,7 @@
         <div class="group-card" style="margin-top:14px">
           <div class="group-card-header">
             <span class="group-card-title">Zonenverteilung</span>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta zones-range-meta"></span><select class="btn range-select" data-key="zones" data-default="90" style="font-size:11px;padding:4px 8px">
+            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta zones-range-meta"></span><select class="btn range-select" data-key="zones" data-default="30" style="font-size:11px;padding:4px 8px">
               <option value="7">7 Tage</option>
               <option value="30">30 Tage</option>
               <option value="90">90 Tage</option>
@@ -1086,59 +1050,32 @@ function setupNav() {
   document.getElementById('pageTitle').textContent = 'Cockpit';
 
   if (lastSection) {
-    const savedItem = lastSection === 'trainer' && lastTrainer
-      ? document.querySelector(`.nav-item[data-trainer="${lastTrainer}"]`)
-      : document.querySelector(`.nav-item[data-section="${lastSection}"]:not([data-trainer])`);
+    const navSection = lastSection === 'trainer' ? 'team' : lastSection;
+    const savedItem = document.querySelector(`.nav-item[data-section="${navSection}"]`);
     if (savedItem) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       savedItem.classList.add('active');
       document.getElementById(`section-${lastSection}`)?.classList.add('active');
-      document.getElementById('pageTitle').textContent = savedItem.textContent.trim();
+      document.getElementById('pageTitle').textContent = lastSection === 'trainer' ? 'KI-Trainer' : savedItem.textContent.trim();
       if (lastSection === 'trainer' && lastTrainer) showTrainerDetail(lastTrainer);
-      if (lastSection === 'trainer') expandNavGroup('kiTrainer');
     }
   }
 
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', e => {
       e.preventDefault();
-      const sec     = item.dataset.section;
-      const trainer = item.dataset.trainer;
+      const sec = item.dataset.section;
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       item.classList.add('active');
       document.getElementById(`section-${sec}`).classList.add('active');
       document.getElementById('pageTitle').textContent = sec === 'team' ? 'KI-Trainer' : item.textContent.trim();
-      if (sec === 'trainer' || sec === 'team') expandNavGroup('kiTrainer');
       sessionStorage.setItem('tb_active_section', sec);
       if (sec === 'team') renderTeam();
-      if (trainer) {
-        sessionStorage.setItem('tb_active_trainer', trainer);
-        showTrainerDetail(trainer);
-      }
     });
   });
 }
-
-function toggleNavGroup(id) {
-  document.getElementById(`${id}Group`).classList.toggle('collapsed');
-  document.getElementById(`${id}Arrow`).classList.toggle('collapsed');
-}
-
-function expandNavGroup(id) {
-  document.getElementById(`${id}Group`).classList.remove('collapsed');
-  document.getElementById(`${id}Arrow`).classList.remove('collapsed');
-}
-
-function collapseNavGroup(id) {
-  document.getElementById(`${id}Group`).classList.add('collapsed');
-  document.getElementById(`${id}Arrow`).classList.add('collapsed');
-}
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('.nav-dropdown')) collapseNavGroup('kiTrainer');
-});
 
 // ─── Data Loading ─────────────────────────────────────────────────────────────
 
@@ -1456,6 +1393,14 @@ function renderCockpitLoad() {
   } else {
     zoneEl.innerHTML = '<div class="loading">Keine Daten</div>';
   }
+
+  const mix = {};
+  actSlice.forEach(a => { const t = normalizeType(a.type); mix[t] = (mix[t]||0) + (a.moving_time||0); });
+  const tot = Object.values(mix).reduce((s,v) => s+v, 0);
+  document.getElementById('cockpitActivityMix').innerHTML = Object.entries(mix).map(([t,s]) => {
+    const p = tot ? Math.round(s/tot*100) : 0;
+    return `<div class="mix-item"><div class="mix-label" style="color:${TYPE_COLORS[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${TYPE_COLORS[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
+  }).join('');
 }
 
 // ─── Übersicht ────────────────────────────────────────────────────────────────
@@ -1469,8 +1414,6 @@ function renderOverviewGroup() {
   const weightByDate = {};
   _wellnessFull.forEach(d => { if (d.weight != null) weightByDate[d.id] = d.weight; });
   renderActivityTable(activities,'allActivities',null,weightByDate);
-  const tc = makeTypeChart(activities); tc.options.maintainAspectRatio = false;
-  renderChart('typeChart', tc);
 }
 
 // ─── Herz-Kreislauf ───────────────────────────────────────────────────────────
@@ -1482,7 +1425,6 @@ function renderCardio() {
 
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   const wellness = sliceDays(_wellnessFull, days, d => new Date(d.id));
-  const fitness = sliceDays(_fitnessFull, days, d => new Date(d.date));
 
   const sorted = sortedWellness(wellness);
   const half = Math.floor(sorted.length/2);
@@ -1522,18 +1464,9 @@ function renderCardio() {
   const aS = avg(sorted.map(d=>d.sleepSecs).filter(Boolean));
   document.getElementById('avgSleep').textContent = aS ? (aS/3600).toFixed(1) : '—';
 
-  const labels = sorted.map(d=>d.id.slice(5));
+  const labels = sorted.map(d=>fmtAxisDate(d.id));
   renderChart('rhfChart',{type:'line',data:{labels,datasets:[{label:'Ruhepuls (bpm)',data:sorted.map(d=>d.restingHR||null),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
   renderChart('hrvChart',{type:'line',data:{labels,datasets:[{label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
-  renderChart('fitnessChart2',makeFitnessChart(fitness));
-
-  const mix = {};
-  activities.forEach(a => { const t=normalizeType(a.type); mix[t]=(mix[t]||0)+(a.moving_time||0); });
-  const tot = Object.values(mix).reduce((s,v)=>s+v,0);
-  document.getElementById('activityMix').innerHTML = Object.entries(mix).map(([t,s])=>{
-    const p=tot?Math.round(s/tot*100):0;
-    return `<div class="mix-item"><div class="mix-label" style="color:${TYPE_COLORS[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${TYPE_COLORS[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
-  }).join('');
 }
 
 // ─── HF-Zonen ────────────────────────────────────────────────────────────────
@@ -1612,14 +1545,14 @@ function renderWellnessGroup() {
   const wellness = sliceDays(_wellnessFull, days, d => new Date(d.id));
 
   const sorted=sortedWellness(wellness);
-  const labels=sorted.map(d=>d.id.slice(5));
+  const labels=sorted.map(d=>fmtAxisDate(d.id));
   renderChart('wellnessChart',{type:'line',data:{labels,datasets:[
     {label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#10b981',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y'},
     {label:'Ruhepuls',data:sorted.map(d=>d.restingHR||null),borderColor:'#3b82f6',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y1'},
   ]},options:{layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}},y1:{position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#3b82f6'}}}}});
   renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(59,130,246,0.3)',borderColor:'#3b82f6',borderWidth:1,borderRadius:4}]},options:lineOptions()});
   const weightSorted=sorted.filter(d=>d.weight!=null);
-  renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>d.id.slice(5)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
+  renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
 }
 
 // ─── Trainer Team ─────────────────────────────────────────────────────────────
@@ -1874,8 +1807,14 @@ async function renderTeam() {
 }
 
 function navToTrainer(slug) {
-  const item = document.querySelector(`.nav-item[data-trainer="${slug}"]`);
-  if (item) item.click();
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelector('.nav-item[data-section="team"]')?.classList.add('active');
+  document.getElementById('section-trainer').classList.add('active');
+  document.getElementById('pageTitle').textContent = 'KI-Trainer';
+  sessionStorage.setItem('tb_active_section', 'trainer');
+  sessionStorage.setItem('tb_active_trainer', slug);
+  showTrainerDetail(slug);
 }
 
 function filterNotes(btn, filter) {
@@ -2297,32 +2236,12 @@ async function deleteCurrentNote() {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeFitnessChart(fitness) {
-  const labels=fitness.map(d=>d.date.slice(5));
+  const labels=fitness.map(d=>fmtAxisDate(d.date));
   return {type:'line',data:{labels,datasets:[
     {label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:0.4},
     {label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',borderWidth:2,pointRadius:0,tension:0.4},
     {label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',borderWidth:2,pointRadius:0,tension:0.4},
   ]},options:lineOptions()};
-}
-
-function makeTypeChart(activities) {
-  const counts={};
-  activities.forEach(a=>{const t=normalizeType(a.type);counts[t]=(counts[t]||0)+1;});
-  const total=Object.values(counts).reduce((s,v)=>s+v,0)||1;
-  return {type:'doughnut',data:{labels:Object.keys(counts),datasets:[{data:Object.values(counts),backgroundColor:Object.keys(counts).map(t=>TYPE_COLORS[t]||'#94a3b8'),borderWidth:0}]},options:{maintainAspectRatio:false,cutout:'60%',plugins:{
-    legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT,boxWidth:10,padding:10,
-      generateLabels(chart){
-        const data=chart.data;
-        return data.labels.map((label,i)=>({
-          text:`${label} ${Math.round(data.datasets[0].data[i]/total*100)}%`,
-          fillStyle:data.datasets[0].backgroundColor[i],
-          strokeStyle:data.datasets[0].backgroundColor[i],
-          index:i
-        }));
-      }
-    }},
-    tooltip:{callbacks:{label(ctx){return `${ctx.label}: ${ctx.parsed} (${Math.round(ctx.parsed/total*100)}%)`;}}}
-  }}};
 }
 
 function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
@@ -2355,6 +2274,7 @@ function lineOptions() {
   return {layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}}}};
 }
 
+function fmtAxisDate(id) { const [y,m,d] = id.split('-'); return `${d}.${m}.${y.slice(2)}`; }
 function sortedWellness(w) { return [...w].sort((a,b)=>a.id>b.id?1:-1); }
 function avg(arr) { return arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0; }
 function formatDur(secs) { const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
