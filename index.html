@@ -122,6 +122,8 @@
     .group-card-body { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); }
     .group-card-section { padding: 18px 20px; border-right: 1px solid var(--border); }
     .group-card-section:last-child { border-right: none; }
+    .group-card-body[style*="--cols:1"] .group-card-section { border-right: none; border-bottom: 1px solid var(--border); }
+    .group-card-body[style*="--cols:1"] .group-card-section:last-child { border-bottom: none; }
     @media (max-width: 1000px) {
       .group-card-body { grid-template-columns: 1fr !important; }
       .group-card-section { border-right: none !important; border-bottom: 1px solid var(--border); }
@@ -271,9 +273,9 @@
     .week-cal-summary-cell { background: var(--bg3); padding: 9px 12px; text-align: left; display: flex; align-items: flex-start; }
     .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
     .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
-    .week-cal-summary-unit { font-size: 9px; color: var(--text2); font-weight: 400; }
+    .week-cal-summary-unit { font-size: 14px; color: var(--text2); font-weight: 400; }
     .week-cal-title-total { font-size: 12px; font-weight: 500; color: var(--text2); font-family: var(--mono); margin-left: 4px; }
-    .week-cal-total-big { font-size: 15px; font-weight: 600; color: var(--text); font-family: var(--mono); }
+    .week-cal-total-big { font-size: 28px; font-weight: 600; color: var(--text); font-family: var(--mono); }
     .week-cal-hbars { display: flex; flex-direction: column; gap: 8px; margin-top: 0; width: 100%; }
     .week-cal-hbar-row { display: flex; align-items: flex-start; gap: 7px; }
     .week-cal-hbar-label { font-size: 9px; font-family: var(--mono); font-weight: 600; width: 54px; min-width: 54px; max-width: 54px; flex-shrink: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -485,12 +487,13 @@
         </div>
         <div class="card">
           <div class="card-header" style="align-items:flex-start">
-            <div>
-              <div style="display:flex;align-items:baseline;gap:10px">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div>
                 <span class="card-title">Trainingswoche</span>
-                <span class="week-cal-total-big" id="cockpitWeekTotal"></span>
+                <div class="card-meta" id="cockpitWeekLabel" style="margin-top:4px"></div>
               </div>
-              <div class="card-meta" id="cockpitWeekLabel" style="margin-top:4px"></div>
+              <div class="trend-kpi-sep"></div>
+              <span class="week-cal-total-big" id="cockpitWeekTotal"></span>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
@@ -511,7 +514,7 @@
               <option value="365">Alle</option>
             </select></div>
           </div>
-          <div class="group-card-body" style="--cols:3">
+          <div class="group-card-body" style="--cols:1">
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form</div><div class="chart-box"><canvas id="fitnessChart"></canvas></div></div>
             <div class="group-card-section">
               <div class="card-title" style="margin-bottom:12px">HRV-Trend</div>
@@ -619,11 +622,11 @@
               <option value="365">Alle</option>
             </select></div>
           </div>
-          <div class="group-card-body" style="--cols:2">
+          <div class="group-card-body" style="--cols:1">
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Ruheherzfrequenz — Verlauf</div><canvas id="rhfChart" height="65"></canvas></div>
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">HRV — Verlauf</div><canvas id="hrvChart" height="65"></canvas></div>
           </div>
-          <div class="group-card-body" style="--cols:2;border-top:1px solid var(--border)">
+          <div class="group-card-body" style="--cols:1;border-top:1px solid var(--border)">
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Trainingsbelastung</div><canvas id="fitnessChart2" height="65"></canvas></div>
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Aktivitätsmix</div><div id="activityMix" style="margin-top:8px"></div></div>
           </div>
@@ -653,7 +656,7 @@
               <option value="365">Alle</option>
             </select></div>
           </div>
-          <div class="group-card-body" style="--cols:2">
+          <div class="group-card-body" style="--cols:1">
             <div class="group-card-section">
               <div id="distBars" style="margin-bottom:16px"></div>
               <canvas id="zoneDonut" height="22"></canvas>
@@ -677,7 +680,7 @@
               <option value="365">Alle</option>
             </select></div>
           </div>
-          <div class="group-card-body" style="--cols:3">
+          <div class="group-card-body" style="--cols:1">
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">HRV & Ruhepuls</div><canvas id="wellnessChart" height="65"></canvas></div>
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Schlaf</div><canvas id="sleepChart" height="65"></canvas></div>
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Gewicht</div><canvas id="weightChart" height="65"></canvas></div>
@@ -731,16 +734,12 @@
         <input class="setup-input" id="settingsGoalLaufenPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
       <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Rennrad %</label>
-        <input class="setup-input" id="settingsGoalRennradPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+        <label class="setup-label" style="white-space:nowrap">Rad %</label>
+        <input class="setup-input" id="settingsGoalRadPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
       <div style="flex:1;display:flex;flex-direction:column;gap:6px">
         <label class="setup-label" style="white-space:nowrap">Kraft %</label>
         <input class="setup-input" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Mountainbike %</label>
-        <input class="setup-input" id="settingsGoalMountainbikePct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
     </div>
     <div class="setup-hint" id="settingsGoalPctHint">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
@@ -988,15 +987,14 @@ function showSettings() {
   const plan = getTrainingPlan();
   document.getElementById('settingsGoalWeekHours').value = plan.weekHours ?? '';
   document.getElementById('settingsGoalLaufenPct').value = plan.byTypePct?.Laufen ?? '';
-  document.getElementById('settingsGoalRennradPct').value = plan.byTypePct?.Rennrad ?? '';
+  document.getElementById('settingsGoalRadPct').value = plan.byTypePct?.Rad ?? '';
   document.getElementById('settingsGoalKraftPct').value = plan.byTypePct?.Kraft ?? '';
-  document.getElementById('settingsGoalMountainbikePct').value = plan.byTypePct?.Mountainbike ?? '';
   document.getElementById('settingsModal').style.display = 'flex';
   updateGoalPctHint();
 }
 function updateGoalPctHint() {
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; };
-  const sum = num('settingsGoalLaufenPct') + num('settingsGoalRennradPct') + num('settingsGoalKraftPct') + num('settingsGoalMountainbikePct');
+  const sum = num('settingsGoalLaufenPct') + num('settingsGoalRadPct') + num('settingsGoalKraftPct');
   const hint = document.getElementById('settingsGoalPctHint');
   hint.textContent = sum > 0
     ? `Summe: ${sum}% der Wochenstunden gesamt.${sum > 100 ? ' Achtung: über 100%.' : ''}`
@@ -1018,11 +1016,10 @@ function saveSettingsModal() {
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
   const weekHours = num('settingsGoalWeekHours');
   const byTypePct = {};
-  const lf = num('settingsGoalLaufenPct'), rr = num('settingsGoalRennradPct'), kr = num('settingsGoalKraftPct'), mb = num('settingsGoalMountainbikePct');
+  const lf = num('settingsGoalLaufenPct'), rd = num('settingsGoalRadPct'), kr = num('settingsGoalKraftPct');
   if (lf !== null) byTypePct.Laufen = lf;
-  if (rr !== null) byTypePct.Rennrad = rr;
+  if (rd !== null) byTypePct.Rad = rd;
   if (kr !== null) byTypePct.Kraft = kr;
-  if (mb !== null) byTypePct.Mountainbike = mb;
   const byType = {};
   if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
   const plan = { weekHours, byTypePct, byType, updatedAt: fmtDate(new Date()) };
@@ -1179,7 +1176,7 @@ function setStatus(ok) {
 
 // ─── Cockpit ─────────────────────────────────────────────────────────────────
 
-const TYPE_COLORS = {Laufen:'#3b82f6',Rennrad:'#10b981',Mountainbike:'#f97316',Kraft:'#8b5cf6',Sonstiges:'#94a3b8'};
+const TYPE_COLORS = {Laufen:'#3b82f6',Rad:'#10b981',Kraft:'#8b5cf6',Mobilität:'#f59e0b'};
 
 function buildWeekCalendar(weekStart, weekActs) {
   const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
@@ -1203,7 +1200,7 @@ function buildWeekCalendar(weekStart, weekActs) {
       return `${m}:${String(s).padStart(2,'0')}/km`;
     }
     const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
-    if ((type === 'Rennrad' || type === 'Mountainbike') && watts) {
+    if (type === 'Rad' && watts) {
       return `${Math.round(watts)} W`;
     }
     if (type === 'Kraft' && act.icu_training_load) {
@@ -1260,7 +1257,7 @@ function buildWeekCalendar(weekStart, weekActs) {
     ? `${totalH.toFixed(1)}<span class="week-cal-summary-unit">/${plan.weekHours} h</span>`
     : `${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span>`;
   const typeTotals = {};
-  Object.keys(TYPE_COLORS).filter(t => t !== 'Sonstiges').forEach(t => { typeTotals[t] = 0; });
+  Object.keys(TYPE_COLORS).forEach(t => { typeTotals[t] = 0; });
   weekActs.forEach(a => { const t = normalizeType(a.type); typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
   const maxTypeT = Math.max(1, ...Object.values(typeTotals));
   const typeHBars = Object.entries(typeTotals).map(([t,s]) => {
@@ -2356,12 +2353,11 @@ function sortedWellness(w) { return [...w].sort((a,b)=>a.id>b.id?1:-1); }
 function avg(arr) { return arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0; }
 function formatDur(secs) { const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
 function normalizeType(type) {
-  if(!type) return 'Sonstiges';
+  if(!type) return 'Mobilität';
   if(type.match(/Run|Lauf/i)) return 'Laufen';
-  if(type.match(/Mountain/i)) return 'Mountainbike';
-  if(type.match(/Ride|Cycling|Bike/i)) return 'Rennrad';
+  if(type.match(/Mountain|Ride|Cycling|Bike/i)) return 'Rad';
   if(type.match(/Weight|Workout|Strength|Kraft/i)) return 'Kraft';
-  return 'Sonstiges';
+  return 'Mobilität';
 }
 function daysAgo(n) { const d=new Date(); d.setDate(d.getDate()-n); return d; }
 function fmtDate(d) {
