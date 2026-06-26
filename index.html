@@ -126,10 +126,6 @@
     .trend-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 6px; }
     .trend-verdict { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
     .trend-desc { font-size: 12px; color: var(--text2); }
-    .trend-indicators { display: flex; gap: 24px; }
-    .trend-ind { text-align: center; }
-    .trend-ind-val { font-size: 22px; font-weight: 600; font-family: var(--mono); }
-    .trend-ind-label { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
     .trend-kpi-row { display: flex; flex-wrap: wrap; gap: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
     .trend-kpi-item { text-align: center; }
     .trend-kpi-sep { width: 1px; background: var(--border); align-self: stretch; }
@@ -421,7 +417,6 @@
     <nav class="topnav-items">
       <a class="nav-item active" data-section="cockpit">Cockpit</a>
       <a class="nav-item" data-section="team">KI-Trainer</a>
-      <a class="nav-item" data-section="cardio">Herz-Kreislauf</a>
       <a class="nav-item" data-section="zones">HF-Zonen</a>
       <a class="nav-item" data-section="wellness">Wellness</a>
       <a class="nav-item" data-section="activities">Aktivitäten</a>
@@ -453,6 +448,7 @@
             <div class="trend-label" id="cockpitDate"></div>
             <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
             <div class="trend-desc" id="cockpitDesc"></div>
+            <div class="trend-desc" id="cockpitCardioDesc" style="margin-top:4px"></div>
           </div>
           <div class="trend-kpi-row">
             <div class="trend-kpi-item"><div class="trend-kpi-label">HRV</div><div class="trend-kpi-val" id="cockpitHRV">— <span class="trend-kpi-trend" id="cockpitHRVTrend"></span></div></div>
@@ -463,6 +459,8 @@
             <div class="trend-kpi-item"><div class="trend-kpi-label">Form TSB</div><div class="trend-kpi-val" id="cockpitFormTSB">— <span class="trend-kpi-trend" id="cockpitFormTSBTrend"></span></div></div>
             <div class="trend-kpi-sep"></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Gewicht</div><div class="trend-kpi-val" id="cockpitWeight">— <span class="trend-kpi-trend" id="cockpitWeightTrend"></span></div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Trainingspuls Ø</div><div class="trend-kpi-val" id="avgHR">—</div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Schlaf Ø</div><div class="trend-kpi-val" id="avgSleep">—</div></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Befinden</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
           </div>
         </div>
@@ -496,17 +494,16 @@
             </select></div>
           </div>
           <div class="group-card-body" style="--cols:1">
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form</div><div class="chart-box"><canvas id="fitnessChart"></canvas></div></div>
             <div class="group-card-section">
-              <div class="card-title" style="margin-bottom:12px">HRV-Trend</div>
-              <div id="cockpitHRVDots" style="padding:8px 0;font-size:20px;letter-spacing:4px"></div>
-              <div class="chart-box chart-box-sm"><canvas id="cockpitHRVChart"></canvas></div>
+              <div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form · HRV</div>
+              <div id="cockpitHRVDots" style="padding:0 0 8px;font-size:20px;letter-spacing:4px"></div>
+              <div class="chart-box" style="height:280px"><canvas id="fitnessChart"></canvas></div>
             </div>
             <div class="group-card-section">
               <div class="card-title" style="margin-bottom:12px">80/20 Check</div>
               <div id="cockpitZoneCheck" style="padding:8px 0"></div>
             </div>
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Aktivitäten</div><div id="cockpitActivityMix" style="margin-top:8px"></div></div>
+            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Ruheherzfrequenz — Verlauf</div><canvas id="rhfChart" height="65"></canvas></div>
           </div>
         </div>
       </div>
@@ -520,7 +517,7 @@
           <option value="30">30 Tage</option>
           <option value="90">90 Tage</option>
           <option value="365">Alle</option>
-        </select></div></div><div id="allActivities"></div></div>
+        </select></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
       </div>
     </section>
 
@@ -560,60 +557,14 @@
       </div>
     </section>
 
-    <!-- Herz-Kreislauf -->
-    <section id="section-cardio" class="section">
-      <div class="content">
-        <div class="trend-hero">
-          <div class="trend-left">
-            <div class="trend-label">Kardiovaskuläre Entwicklung</div>
-            <div class="trend-verdict" id="trendVerdict">Wird berechnet...</div>
-            <div class="trend-desc" id="trendDesc"></div>
-          </div>
-          <div class="trend-indicators">
-            <div class="trend-ind"><div class="trend-ind-val" id="rhfTrend">—</div><div class="trend-ind-label">RHF Trend<br>bpm</div></div>
-            <div class="trend-ind"><div class="trend-ind-val" id="hrvTrend">—</div><div class="trend-ind-label">HRV Trend<br>ms</div></div>
-          </div>
-        </div>
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Ruhepuls heute</span><span class="kpi-badge" id="rhfBadge">—</span></div><div class="kpi-value" id="rhfToday">—</div><div class="kpi-sub">bpm</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">HRV heute</span><span class="kpi-badge" id="hrvBadge">—</span></div><div class="kpi-value" id="hrvToday">—</div><div class="kpi-sub">ms</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Ø Trainingspuls</span><span class="kpi-badge">Periode</span></div><div class="kpi-value" id="avgHR">—</div><div class="kpi-sub">bpm</div></div>
-          <div class="kpi-card"><div class="kpi-header"><span class="kpi-label">Schlaf Ø</span><span class="kpi-badge">Periode</span></div><div class="kpi-value" id="avgSleep">—</div><div class="kpi-sub">Stunden</div></div>
-        </div>
-        <div class="group-card">
-          <div class="group-card-header">
-            <span class="group-card-title">Herz-Kreislauf & Belastung</span>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta cardio-range-meta"></span><select class="btn range-select" data-key="cardio" data-default="30" style="font-size:11px;padding:4px 8px">
-              <option value="7">7 Tage</option>
-              <option value="30">30 Tage</option>
-              <option value="90">90 Tage</option>
-              <option value="365">Alle</option>
-            </select></div>
-          </div>
-          <div class="group-card-body" style="--cols:1">
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Ruheherzfrequenz — Verlauf</div><canvas id="rhfChart" height="65"></canvas></div>
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">HRV — Verlauf</div><canvas id="hrvChart" height="65"></canvas></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- HF-Zonen -->
     <section id="section-zones" class="section">
       <div class="content">
         <div class="recommendation" id="zoneRecommendation" style="display:none"></div>
-        <div class="card">
-          <div class="card-header"><span class="card-title">Meine Schwellenwerte</span><span class="card-meta">Uphill Athlete · 4 Zonen</span></div>
-          <div class="zone-inputs">
-            <div class="input-group"><span class="input-label">Aerobe Schwelle (AeT)</span><input class="input-field" type="number" value="148" id="aet" oninput="updateZones(); renderZonesGroup();"><span class="input-hint">bpm · Nasenatemtest</span></div>
-            <div class="input-group"><span class="input-label">Anaerobe Schwelle (AnT)</span><input class="input-field" type="number" value="168" id="ant" oninput="updateZones(); renderZonesGroup();"><span class="input-hint">bpm · Laktatschwelle</span></div>
-          </div>
-          <table class="zones-table"><thead><tr><th>Zone</th><th>Bereich</th><th>Charakter</th></tr></thead><tbody id="zonesBody"></tbody></table>
-        </div>
-        <div class="group-card" style="margin-top:14px">
+        <div class="group-card">
           <div class="group-card-header">
-            <span class="group-card-title">Zonenverteilung</span>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta zones-range-meta"></span><select class="btn range-select" data-key="zones" data-default="30" style="font-size:11px;padding:4px 8px">
+            <span class="group-card-title">Meine Schwellenwerte</span>
+            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta">Uphill Athlete · 4 Zonen</span><span class="card-meta zones-range-meta"></span><select class="btn range-select" data-key="zones" data-default="30" style="font-size:11px;padding:4px 8px">
               <option value="7">7 Tage</option>
               <option value="30">30 Tage</option>
               <option value="90">90 Tage</option>
@@ -621,6 +572,13 @@
             </select></div>
           </div>
           <div class="group-card-body" style="--cols:1">
+            <div class="group-card-section">
+              <div class="zone-inputs">
+                <div class="input-group"><span class="input-label">Aerobe Schwelle (AeT)</span><input class="input-field" type="number" value="148" id="aet" oninput="updateZones(); renderZonesGroup();"><span class="input-hint">bpm · Nasenatemtest</span></div>
+                <div class="input-group"><span class="input-label">Anaerobe Schwelle (AnT)</span><input class="input-field" type="number" value="168" id="ant" oninput="updateZones(); renderZonesGroup();"><span class="input-hint">bpm · Laktatschwelle</span></div>
+              </div>
+              <table class="zones-table"><thead><tr><th>Zone</th><th>Bereich</th><th>Charakter</th></tr></thead><tbody id="zonesBody"></tbody></table>
+            </div>
             <div class="group-card-section">
               <div id="distBars" style="margin-bottom:16px"></div>
               <canvas id="zoneDonut" height="22"></canvas>
@@ -817,7 +775,6 @@ function renderFromCache() {
   if (!_wellnessFull.length && !_activitiesFull.length) return;
   renderCockpitLoad();
   renderOverviewGroup();
-  renderCardio();
   renderZonesGroup();
   renderWellnessGroup();
 }
@@ -1260,16 +1217,20 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
   _cockpitActivitiesFull = activitiesFull;
 
   const allW = sortedWellness(wellness).filter(d => d.hrv || d.restingHR);
+  const hrvSeries = allW.filter(d => d.hrv);
+  const rhfSeries = allW.filter(d => d.restingHR);
   const latest = allW[allW.length-1] || {};
+  const latestHRV = hrvSeries[hrvSeries.length-1] || {};
+  const latestRHF = rhfSeries[rhfSeries.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
 
   document.getElementById('cockpitDate').textContent =
     `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
   // HRV Ampel
-  const hrv7 = allW.slice(-7).map(d => d.hrv).filter(Boolean);
+  const hrv7 = hrvSeries.slice(-7).map(d => d.hrv).filter(Boolean);
   const hrv7avg = avg(hrv7);
-  const todayHRV = latest.hrv || 0;
+  const todayHRV = latestHRV.hrv || 0;
   const pct = hrv7avg ? ((todayHRV - hrv7avg) / hrv7avg) * 100 : 0;
 
   let verdict, desc, cls;
@@ -1299,12 +1260,27 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
     return diff > 0 ? '<span class="trend-kpi-trend up">↑</span>' : '<span class="trend-kpi-trend down">↓</span>';
   }
   const prevF = fitness[fitness.length-8] || null;
-  const prevW = allW[allW.length-8] || null;
+  const prevHRV = hrvSeries[hrvSeries.length-8] || null;
+  const prevRHF = rhfSeries[rhfSeries.length-8] || null;
 
   document.getElementById('cockpitHRV').innerHTML =
-    (todayHRV ? Math.round(todayHRV) : '—') + ' ' + trendArrow(todayHRV || null, prevW?.hrv);
+    (todayHRV ? Math.round(todayHRV) : '—') + ' ' + trendArrow(todayHRV || null, prevHRV?.hrv);
   document.getElementById('cockpitRHF').innerHTML =
-    (latest.restingHR || '—') + ' ' + trendArrow(latest.restingHR, prevW?.restingHR);
+    (latestRHF.restingHR || '—') + ' ' + trendArrow(latestRHF.restingHR, prevRHF?.restingHR);
+
+  const rhfDiff2 = (latestRHF.restingHR != null && prevRHF?.restingHR != null) ? Math.round(latestRHF.restingHR - prevRHF.restingHR) : null;
+  const hrvDiff2 = (todayHRV && prevHRV?.hrv != null) ? Math.round(todayHRV - prevHRV.hrv) : null;
+  let cardioDesc;
+  if (rhfDiff2 == null || hrvDiff2 == null) {
+    cardioDesc = 'Noch nicht genug Daten für eine Herz-Kreislauf-Einschätzung.';
+  } else if (rhfDiff2 <= 0 && hrvDiff2 >= 0) {
+    cardioDesc = `Ruhepuls ${rhfDiff2 < 0 ? 'sinkt' : 'stabil'}, HRV ${hrvDiff2 > 0 ? 'steigt' : 'stabil'} — das Herz-Kreislauf-System erholt sich gut.`;
+  } else if (rhfDiff2 > 0 && hrvDiff2 < 0) {
+    cardioDesc = 'Ruhepuls steigt, HRV sinkt — mehr Erholung einplanen.';
+  } else {
+    cardioDesc = 'Ruhepuls und HRV zeigen ein gemischtes Bild — weiter beobachten.';
+  }
+  document.getElementById('cockpitCardioDesc').textContent = cardioDesc;
   document.getElementById('cockpitCTL').innerHTML =
     (latestF.ctl ? Math.round(latestF.ctl) : '—') + ' ' + trendArrow(latestF.ctl, prevF?.ctl);
   document.getElementById('cockpitATL').innerHTML =
@@ -1324,9 +1300,9 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
   renderCockpitWeek();
 
   // HRV-Tagesstatus-Ampel: immer die letzten 7 echten Tage, unabhängig von der Kachel-Auswahl
-  const hrv7data = allW.slice(-7);
+  const hrv7data = hrvSeries.slice(-7);
   const hrv7rolling = hrv7data.map((d,i) => {
-    const win = allW.slice(Math.max(0, allW.length-7+i-6), allW.length-7+i+1);
+    const win = hrvSeries.slice(Math.max(0, hrvSeries.length-7+i-6), hrvSeries.length-7+i+1);
     return avg(win.map(w=>w.hrv).filter(Boolean));
   });
   document.getElementById('cockpitHRVDots').innerHTML = hrv7data.map((d,i) => {
@@ -1346,25 +1322,19 @@ function renderCockpitLoad() {
   document.getElementById('cockpitLoadRangeMeta').textContent = rangeText;
 
   const fitnessSlice = sliceDays(_fitnessFull, days, d => new Date(d.date));
-  const fc = makeFitnessChart(fitnessSlice); fc.options.maintainAspectRatio = false;
+  const wellnessSorted = sortedWellness(_wellnessFull);
+  const hrvByDate = {};
+  wellnessSorted.forEach(d => { if (d.hrv) hrvByDate[d.id] = Math.round(d.hrv); });
+  const fc = makeFitnessChart(fitnessSlice, hrvByDate); fc.options.maintainAspectRatio = false;
   renderChart('fitnessChart', fc);
 
-  const wellnessSorted = sortedWellness(_wellnessFull);
-  const wSlice = sliceDays(wellnessSorted, days, d => new Date(d.id));
-  const rolling = wSlice.map((d,i) => {
-    const win = wSlice.slice(Math.max(0,i-6), i+1);
-    return avg(win.map(w=>w.hrv).filter(Boolean));
-  });
-  const hrvChartOptions = lineOptions(); hrvChartOptions.maintainAspectRatio = false;
-  renderChart('cockpitHRVChart', {
-    type:'line',
-    data:{ labels: wSlice.map(d=>new Date(d.id).toLocaleDateString('de-DE',{weekday:'short',day:'2-digit'})),
-      datasets:[
-        {label:'HRV',data:wSlice.map(d=>d.hrv||null),borderColor:'#10b981',borderWidth:2,pointRadius:days>30?0:3,tension:0.3},
-        {label:'Ø',data:rolling.map(v=>v?Math.round(v):null),borderColor:'#3b82f6',borderWidth:1.5,borderDash:[4,3],pointRadius:0,tension:0.3}
-      ]},options:hrvChartOptions});
-
   const actSlice = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
+  document.getElementById('avgHR').textContent = avg(actSlice.map(a=>a.average_heartrate).filter(Boolean)) ? Math.round(avg(actSlice.map(a=>a.average_heartrate).filter(Boolean))) : '—';
+  const wSlice = sliceDays(wellnessSorted, days, d => new Date(d.id));
+  const aS = avg(wSlice.map(d=>d.sleepSecs).filter(Boolean));
+  document.getElementById('avgSleep').textContent = aS ? (aS/3600).toFixed(1) : '—';
+  renderChart('rhfChart',{type:'line',data:{labels:wSlice.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Ruhepuls (bpm)',data:wSlice.map(d=>d.restingHR||null),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,spanGaps:true}]},options:lineOptions()});
+
   const zones = window._zones;
   const zoneEl = document.getElementById('cockpitZoneCheck');
   if (zones && actSlice.length > 0) {
@@ -1393,14 +1363,6 @@ function renderCockpitLoad() {
   } else {
     zoneEl.innerHTML = '<div class="loading">Keine Daten</div>';
   }
-
-  const mix = {};
-  actSlice.forEach(a => { const t = normalizeType(a.type); mix[t] = (mix[t]||0) + (a.moving_time||0); });
-  const tot = Object.values(mix).reduce((s,v) => s+v, 0);
-  document.getElementById('cockpitActivityMix').innerHTML = Object.entries(mix).map(([t,s]) => {
-    const p = tot ? Math.round(s/tot*100) : 0;
-    return `<div class="mix-item"><div class="mix-label" style="color:${TYPE_COLORS[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${TYPE_COLORS[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
-  }).join('');
 }
 
 // ─── Übersicht ────────────────────────────────────────────────────────────────
@@ -1414,59 +1376,15 @@ function renderOverviewGroup() {
   const weightByDate = {};
   _wellnessFull.forEach(d => { if (d.weight != null) weightByDate[d.id] = d.weight; });
   renderActivityTable(activities,'allActivities',null,weightByDate);
-}
 
-// ─── Herz-Kreislauf ───────────────────────────────────────────────────────────
-
-function renderCardio() {
-  const days = getRangeDays('cardio', 30);
-  const rangeText = days === 365 ? 'Alle' : `Letzte ${days} Tage`;
-  document.querySelectorAll('.cardio-range-meta').forEach(el => el.textContent = rangeText);
-
-  const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
-  const wellness = sliceDays(_wellnessFull, days, d => new Date(d.id));
-
-  const sorted = sortedWellness(wellness);
-  const half = Math.floor(sorted.length/2);
-  const rhfFirst = avg(sorted.slice(0,half).map(d=>d.restingHR).filter(Boolean));
-  const rhfLast  = avg(sorted.slice(half).map(d=>d.restingHR).filter(Boolean));
-  const hrvFirst = avg(sorted.slice(0,half).map(d=>d.hrv).filter(Boolean));
-  const hrvLast  = avg(sorted.slice(half).map(d=>d.hrv).filter(Boolean));
-  const rhfDiff = Math.round(rhfLast - rhfFirst);
-  const hrvDiff = Math.round(hrvLast - hrvFirst);
-
-  const rhfEl = document.getElementById('rhfTrend');
-  const hrvEl = document.getElementById('hrvTrend');
-  rhfEl.textContent = (rhfDiff<=0?'':'+')+rhfDiff;
-  rhfEl.className = 'trend-ind-val '+(rhfDiff<0?'up':rhfDiff>0?'down':'neutral');
-  hrvEl.textContent = (hrvDiff>=0?'+':'')+hrvDiff;
-  hrvEl.className = 'trend-ind-val '+(hrvDiff>0?'up':hrvDiff<0?'down':'neutral');
-
-  const pos = rhfDiff<=0 && hrvDiff>=0;
-  const mixed = (rhfDiff<=0) !== (hrvDiff>=0);
-  const v = document.getElementById('trendVerdict');
-  const d = document.getElementById('trendDesc');
-  if (pos) { v.textContent='↑ Positive Entwicklung'; v.className='trend-verdict up'; d.textContent='Ruhepuls sinkt, HRV steigt — das Herz-Kreislauf-System verbessert sich.'; }
-  else if (mixed) { v.textContent='→ Gemischtes Bild'; v.className='trend-verdict neutral'; d.textContent='Ein Wert verbessert sich, der andere nicht. Mehr Daten nötig.'; }
-  else { v.textContent='↓ Noch keine Verbesserung'; v.className='trend-verdict down'; d.textContent='Ruhepuls steigt oder HRV sinkt. Mehr Erholung empfohlen.'; }
-
-  const latest = sorted[sorted.length-1] || {};
-  document.getElementById('rhfToday').textContent = latest.restingHR || '—';
-  document.getElementById('hrvToday').textContent  = latest.hrv ? Math.round(latest.hrv) : '—';
-  const rhfB = document.getElementById('rhfBadge');
-  const hrvB = document.getElementById('hrvBadge');
-  rhfB.textContent = rhfDiff<0?'↓ gut':rhfDiff>0?'↑ erhöht':'→ stabil';
-  rhfB.className = 'kpi-badge '+(rhfDiff<0?'kpi-badge-green':rhfDiff>0?'kpi-badge-red':'');
-  hrvB.textContent = hrvDiff>0?'↑ gut':hrvDiff<0?'↓ gesunken':'→ stabil';
-  hrvB.className = 'kpi-badge '+(hrvDiff>0?'kpi-badge-green':hrvDiff<0?'kpi-badge-red':'');
-
-  document.getElementById('avgHR').textContent = avg(activities.map(a=>a.average_heartrate).filter(Boolean)) ? Math.round(avg(activities.map(a=>a.average_heartrate).filter(Boolean))) : '—';
-  const aS = avg(sorted.map(d=>d.sleepSecs).filter(Boolean));
-  document.getElementById('avgSleep').textContent = aS ? (aS/3600).toFixed(1) : '—';
-
-  const labels = sorted.map(d=>fmtAxisDate(d.id));
-  renderChart('rhfChart',{type:'line',data:{labels,datasets:[{label:'Ruhepuls (bpm)',data:sorted.map(d=>d.restingHR||null),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
-  renderChart('hrvChart',{type:'line',data:{labels,datasets:[{label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
+  const mix = {};
+  Object.keys(TYPE_COLORS).forEach(t => { mix[t] = 0; });
+  activities.forEach(a => { const t = normalizeType(a.type); mix[t] = (mix[t]||0) + (a.moving_time||0); });
+  const tot = Object.values(mix).reduce((s,v) => s+v, 0);
+  document.getElementById('activitiesMix').innerHTML = Object.entries(mix).map(([t,s]) => {
+    const p = tot ? Math.round(s/tot*100) : 0;
+    return `<div class="mix-item"><div class="mix-label" style="color:${TYPE_COLORS[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${TYPE_COLORS[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
+  }).join('');
 }
 
 // ─── HF-Zonen ────────────────────────────────────────────────────────────────
@@ -2235,13 +2153,19 @@ async function deleteCurrentNote() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeFitnessChart(fitness) {
+function makeFitnessChart(fitness, hrvByDate) {
   const labels=fitness.map(d=>fmtAxisDate(d.date));
-  return {type:'line',data:{labels,datasets:[
+  const datasets=[
     {label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:0.4},
-    {label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',borderWidth:2,pointRadius:0,tension:0.4},
-    {label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',borderWidth:2,pointRadius:0,tension:0.4},
-  ]},options:lineOptions()};
+    {label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',borderWidth:2,borderDash:[6,3],pointRadius:0,tension:0.4},
+    {label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',borderWidth:2,borderDash:[2,2],pointRadius:0,tension:0.4},
+  ];
+  const options = lineOptions();
+  if (hrvByDate) {
+    datasets.push({label:'HRV',data:fitness.map(d=>hrvByDate[d.date]||null),borderColor:'#10b981',borderWidth:2,borderDash:[1,3],pointRadius:0,tension:0.4,spanGaps:true,yAxisID:'y1'});
+    options.scales.y1 = {position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}};
+  }
+  return {type:'line',data:{labels,datasets},options};
 }
 
 function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
