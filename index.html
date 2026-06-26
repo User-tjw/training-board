@@ -741,6 +741,10 @@
         <label class="setup-label" style="white-space:nowrap">Kraft %</label>
         <input class="setup-input" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
       </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+        <label class="setup-label" style="white-space:nowrap">Mobilität %</label>
+        <input class="setup-input" id="settingsGoalMobilitaetPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+      </div>
     </div>
     <div class="setup-hint" id="settingsGoalPctHint">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
@@ -989,12 +993,13 @@ function showSettings() {
   document.getElementById('settingsGoalLaufenPct').value = plan.byTypePct?.Laufen ?? '';
   document.getElementById('settingsGoalRadPct').value = plan.byTypePct?.Rad ?? '';
   document.getElementById('settingsGoalKraftPct').value = plan.byTypePct?.Kraft ?? '';
+  document.getElementById('settingsGoalMobilitaetPct').value = plan.byTypePct?.['Mobilität'] ?? '';
   document.getElementById('settingsModal').style.display = 'flex';
   updateGoalPctHint();
 }
 function updateGoalPctHint() {
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; };
-  const sum = num('settingsGoalLaufenPct') + num('settingsGoalRadPct') + num('settingsGoalKraftPct');
+  const sum = num('settingsGoalLaufenPct') + num('settingsGoalRadPct') + num('settingsGoalKraftPct') + num('settingsGoalMobilitaetPct');
   const hint = document.getElementById('settingsGoalPctHint');
   hint.textContent = sum > 0
     ? `Summe: ${sum}% der Wochenstunden gesamt.${sum > 100 ? ' Achtung: über 100%.' : ''}`
@@ -1016,10 +1021,11 @@ function saveSettingsModal() {
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
   const weekHours = num('settingsGoalWeekHours');
   const byTypePct = {};
-  const lf = num('settingsGoalLaufenPct'), rd = num('settingsGoalRadPct'), kr = num('settingsGoalKraftPct');
+  const lf = num('settingsGoalLaufenPct'), rd = num('settingsGoalRadPct'), kr = num('settingsGoalKraftPct'), mo = num('settingsGoalMobilitaetPct');
   if (lf !== null) byTypePct.Laufen = lf;
   if (rd !== null) byTypePct.Rad = rd;
   if (kr !== null) byTypePct.Kraft = kr;
+  if (mo !== null) byTypePct['Mobilität'] = mo;
   const byType = {};
   if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
   const plan = { weekHours, byTypePct, byType, updatedAt: fmtDate(new Date()) };
