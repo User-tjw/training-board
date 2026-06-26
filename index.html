@@ -495,7 +495,7 @@
           </div>
           <div class="group-card-body" style="--cols:1">
             <div class="group-card-section">
-              <div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form · HRV</div>
+              <div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form · HRV · Ruhepuls</div>
               <div id="cockpitHRVDots" style="padding:0 0 8px;font-size:20px;letter-spacing:4px"></div>
               <div class="chart-box" style="height:280px"><canvas id="fitnessChart"></canvas></div>
             </div>
@@ -503,7 +503,6 @@
               <div class="card-title" style="margin-bottom:12px">80/20 Check</div>
               <div id="cockpitZoneCheck" style="padding:8px 0"></div>
             </div>
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Ruheherzfrequenz — Verlauf</div><canvas id="rhfChart" height="65"></canvas></div>
           </div>
         </div>
       </div>
@@ -1323,17 +1322,26 @@ function renderCockpitLoad() {
 
   const fitnessSlice = sliceDays(_fitnessFull, days, d => new Date(d.date));
   const wellnessSorted = sortedWellness(_wellnessFull);
+  const actSlice = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   const hrvByDate = {};
-  wellnessSorted.forEach(d => { if (d.hrv) hrvByDate[d.id] = Math.round(d.hrv); });
-  const fc = makeFitnessChart(fitnessSlice, hrvByDate); fc.options.maintainAspectRatio = false;
+  const rhfByDate = {};
+  wellnessSorted.forEach(d => {
+    if (d.hrv) hrvByDate[d.id] = Math.round(d.hrv);
+    if (d.restingHR) rhfByDate[d.id] = Math.round(d.restingHR);
+  });
+  const loadByDate = {};
+  actSlice.forEach(a => {
+    if (!a.icu_training_load) return;
+    const day = fmtDate(new Date(a.start_date_local));
+    loadByDate[day] = (loadByDate[day]||0) + a.icu_training_load;
+  });
+  const fc = makeFitnessChart(fitnessSlice, hrvByDate, rhfByDate, loadByDate); fc.options.maintainAspectRatio = false;
   renderChart('fitnessChart', fc);
 
-  const actSlice = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   document.getElementById('avgHR').textContent = avg(actSlice.map(a=>a.average_heartrate).filter(Boolean)) ? Math.round(avg(actSlice.map(a=>a.average_heartrate).filter(Boolean))) : '—';
   const wSlice = sliceDays(wellnessSorted, days, d => new Date(d.id));
   const aS = avg(wSlice.map(d=>d.sleepSecs).filter(Boolean));
   document.getElementById('avgSleep').textContent = aS ? (aS/3600).toFixed(1) : '—';
-  renderChart('rhfChart',{type:'line',data:{labels:wSlice.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Ruhepuls (bpm)',data:wSlice.map(d=>d.restingHR||null),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,spanGaps:true}]},options:lineOptions()});
 
   const zones = window._zones;
   const zoneEl = document.getElementById('cockpitZoneCheck');
@@ -2153,19 +2161,54 @@ async function deleteCurrentNote() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeFitnessChart(fitness, hrvByDate) {
+function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate) {
   const labels=fitness.map(d=>fmtAxisDate(d.date));
-  const datasets=[
-    {label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#3b82f6',borderWidth:2,pointRadius:0,tension:0.4},
-    {label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',borderWidth:2,borderDash:[6,3],pointRadius:0,tension:0.4},
-    {label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',borderWidth:2,borderDash:[2,2],pointRadius:0,tension:0.4},
-  ];
-  const options = lineOptions();
-  if (hrvByDate) {
-    datasets.push({label:'HRV',data:fitness.map(d=>hrvByDate[d.date]||null),borderColor:'#10b981',borderWidth:2,borderDash:[1,3],pointRadius:0,tension:0.4,spanGaps:true,yAxisID:'y1'});
-    options.scales.y1 = {position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}};
+  const datasets=[];
+  if (loadByDate) {
+    datasets.push({type:'bar',label:'Belastung (Ist)',data:fitness.map(d=>loadByDate[d.date]||0),backgroundColor:'rgba(59,130,246,0.25)',borderWidth:0,order:3});
   }
-  return {type:'line',data:{labels,datasets},options};
+  datasets.push(
+    {type:'line',label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#3b82f6',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:0.4,order:1},
+    {type:'line',label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',backgroundColor:'transparent',borderWidth:2,borderDash:[6,3],pointRadius:0,tension:0.4,order:1},
+    {type:'line',label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',backgroundColor:'transparent',borderWidth:2,borderDash:[2,2],pointRadius:0,tension:0.4,order:1},
+  );
+  const options = lineOptions();
+  options.scales.y.position = 'left';
+  options.scales.y.suggestedMin = -20;
+  options.scales.y.suggestedMax = 60;
+  options.scales.x.stacked = false;
+  options.scales.y.grid.color = ctx => ctx.tick?.value === 0 ? 'rgba(100,100,100,0.6)' : CHART_GRID;
+  options.scales.y.grid.lineWidth = ctx => ctx.tick?.value === 0 ? 2 : 1;
+  if (hrvByDate) {
+    datasets.push({type:'line',label:'HRV',data:fitness.map(d=>hrvByDate[d.date]||null),borderColor:'#10b981',backgroundColor:'transparent',borderWidth:2,borderDash:[1,3],pointRadius:0,tension:0.4,spanGaps:true,order:1});
+  }
+  if (rhfByDate) {
+    datasets.push({type:'line',label:'Ruhepuls',data:fitness.map(d=>rhfByDate[d.date]||null),borderColor:'#06b6d4',backgroundColor:'transparent',borderWidth:2,borderDash:[8,2,2,2],pointRadius:0,tension:0.4,spanGaps:true,order:1});
+  }
+  const todayLabel = fmtAxisDate(fmtDate(new Date()));
+  const todayIndex = labels.indexOf(todayLabel);
+  const plugins = [];
+  if (todayIndex >= 0) {
+    plugins.push({
+      id: 'todayMarker',
+      afterDraw(chart) {
+        const xScale = chart.scales.x;
+        const {top, bottom} = chart.chartArea;
+        const x = xScale.getPixelForValue(todayIndex);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(100,100,100,0.6)';
+        ctx.setLineDash([4,4]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+  }
+  return {type:'line',data:{labels,datasets},options,plugins};
 }
 
 function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
