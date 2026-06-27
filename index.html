@@ -181,7 +181,7 @@
         <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
         <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
         <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
-        <select class="btn range-select" data-keys="zones,wellness,overview" data-default="30" style="font-size:11px;padding:4px 8px">
+        <select class="btn range-select" data-keys="zones,wellness,overview" data-default="30">
           <option value="7">7 Tage</option>
           <option value="30">30 Tage</option>
           <option value="90">90 Tage</option>
@@ -197,7 +197,6 @@
         <div class="trend-hero" style="flex-direction:column;align-items:stretch;gap:18px">
           <div class="trend-left">
             <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
-            <div class="trend-label" id="cockpitDate"></div>
             <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
             <div class="trend-desc" id="cockpitDesc"></div>
             <div class="trend-desc" id="cockpitCardioDesc" style="margin-top:4px"></div>

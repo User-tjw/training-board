@@ -485,9 +485,6 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
   const latestRHF = rhfSeries[rhfSeries.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
 
-  document.getElementById('cockpitDate').textContent =
-    `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-
   // HRV Ampel
   const hrv7 = hrvSeries.slice(-7).map(d => d.hrv).filter(Boolean);
   const hrv7avg = avg(hrv7);
@@ -753,11 +750,17 @@ const TRAINERS = [
   {slug:'methodik',   icon:'▲', name:'UA-Methodik',   role:'Uphill Athlete Prinzipien',       color:'#b45309', desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
 ];
 
-const TRAINER_STAR_PATH = '<path d="M12 2.5l2.97 6.32 6.78.78-5.06 4.78 1.4 6.84L12 17.6l-6.09 3.62 1.4-6.84-5.06-4.78 6.78-.78L12 2.5z" fill="currentColor" stroke="none"/>';
+const TRAINER_SVG_PATHS = {
+  'head-coach': '<path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.2 5.8-5.2-3.1-5.2 3.1 1.2-5.8-4.3-4 5.8-.7L12 3.5z"/>',
+  'reha':       '<path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="9.5" y1="11.5" x2="14.5" y2="11.5"/>',
+  'kraft':      '<rect x="1.5" y="9" width="3" height="6" rx="1"/><rect x="19.5" y="9" width="3" height="6" rx="1"/><line x1="6.5" y1="12" x2="17.5" y2="12"/><rect x="6" y="6.5" width="2.5" height="11" rx="1"/><rect x="15.5" y="6.5" width="2.5" height="11" rx="1"/>',
+  'ernaehrung': '<path d="M19 4C12 4 5 8 5 15c0 2.5 2 4.5 4.5 4.5C16 19.5 19 11 19 4z"/><line x1="9" y1="19" x2="18" y2="6"/>',
+  'methodik':   '<path d="M3 18l6-10 4 6 2-3 6 7H3z"/>',
+};
 
 function trainerIconSvg(slug, size) {
   size = size || 28;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${TRAINER_STAR_PATH}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TRAINER_SVG_PATHS[slug] || ''}</svg>`;
 }
 
 const MOOD_OPTIONS = [
