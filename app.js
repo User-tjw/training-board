@@ -577,7 +577,6 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
 function renderCockpitLoad() {
   const days = getRangeDays('cockpitLoad', 30);
   const rangeText = days === 365 ? 'Alle' : `Letzte ${days} Tage`;
-  document.getElementById('cockpitLoadRangeMeta').textContent = rangeText;
 
   const fitnessSlice = sliceDays(_fitnessFull, days, d => new Date(d.date));
   const wellnessSorted = sortedWellness(_wellnessFull);
@@ -636,8 +635,6 @@ function renderCockpitLoad() {
 
 function renderOverviewGroup() {
   const days = getRangeDays('overview', 90);
-  const rangeText = days === 365 ? 'Alle' : `Letzte ${days} Tage`;
-  document.querySelectorAll('.overview-range-meta').forEach(el => el.textContent = rangeText);
 
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   const weightByDate = {};
@@ -673,8 +670,6 @@ function updateZones() {
 
 function renderZonesGroup() {
   const days = getRangeDays('zones', 90);
-  const rangeText = days === 365 ? 'Alle' : `Letzte ${days} Tage`;
-  document.querySelectorAll('.zones-range-meta').forEach(el => el.textContent = rangeText);
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
 
   updateZones();
@@ -725,8 +720,6 @@ function renderZoneTrend(activities) {
 
 function renderWellnessGroup() {
   const days = getRangeDays('wellness', 30);
-  const rangeText = days === 365 ? 'Alle' : `Letzte ${days} Tage`;
-  document.querySelectorAll('.wellness-range-meta').forEach(el => el.textContent = rangeText);
   const wellness = sliceDays(_wellnessFull, days, d => new Date(d.id));
 
   const sorted=sortedWellness(wellness);
