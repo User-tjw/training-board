@@ -871,7 +871,7 @@ async function loadNotes() {
     const notes = await Promise.all(mdFiles.map(async f => {
       const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
       const { fm, body } = parseFrontmatter(b64dec(file.content));
-      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'allgemein', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, body };
+      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, body };
     }));
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
@@ -973,7 +973,7 @@ async function renderTeam() {
   const latestByTrainer = {};
   _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
 
-  const activeSlug = sessionStorage.getItem('tb_active_trainer');
+  const activeSlug = sessionStorage.getItem('tb_active_trainer') || 'head-coach';
 
   document.getElementById('teamGrid').innerHTML = TRAINERS.map(t => {
     const latest = latestByTrainer[t.slug];
@@ -985,10 +985,8 @@ async function renderTeam() {
     return `<div class="trainer-card${t.slug === activeSlug ? ' active' : ''}" data-slug="${t.slug}" onclick="selectTrainer('${t.slug}')">
       <div class="trainer-icon" style="color:${t.color}">${trainerIconSvg(t.slug, 18)}</div>
       <div class="trainer-name">${t.name}</div>
-      <div class="trainer-role" style="color:${t.color}">${t.role}</div>
       <div class="trainer-desc">${t.desc}</div>
       ${latestHtml}
-      <button class="trainer-link">${configured ? '→ Zum Trainer' : 'Einstellungen →'}</button>
     </div>`;
   }).join('');
 
@@ -1012,8 +1010,7 @@ function renderNoteFilters() {
   const el = document.getElementById('noteFilters');
   if (!el) return;
   const present = [...new Set(_notes.map(n => n.trainer))];
-  const known = [...TRAINERS.map(t => ({slug:t.slug, name:t.name})), {slug:'allgemein', name:'Allgemein'}]
-    .filter(f => present.includes(f.slug));
+  const known = TRAINERS.map(t => ({slug:t.slug, name:t.name})).filter(f => present.includes(f.slug));
   el.innerHTML = [`<button class="filter-btn active" onclick="filterNotes(this,'all')">Alle</button>`]
     .concat(known.map(f => `<button class="filter-btn" onclick="filterNotes(this,'${f.slug}')">${f.name}</button>`))
     .join('');
@@ -1026,7 +1023,7 @@ function renderNotesList(notes) {
     return;
   }
   el.innerHTML = notes.map(n => {
-    const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Allgemein', color:'#64748b'};
+    const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Unbekannt', color:'#64748b'};
     const idx = _notes.indexOf(n);
     return `<div class="note-card" onclick="openNoteViewer(${idx})">
       <div class="note-card-head">
@@ -1076,7 +1073,8 @@ async function showTrainerDetail(slug) {
       <textarea class="note-textarea" id="tnContent" style="min-height:110px" placeholder="Notiz eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="saveTrainerNote('${slug}')">Speichern</button>
-        <button id="copyTBtn_${slug}" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="copyTrainerNotes('${slug}')">✦ Für Claude kopieren</button>
+        <button id="copyTBtn_${slug}" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="copyTrainerNotes('${slug}')">Für Claude kopieren</button>
+        <button class="btn icon-btn" title="Neu laden" onclick="refreshTrainerDetail('${slug}')">↻</button>
         <div class="setup-error" id="tnError" style="display:none;margin:0;align-self:center"></div>
       </div>
     </div>
@@ -1105,7 +1103,6 @@ function renderTrainerNotesHtml(notes) {
       </div>
       <div class="note-card-main">
         <span class="note-card-title">${escHtml(n.title)}</span>
-        <span class="note-card-excerpt">${escHtml(n.body.slice(0,160))}</span>
       </div>
     </div>`;
   }).join('');
@@ -1263,7 +1260,7 @@ function openNoteEditor(trainerSlug) {
 
 function openDayNoteEditor(localNoteId) {
   if (ghToken && ghRepo) {
-    openNoteEditor('allgemein');
+    openNoteEditor('head-coach');
     document.getElementById('noteEditorHeading').textContent = '✎ Notiz / Tagesbefinden';
     document.getElementById('noteEditorTitleInput').value = 'Tagesnotiz';
     return;
@@ -1273,7 +1270,7 @@ function openDayNoteEditor(localNoteId) {
   _editingLocalNoteId = localNoteId || null;
   const n = localNoteId ? _localDayNotes.find(x => x.id === localNoteId) : null;
   document.getElementById('noteEditorHeading').textContent = n ? '✎ Notiz bearbeiten' : '✎ Notiz / Tagesbefinden';
-  document.getElementById('noteEditorTrainer').value = 'allgemein';
+  document.getElementById('noteEditorTrainer').value = 'head-coach';
   document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
@@ -1339,7 +1336,7 @@ async function saveNoteEditor() {
       const n = _localDayNotes.find(x => x.id === _editingLocalNoteId);
       if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; }
     } else {
-      _localDayNotes.unshift({ id: Date.now(), trainer: 'allgemein', title, body, date, mood });
+      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body, date, mood });
     }
     saveLocalDayNotes();
     closeNoteEditor();
