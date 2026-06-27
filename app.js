@@ -256,7 +256,6 @@ function goToCockpit() {
 
 function setupNav() {
   const lastSection = sessionStorage.getItem('tb_active_section');
-  const lastTrainer = sessionStorage.getItem('tb_active_trainer');
 
   // Immer zuerst auf Cockpit zurücksetzen
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -272,9 +271,9 @@ function setupNav() {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       savedItem.classList.add('active');
-      document.getElementById(`section-${lastSection}`)?.classList.add('active');
-      document.getElementById('pageTitle').textContent = lastSection === 'trainer' ? 'KI-Trainer' : savedItem.textContent.trim();
-      if (lastSection === 'trainer' && lastTrainer) showTrainerDetail(lastTrainer);
+      document.getElementById(`section-${navSection}`)?.classList.add('active');
+      document.getElementById('pageTitle').textContent = navSection === 'team' ? 'KI-Trainer' : savedItem.textContent.trim();
+      if (navSection === 'team' && lastSection !== 'team') sessionStorage.setItem('tb_active_section', 'team');
     }
   }
 
@@ -974,6 +973,8 @@ async function renderTeam() {
   const latestByTrainer = {};
   _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
 
+  const activeSlug = sessionStorage.getItem('tb_active_trainer');
+
   document.getElementById('teamGrid').innerHTML = TRAINERS.map(t => {
     const latest = latestByTrainer[t.slug];
     const latestHtml = configured
@@ -981,7 +982,7 @@ async function renderTeam() {
           ? `<div class="trainer-latest">${escHtml(latest.title)}</div><div class="trainer-latest-date">${fmtNoteDate(latest.date)}</div>`
           : `<div class="trainer-latest" style="opacity:0.45">Noch keine Notizen</div>`)
       : '';
-    return `<div class="trainer-card" onclick="navToTrainer('${t.slug}')">
+    return `<div class="trainer-card${t.slug === activeSlug ? ' active' : ''}" data-slug="${t.slug}" onclick="selectTrainer('${t.slug}')">
       <div class="trainer-icon" style="color:${t.color}">${trainerIconSvg(t.slug, 18)}</div>
       <div class="trainer-name">${t.name}</div>
       <div class="trainer-role" style="color:${t.color}">${t.role}</div>
@@ -990,16 +991,14 @@ async function renderTeam() {
       <button class="trainer-link">${configured ? '→ Zum Trainer' : 'Einstellungen →'}</button>
     </div>`;
   }).join('');
+
+  if (activeSlug) selectTrainer(activeSlug);
 }
 
-function navToTrainer(slug) {
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelector('.nav-item[data-section="team"]')?.classList.add('active');
-  document.getElementById('section-trainer').classList.add('active');
-  document.getElementById('pageTitle').textContent = 'KI-Trainer';
-  sessionStorage.setItem('tb_active_section', 'trainer');
+function selectTrainer(slug) {
   sessionStorage.setItem('tb_active_trainer', slug);
+  document.querySelectorAll('.trainer-card').forEach(c => c.classList.toggle('active', c.dataset.slug === slug));
+  document.getElementById('trainerInline').style.display = 'block';
   showTrainerDetail(slug);
 }
 
@@ -1046,7 +1045,7 @@ function renderNotesList(notes) {
 
 async function showTrainerDetail(slug) {
   if (!ghToken || !ghRepo) {
-    document.getElementById('trainerDetailContent').innerHTML =
+    document.getElementById('trainerInline').innerHTML =
       `<div class="gh-setup-banner"><div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub nicht konfiguriert</div>
       <div style="font-size:12px;color:#1e40af;margin-bottom:10px">Token + Repo in den Einstellungen eintragen.</div>
       <button class="trainer-link" onclick="showSettings()">⚙ Einstellungen →</button></div>`;
@@ -1059,7 +1058,7 @@ async function showTrainerDetail(slug) {
   if (_notes.length === 0) _notes = await loadNotes();
   const trainerNotes = _notes.filter(n => n.trainer === slug);
 
-  document.getElementById('trainerDetailContent').innerHTML = `
+  document.getElementById('trainerInline').innerHTML = `
     <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
       <span style="color:${t.color}">${trainerIconSvg(t.slug, 32)}</span>
       <div>

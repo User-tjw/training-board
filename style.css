@@ -182,6 +182,7 @@
     .team-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
     .trainer-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; transition: box-shadow 0.2s, transform 0.15s; display: flex; flex-direction: column; gap: 5px; }
     .trainer-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .trainer-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
     .trainer-icon { font-size: 18px; margin-bottom: 2px; }
     .trainer-icon svg { width: 18px; height: 18px; }
     .trainer-name { font-size: 13px; font-weight: 600; }
