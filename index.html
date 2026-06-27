@@ -497,7 +497,7 @@
             <div class="group-card-section">
               <div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form · HRV · Ruhepuls</div>
               <div id="cockpitHRVDots" style="padding:0 0 8px;font-size:20px;letter-spacing:4px"></div>
-              <div class="chart-box" style="height:280px"><canvas id="fitnessChart"></canvas></div>
+              <div class="chart-box" style="height:340px"><canvas id="fitnessChart"></canvas></div>
             </div>
             <div class="group-card-section">
               <div class="card-title" style="margin-bottom:12px">80/20 Check</div>
@@ -781,14 +781,26 @@ function renderFromCache() {
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
 
 async function sha256(text) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  if (window.crypto && window.crypto.subtle) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  // Fallback ohne crypto.subtle (kein sicherer Kontext, z.B. http über LAN-IP)
+  let h = 0;
+  for (let i = 0; i < text.length; i++) { h = (h * 31 + text.charCodeAt(i)) >>> 0; }
+  return 'fb' + h.toString(16);
 }
 
 async function checkPassword() {
   const input = document.getElementById('pwInput').value;
   if (!input) return;
-  const hash = await sha256(input);
+  let hash;
+  try {
+    hash = await sha256(input);
+  } catch (e) {
+    document.getElementById('pwSub').textContent = 'Fehler bei der Passwortprüfung: ' + e.message;
+    return;
+  }
   const stored = localStorage.getItem('tb_pw_hash');
 
   if (!stored) {
@@ -2173,6 +2185,12 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate) {
     {type:'line',label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',backgroundColor:'transparent',borderWidth:3,borderDash:[2,2],pointRadius:0,tension:0.4,order:1},
   );
   const options = lineOptions();
+  options.plugins.legend.position = 'top';
+  options.plugins.legend.align = 'center';
+  options.plugins.legend.labels.boxWidth = 18;
+  options.plugins.legend.labels.boxHeight = 2;
+  options.plugins.legend.labels.padding = 18;
+  options.plugins.legend.labels.usePointStyle = false;
   options.scales.y.position = 'left';
   options.scales.y.suggestedMin = -20;
   options.scales.y.suggestedMax = 60;
