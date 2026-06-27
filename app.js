@@ -965,10 +965,8 @@ function fmtNoteDate(d) {
 async function renderTeam() {
   const configured = !!(ghToken && ghRepo);
   document.getElementById('ghSetupBanner').style.display = configured ? 'none' : 'block';
-  document.getElementById('notesSection').style.display = configured ? 'block' : 'none';
 
   if (configured && _notes.length === 0) _notes = await loadNotes();
-  if (configured) { renderNoteFilters(); renderNotesList(_notes); }
 
   const latestByTrainer = {};
   _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
@@ -998,44 +996,6 @@ function selectTrainer(slug) {
   document.querySelectorAll('.trainer-card').forEach(c => c.classList.toggle('active', c.dataset.slug === slug));
   document.getElementById('trainerInline').style.display = 'block';
   showTrainerDetail(slug);
-}
-
-function filterNotes(btn, filter) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderNotesList(filter === 'all' ? _notes : _notes.filter(n => n.trainer === filter));
-}
-
-function renderNoteFilters() {
-  const el = document.getElementById('noteFilters');
-  if (!el) return;
-  const present = [...new Set(_notes.map(n => n.trainer))];
-  const known = TRAINERS.map(t => ({slug:t.slug, name:t.name})).filter(f => present.includes(f.slug));
-  el.innerHTML = [`<button class="filter-btn active" onclick="filterNotes(this,'all')">Alle</button>`]
-    .concat(known.map(f => `<button class="filter-btn" onclick="filterNotes(this,'${f.slug}')">${f.name}</button>`))
-    .join('');
-}
-
-function renderNotesList(notes) {
-  const el = document.getElementById('notesList');
-  if (notes.length === 0) {
-    el.innerHTML = `<div class="notes-loading">Noch keine Notizen — oben neue Notiz erstellen.</div>`;
-    return;
-  }
-  el.innerHTML = notes.map(n => {
-    const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Unbekannt', color:'#64748b'};
-    const idx = _notes.indexOf(n);
-    return `<div class="note-card" onclick="openNoteViewer(${idx})">
-      <div class="note-card-head">
-        <span class="note-card-badge" style="background:${t.color}20;color:${t.color}">${t.icon} ${t.name}</span>
-        <span class="note-card-date">${fmtNoteDate(n.date)}</span>
-      </div>
-      <div class="note-card-main">
-        <span class="note-card-title">${escHtml(n.title)}</span>
-        <span class="note-card-excerpt">${escHtml(n.body.slice(0,160))}</span>
-      </div>
-    </div>`;
-  }).join('');
 }
 
 // ─── Trainer Detail ───────────────────────────────────────────────────────────
@@ -1167,62 +1127,6 @@ async function copyTrainerNotes(slug) {
     btn.style.background = 'var(--green)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--green)';
     setTimeout(() => { btn.textContent = '✦ Für Claude kopieren'; btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }, 2500);
   } catch(e) { alert('Kopieren fehlgeschlagen.'); }
-}
-
-// ─── Copy for Claude ─────────────────────────────────────────────────────────
-
-async function copyForClaude() {
-  const btn = document.getElementById('copyClaudeBtn');
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 7);
-  const recent = _notes.filter(n => n.date && new Date(n.date) >= cutoff);
-  const all    = recent.length > 0 ? recent : _notes.slice(0, 10);
-
-  const today = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  const trainingGoal = localStorage.getItem('training_goal') || '';
-  const lines = [
-    `# Training Board Kontext — ${today}`,
-    `**Athlet:** Thomas Wagner | 50J | 74.6 kg | FTP 250W | Max-HF 183`,
-    '',
-  ];
-  if (trainingGoal) {
-    lines.push(`## Trainingsziel`, trainingGoal, '');
-  }
-  lines.push(`## Trainer-Notizen (letzte 7 Tage)`, '');
-
-  if (all.length === 0) {
-    lines.push('_Noch keine Notizen vorhanden._');
-  } else {
-    const grouped = {};
-    all.forEach(n => { if (!grouped[n.trainer]) grouped[n.trainer] = []; grouped[n.trainer].push(n); });
-    TRAINERS.forEach(t => {
-      if (!grouped[t.slug]) return;
-      grouped[t.slug].forEach(n => {
-        lines.push(`### ${t.icon} ${t.name} — ${fmtNoteDate(n.date)}`);
-        lines.push(`**${n.title}**`);
-        lines.push(n.body);
-        lines.push('');
-      });
-    });
-  }
-
-  lines.push('---');
-  lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
-
-  try {
-    await navigator.clipboard.writeText(lines.join('\n'));
-    btn.textContent = '✓ Kopiert!';
-    btn.style.background = 'var(--green)';
-    btn.style.color = 'white';
-    btn.style.borderColor = 'var(--green)';
-    setTimeout(() => {
-      btn.textContent = '✦ Für Claude kopieren';
-      btn.style.background = '';
-      btn.style.color = '';
-      btn.style.borderColor = '';
-    }, 2500);
-  } catch(e) {
-    alert('Kopieren fehlgeschlagen. Bitte manuell kopieren.');
-  }
 }
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
