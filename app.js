@@ -37,26 +37,18 @@ function renderFromCache() {
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
 
 async function sha256(text) {
-  if (window.crypto && window.crypto.subtle) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-  }
-  // Fallback ohne crypto.subtle (kein sicherer Kontext, z.B. http über LAN-IP)
-  let h = 0;
-  for (let i = 0; i < text.length; i++) { h = (h * 31 + text.charCodeAt(i)) >>> 0; }
-  return 'fb' + h.toString(16);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
 async function checkPassword() {
   const input = document.getElementById('pwInput').value;
   if (!input) return;
-  let hash;
-  try {
-    hash = await sha256(input);
-  } catch (e) {
-    document.getElementById('pwSub').textContent = 'Fehler bei der Passwortprüfung: ' + e.message;
+  if (!window.crypto || !window.crypto.subtle) {
+    document.getElementById('pwSub').textContent = 'Passwortschutz benötigt HTTPS oder localhost (kein sicherer Kontext erkannt).';
     return;
   }
+  const hash = await sha256(input);
   const stored = localStorage.getItem('tb_pw_hash');
 
   if (!stored) {
