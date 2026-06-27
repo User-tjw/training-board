@@ -67,7 +67,9 @@
     .status-dot.error { background: var(--red); }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
     .main { flex: 1; }
-    .page-subbar { display: flex; align-items: baseline; gap: 12px; padding: 16px 24px 0; }
+    .page-subbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; flex-wrap: wrap; }
+    .page-subbar-title { display: flex; align-items: baseline; gap: 12px; }
+    .page-subbar-controls { display: flex; align-items: center; gap: 8px; }
     .page-title { font-size: 15px; font-weight: 600; }
     .breadcrumb { font-size: 12px; color: var(--text2); font-family: var(--mono); }
     .btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); font-family: var(--font); }
@@ -180,23 +182,13 @@
 
     /* Team */
     .team-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-    .trainer-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 12px; transition: box-shadow 0.2s, transform 0.15s; display: flex; flex-direction: column; gap: 5px; }
+    .trainer-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; transition: box-shadow 0.2s, transform 0.15s; display: flex; flex-direction: row; align-items: center; gap: 10px; cursor: pointer; }
     .trainer-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
     .trainer-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
-    .trainer-icon { font-size: 18px; margin-bottom: 2px; }
+    .trainer-icon { font-size: 18px; flex-shrink: 0; display: flex; }
     .trainer-icon svg { width: 18px; height: 18px; }
     .trainer-name { font-size: 13px; font-weight: 600; }
-    .trainer-role { font-size: 9px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
-    .trainer-desc { font-size: 11px; color: var(--text2); margin-top: 2px; line-height: 1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
-    .trainer-link { display: inline-block; align-self: flex-start; margin-top: auto; padding: 6px 10px; border-radius: 7px; background: var(--accent-light); color: var(--accent); font-size: 11px; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: var(--font); }
-    .trainer-link:hover { background: var(--accent); color: white; }
-    .trainer-latest { font-size:10px; color:var(--text2); margin-top:4px; line-height:1.3; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-    .trainer-latest-date { font-size:9px; font-family:var(--mono); color:var(--text2); margin-top:2px; }
     .gh-setup-banner { background:var(--accent-light); border:1px solid #bfdbfe; border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
-    .note-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
-    .filter-btn { padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--bg2); color:var(--text2); transition:all 0.15s; }
-    .filter-btn:hover { background:var(--bg3); color:var(--text); }
-    .filter-btn.active { background:var(--accent); border-color:var(--accent); color:white; }
     .note-card { display:flex; align-items:center; gap:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 14px; margin-bottom:6px; cursor:pointer; transition:box-shadow 0.15s, border-color 0.15s; }
     .note-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); border-color:#bfdbfe; }
     .note-card-head { display:flex; align-items:center; gap:8px; flex-shrink:0; }

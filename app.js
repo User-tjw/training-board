@@ -14,15 +14,18 @@ function sliceDays(arr, days, getDate) {
 }
 function applyStoredRanges() {
   document.querySelectorAll('.range-select').forEach(s => {
-    s.value = getRangeDays(s.dataset.key, parseInt(s.dataset.default) || 30);
+    const firstKey = s.dataset.keys ? s.dataset.keys.split(',')[0] : s.dataset.key;
+    s.value = getRangeDays(firstKey, parseInt(s.dataset.default) || 30);
   });
 }
 
 document.addEventListener('change', e => {
   if (!e.target.matches('.range-select')) return;
-  const key = e.target.dataset.key;
-  setRangeDays(key, e.target.value);
-  document.querySelectorAll(`.range-select[data-key="${key}"]`).forEach(s => { s.value = e.target.value; });
+  const keys = e.target.dataset.keys ? e.target.dataset.keys.split(',') : [e.target.dataset.key];
+  keys.forEach(key => {
+    setRangeDays(key, e.target.value);
+    document.querySelectorAll(`.range-select[data-key="${key}"]`).forEach(s => { s.value = e.target.value; });
+  });
   renderFromCache();
 });
 
@@ -262,7 +265,7 @@ function setupNav() {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelector('.nav-item[data-section="cockpit"]').classList.add('active');
   document.getElementById('section-cockpit').classList.add('active');
-  document.getElementById('pageTitle').textContent = 'Cockpit';
+  document.getElementById('pageTitle').textContent = 'Dashboard';
 
   if (lastSection) {
     const navSection = lastSection === 'trainer' ? 'team' : lastSection;
@@ -750,17 +753,11 @@ const TRAINERS = [
   {slug:'methodik',   icon:'▲', name:'UA-Methodik',   role:'Uphill Athlete Prinzipien',       color:'#b45309', desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
 ];
 
-const TRAINER_SVG_PATHS = {
-  'head-coach': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><line x1="12" y1="2.5" x2="12" y2="6"/>',
-  'reha':       '<path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="9.5" y1="11.5" x2="14.5" y2="11.5"/>',
-  'kraft':      '<rect x="1.5" y="9" width="3" height="6" rx="1"/><rect x="19.5" y="9" width="3" height="6" rx="1"/><line x1="6.5" y1="12" x2="17.5" y2="12"/><rect x="6" y="6.5" width="2.5" height="11" rx="1"/><rect x="15.5" y="6.5" width="2.5" height="11" rx="1"/>',
-  'ernaehrung': '<path d="M19 4C12 4 5 8 5 15c0 2.5 2 4.5 4.5 4.5C16 19.5 19 11 19 4z"/><line x1="9" y1="19" x2="18" y2="6"/>',
-  'methodik':   '<path d="M3 18l6-10 4 6 2-3 6 7H3z"/>',
-};
+const TRAINER_STAR_PATH = '<path d="M12 2.5l2.97 6.32 6.78.78-5.06 4.78 1.4 6.84L12 17.6l-6.09 3.62 1.4-6.84-5.06-4.78 6.78-.78L12 2.5z" fill="currentColor" stroke="none"/>';
 
 function trainerIconSvg(slug, size) {
   size = size || 28;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TRAINER_SVG_PATHS[slug] || ''}</svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${TRAINER_STAR_PATH}</svg>`;
 }
 
 const MOOD_OPTIONS = [
@@ -968,23 +965,12 @@ async function renderTeam() {
 
   if (configured && _notes.length === 0) _notes = await loadNotes();
 
-  const latestByTrainer = {};
-  _notes.forEach(n => { if (!latestByTrainer[n.trainer]) latestByTrainer[n.trainer] = n; });
-
   const activeSlug = sessionStorage.getItem('tb_active_trainer') || 'head-coach';
 
   document.getElementById('teamGrid').innerHTML = TRAINERS.map(t => {
-    const latest = latestByTrainer[t.slug];
-    const latestHtml = configured
-      ? (latest
-          ? `<div class="trainer-latest">${escHtml(latest.title)}</div><div class="trainer-latest-date">${fmtNoteDate(latest.date)}</div>`
-          : `<div class="trainer-latest" style="opacity:0.45">Noch keine Notizen</div>`)
-      : '';
     return `<div class="trainer-card${t.slug === activeSlug ? ' active' : ''}" data-slug="${t.slug}" onclick="selectTrainer('${t.slug}')">
       <div class="trainer-icon" style="color:${t.color}">${trainerIconSvg(t.slug, 18)}</div>
       <div class="trainer-name">${t.name}</div>
-      <div class="trainer-desc">${t.desc}</div>
-      ${latestHtml}
     </div>`;
   }).join('');
 

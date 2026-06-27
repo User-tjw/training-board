@@ -153,11 +153,11 @@
     </div>
 
     <nav class="topnav-items">
-      <a class="nav-item active" data-section="cockpit">Cockpit</a>
-      <a class="nav-item" data-section="team">KI-Trainer</a>
+      <a class="nav-item active" data-section="cockpit">Dashboard</a>
       <a class="nav-item" data-section="zones">HF-Zonen</a>
       <a class="nav-item" data-section="wellness">Wellness</a>
       <a class="nav-item" data-section="activities">Aktivitäten</a>
+      <a class="nav-item" data-section="team">KI-Trainer</a>
     </nav>
 
     <div class="topnav-right">
@@ -173,8 +173,22 @@
 
   <main class="main">
     <div class="page-subbar">
-      <span class="page-title" id="pageTitle">Cockpit</span>
-      <span class="breadcrumb" id="dateLabel"></span>
+      <div class="page-subbar-title">
+        <span class="page-title" id="pageTitle">Dashboard</span>
+        <span class="breadcrumb" id="dateLabel"></span>
+      </div>
+      <div class="page-subbar-controls">
+        <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
+        <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
+        <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
+        <select class="btn range-select" data-keys="zones,wellness,overview" data-default="30" style="font-size:11px;padding:4px 8px">
+          <option value="7">7 Tage</option>
+          <option value="30">30 Tage</option>
+          <option value="90">90 Tage</option>
+          <option value="365">Alle</option>
+        </select>
+        <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
+      </div>
     </div>
 
     <!-- Cockpit -->
@@ -212,12 +226,6 @@
               <div class="trend-kpi-sep"></div>
               <span class="week-cal-total-big" id="cockpitWeekTotal"></span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
-              <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
-              <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
-              <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
-            </div>
           </div>
           <div class="week-cal" id="cockpitWeekCal"></div>
         </div>
@@ -249,12 +257,7 @@
     <!-- Aktivitäten -->
     <section id="section-activities" class="section">
       <div class="content">
-        <div class="card"><div class="card-header"><span class="card-title">Alle Aktivitäten</span><div style="display:flex;align-items:center;gap:8px"><span class="card-meta overview-range-meta"></span><select class="btn range-select" data-key="overview" data-default="30" style="font-size:11px;padding:4px 8px">
-          <option value="7">7 Tage</option>
-          <option value="30">30 Tage</option>
-          <option value="90">90 Tage</option>
-          <option value="365">Alle</option>
-        </select></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Alle Aktivitäten</span><span class="card-meta overview-range-meta"></span></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
       </div>
     </section>
 
@@ -283,12 +286,7 @@
         <div class="group-card">
           <div class="group-card-header">
             <span class="group-card-title">Meine Schwellenwerte</span>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta">Uphill Athlete · 4 Zonen</span><span class="card-meta zones-range-meta"></span><select class="btn range-select" data-key="zones" data-default="30" style="font-size:11px;padding:4px 8px">
-              <option value="7">7 Tage</option>
-              <option value="30">30 Tage</option>
-              <option value="90">90 Tage</option>
-              <option value="365">Alle</option>
-            </select></div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta">Uphill Athlete · 4 Zonen</span><span class="card-meta zones-range-meta"></span></div>
           </div>
           <div class="group-card-body" style="--cols:1">
             <div class="group-card-section">
@@ -314,12 +312,7 @@
         <div class="group-card">
           <div class="group-card-header">
             <span class="group-card-title">Wellness</span>
-            <div style="display:flex;align-items:center;gap:8px"><span class="card-meta wellness-range-meta"></span><select class="btn range-select" data-key="wellness" data-default="30" style="font-size:11px;padding:4px 8px">
-              <option value="7">7 Tage</option>
-              <option value="30">30 Tage</option>
-              <option value="90">90 Tage</option>
-              <option value="365">Alle</option>
-            </select></div>
+            <span class="card-meta wellness-range-meta"></span>
           </div>
           <div class="group-card-body" style="--cols:1">
             <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">HRV & Ruhepuls</div><canvas id="wellnessChart" height="65"></canvas></div>
