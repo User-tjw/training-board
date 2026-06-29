@@ -412,6 +412,12 @@ function buildWeekCalendar(weekStart, weekActs) {
   const enduranceRow = byDay.map(d => cellWrap(cell(d.endurance[0]), d.isToday?' today':'')).join('');
   const strengthRow = byDay.map(d => cellWrap(cell(d.strength[0]), ' week-band-sep'+(d.isToday?' today':''))).join('');
 
+  const dayTotalRow = byDay.map((d,i) => {
+    const today = d.isToday;
+    const dayH = ([...d.endurance, ...d.strength]).reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
+    return `<div class="week-cal-head-cell week-cal-day-total${today?' today':''}">${dayH > 0 ? dayH.toFixed(1)+' h' : '–'}</div>`;
+  }).join('') + `<div class="week-cal-head-cell week-cal-day-total"></div>`;
+
   const plan = getTrainingPlan();
   const totalH = weekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
   const totalVal = plan.weekHours
@@ -442,7 +448,7 @@ function buildWeekCalendar(weekStart, weekActs) {
       <div class="week-cal-hbars">${typeHBars}</div>
     </div>`;
 
-  return { html: head + enduranceRow + summarySpan + strengthRow, totalHtml: totalVal };
+  return { html: head + enduranceRow + summarySpan + strengthRow + dayTotalRow, totalHtml: totalVal };
 }
 
 function renderCockpitWeek() {
