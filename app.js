@@ -1406,6 +1406,11 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
   }).join('')}</tbody></table>`;
 }
 
+if (window.Chart) {
+  Chart.defaults.animation = false;
+  Chart.defaults.transitions.active.animation.duration = 0;
+}
+
 function renderChart(id, config) {
   const canvas=document.getElementById(id); if(!canvas) return;
   if(charts[id])charts[id].destroy();
