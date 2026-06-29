@@ -201,16 +201,23 @@ function updateGoalPctHint() {
     ? `Summe: ${sum}% der Wochenstunden gesamt.${sum > 100 ? ' Achtung: über 100%.' : ''}`
     : 'Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.';
 }
-function saveSettingsModal() {
+function saveApiSettings() {
   athleteId = document.getElementById('settingsAthleteId').value.trim();
   apiKey    = document.getElementById('settingsApiKey').value.trim();
   ghToken   = document.getElementById('settingsGhToken').value.trim();
   ghRepo    = document.getElementById('settingsGhRepo').value.trim();
-  const trainingGoal = document.getElementById('settingsTrainingGoal').value.trim();
   localStorage.setItem('icu_athlete_id', athleteId);
   localStorage.setItem('icu_api_key', apiKey);
   localStorage.setItem('gh_token', ghToken);
   localStorage.setItem('gh_repo', ghRepo);
+
+  loadAll();
+  renderTeam();
+  closeSettingsPage();
+}
+
+function saveTrainingGoals() {
+  const trainingGoal = document.getElementById('settingsTrainingGoal').value.trim();
   localStorage.setItem('training_goal', trainingGoal);
 
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
@@ -227,8 +234,6 @@ function saveSettingsModal() {
   localStorage.setItem('training_plan', JSON.stringify(plan));
   if (ghToken && ghRepo) saveTrainingPlanToGH(plan).catch(e => console.error('GitHub training plan save:', e));
 
-  loadAll();
-  renderTeam();
   renderCockpitWeek();
   closeSettingsPage();
 }

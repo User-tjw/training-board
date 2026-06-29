@@ -37,16 +37,27 @@
     .setup-input[type="date"]::-webkit-calendar-picker-indicator { filter: var(--date-icon-filter, none); cursor: pointer; }
     body.dark .setup-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
     .setup-hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
-    .setup-field-sm { margin-bottom: 10px; gap: 4px; }
-    .setup-input-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+    .setup-field-sm { margin-bottom: 8px; gap: 3px; }
+    .setup-input-sm { padding: 5px 8px; font-size: 11px; border-radius: 5px; }
     .setup-hint-sm { font-size: 10px; }
-    .settings-group-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .settings-group-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .settings-content { max-width: 760px; }
+    #section-settings .group-card-section { padding: 16px 20px; border-right: none; border-bottom: 1px solid var(--border); }
+    #section-settings .group-card-section:last-child { border-bottom: none; }
+    #section-settings .group-card { margin-bottom: 12px; }
+    .settings-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .settings-field-grid-golden { grid-template-columns: 1fr 1.618fr; }
+    .settings-field-grid-soll { grid-template-columns: 0.618fr 1fr 1fr 1fr 1fr; }
     .setup-btn {
       width: 100%; padding: 12px; border-radius: 8px; border: none;
       background: var(--accent); color: white; font-size: 14px; font-weight: 600;
       cursor: pointer; margin-top: 8px; font-family: var(--font);
     }
     .setup-btn:hover { background: #1d4ed8; }
+    .settings-btn-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .setup-btn-sm { width: auto; padding: 7px 18px; font-size: 12px; margin-top: 0; }
+    .setup-btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .setup-btn-outline:hover { background: var(--bg3); }
     .setup-error { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
 
     /* App */

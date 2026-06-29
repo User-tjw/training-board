@@ -276,32 +276,43 @@
     <!-- Einstellungen -->
     <section id="section-settings" class="section">
       <div class="content">
-        <div class="group-card">
-          <div class="group-card-body" style="--cols:3">
+        <div class="settings-content">
+          <div class="group-card">
             <div class="group-card-section">
               <div class="settings-group-title">Intervals.icu</div>
-              <div class="setup-field setup-field-sm">
-                <label class="setup-label">Athlete ID</label>
-                <input class="setup-input setup-input-sm" id="settingsAthleteId" type="text">
-              </div>
-              <div class="setup-field setup-field-sm">
-                <label class="setup-label">API Key</label>
-                <input class="setup-input setup-input-sm" id="settingsApiKey" type="password">
+              <div class="settings-field-grid settings-field-grid-golden">
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Athlete ID</label>
+                  <input class="setup-input setup-input-sm" id="settingsAthleteId" type="text">
+                </div>
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">API Key</label>
+                  <input class="setup-input setup-input-sm" id="settingsApiKey" type="password">
+                </div>
               </div>
               <div class="setup-hint setup-hint-sm">intervals.icu → Einstellungen → API → API Key</div>
             </div>
             <div class="group-card-section">
               <div class="settings-group-title">GitHub Notizen</div>
-              <div class="setup-field setup-field-sm">
-                <label class="setup-label">Personal Access Token</label>
-                <input class="setup-input setup-input-sm" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
-              </div>
-              <div class="setup-field setup-field-sm">
-                <label class="setup-label">Repository (Owner/Repo)</label>
-                <input class="setup-input setup-input-sm" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
+              <div class="settings-field-grid">
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Personal Access Token</label>
+                  <input class="setup-input setup-input-sm" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
+                </div>
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Repository (Owner/Repo)</label>
+                  <input class="setup-input setup-input-sm" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
+                </div>
               </div>
               <div class="setup-hint setup-hint-sm">github.com → Settings → Developer settings → Personal access tokens → Scopes: <strong>repo</strong>. Muss ein privates Repo sein.</div>
             </div>
+          </div>
+          <div class="settings-btn-row">
+            <button class="setup-btn setup-btn-sm" onclick="saveApiSettings()">Speichern</button>
+            <button class="setup-btn setup-btn-sm setup-btn-outline" onclick="closeSettingsPage()">Abbrechen</button>
+          </div>
+
+          <div class="group-card">
             <div class="group-card-section">
               <div class="settings-group-title">Trainingsziel</div>
               <div class="setup-field setup-field-sm">
@@ -309,13 +320,9 @@
               </div>
               <div class="setup-hint setup-hint-sm">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
             </div>
-          </div>
-        </div>
-        <div class="group-card">
-          <div class="group-card-body" style="--cols:1">
             <div class="group-card-section">
               <div class="settings-group-title">Trainings-Soll</div>
-              <div style="display:grid;grid-template-columns:160px repeat(4,1fr);gap:14px;max-width:620px">
+              <div class="settings-field-grid settings-field-grid-soll">
                 <div class="setup-field setup-field-sm">
                   <label class="setup-label">Wochenstunden</label>
                   <input class="setup-input setup-input-sm" id="settingsGoalWeekHours" type="number" step="0.5" min="0" placeholder="z.B. 8">
@@ -340,10 +347,10 @@
               <div class="setup-hint setup-hint-sm" id="settingsGoalPctHint" style="margin-top:8px">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
             </div>
           </div>
-        </div>
-        <div style="display:flex;gap:10px">
-          <button class="setup-btn" style="width:160px;margin-top:0" onclick="saveSettingsModal()">Speichern</button>
-          <button class="setup-btn" style="width:160px;margin-top:0;background:transparent;color:var(--text);border:1px solid var(--border)" onclick="closeSettingsPage()">Abbrechen</button>
+          <div class="settings-btn-row">
+            <button class="setup-btn setup-btn-sm" onclick="saveTrainingGoals()">Speichern</button>
+            <button class="setup-btn setup-btn-sm setup-btn-outline" onclick="closeSettingsPage()">Abbrechen</button>
+          </div>
         </div>
       </div>
     </section>
