@@ -37,6 +37,10 @@
     .setup-input[type="date"]::-webkit-calendar-picker-indicator { filter: var(--date-icon-filter, none); cursor: pointer; }
     body.dark .setup-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
     .setup-hint { font-size: 11px; color: var(--text2); line-height: 1.5; }
+    .setup-field-sm { margin-bottom: 10px; gap: 4px; }
+    .setup-input-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+    .setup-hint-sm { font-size: 10px; }
+    .settings-group-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
     .setup-btn {
       width: 100%; padding: 12px; border-radius: 8px; border: none;
       background: var(--accent); color: white; font-size: 14px; font-weight: 600;

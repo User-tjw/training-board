@@ -165,7 +165,21 @@ function getTrainingPlan() {
   try { return JSON.parse(localStorage.getItem('training_plan') || '{}'); } catch(e) { return {}; }
 }
 
-function showSettings() {
+let _settingsReturnSection = 'cockpit';
+function openSettingsPage() {
+  const current = document.querySelector('.nav-item.active');
+  _settingsReturnSection = current ? current.dataset.section : 'cockpit';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-settings').classList.add('active');
+  document.getElementById('pageTitle').textContent = 'Einstellungen';
+  populateSettingsForm();
+}
+function closeSettingsPage() {
+  const item = document.querySelector(`.nav-item[data-section="${_settingsReturnSection}"]`) || document.querySelector('.nav-item[data-section="cockpit"]');
+  item.click();
+}
+function populateSettingsForm() {
   document.getElementById('settingsAthleteId').value = athleteId;
   document.getElementById('settingsApiKey').value = apiKey;
   document.getElementById('settingsGhToken').value = ghToken;
@@ -177,7 +191,6 @@ function showSettings() {
   document.getElementById('settingsGoalRadPct').value = plan.byTypePct?.Rad ?? '';
   document.getElementById('settingsGoalKraftPct').value = plan.byTypePct?.Kraft ?? '';
   document.getElementById('settingsGoalMobilitaetPct').value = plan.byTypePct?.['Mobilität'] ?? '';
-  document.getElementById('settingsModal').style.display = 'flex';
   updateGoalPctHint();
 }
 function updateGoalPctHint() {
@@ -188,7 +201,6 @@ function updateGoalPctHint() {
     ? `Summe: ${sum}% der Wochenstunden gesamt.${sum > 100 ? ' Achtung: über 100%.' : ''}`
     : 'Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.';
 }
-function hideSettings() { document.getElementById('settingsModal').style.display = 'none'; }
 function saveSettingsModal() {
   athleteId = document.getElementById('settingsAthleteId').value.trim();
   apiKey    = document.getElementById('settingsApiKey').value.trim();
@@ -211,13 +223,14 @@ function saveSettingsModal() {
   if (mo !== null) byTypePct['Mobilität'] = mo;
   const byType = {};
   if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
-  const plan = { weekHours, byTypePct, byType, updatedAt: fmtDate(new Date()) };
+  const plan = { weekHours, byTypePct, byType, updatedAt: Date.now() };
   localStorage.setItem('training_plan', JSON.stringify(plan));
   if (ghToken && ghRepo) saveTrainingPlanToGH(plan).catch(e => console.error('GitHub training plan save:', e));
 
-  hideSettings();
   loadAll();
   renderTeam();
+  renderCockpitWeek();
+  closeSettingsPage();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -920,10 +933,11 @@ async function saveTrainingPlanToGH(plan) {
 
 async function syncTrainingPlanFromGH() {
   const remote = await loadTrainingPlanFromGH();
-  if (remote) {
-    localStorage.setItem('training_plan', JSON.stringify(remote));
-    renderCockpitWeek();
-  }
+  if (!remote) return;
+  const local = getTrainingPlan();
+  if ((remote.updatedAt || 0) <= (local.updatedAt || 0)) return;
+  localStorage.setItem('training_plan', JSON.stringify(remote));
+  renderCockpitWeek();
 }
 
 function renderMarkdown(text) {
@@ -993,7 +1007,7 @@ async function showTrainerDetail(slug) {
     document.getElementById('trainerInline').innerHTML =
       `<div class="gh-setup-banner"><div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub nicht konfiguriert</div>
       <div style="font-size:12px;color:#1e40af;margin-bottom:10px">Token + Repo in den Einstellungen eintragen.</div>
-      <button class="trainer-link" onclick="showSettings()">⚙ Einstellungen →</button></div>`;
+      <button class="trainer-link" onclick="openSettingsPage()">⚙ Einstellungen →</button></div>`;
     return;
   }
 
@@ -1135,7 +1149,7 @@ let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
 
 function openNoteEditor(trainerSlug) {
-  if (!ghToken || !ghRepo) { showSettings(); return; }
+  if (!ghToken || !ghRepo) { openSettingsPage(); return; }
   _noteEditorLocalMode = false;
   _editingLocalNoteId = null;
   _editingNote = null;

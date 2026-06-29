@@ -167,7 +167,7 @@
         <span id="statusText">Verbinde...</span>
       </div>
       <button class="btn icon-btn" id="themeToggleBtn" onclick="toggleTheme()"></button>
-      <button class="btn icon-btn" onclick="showSettings()" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.4 7.4 0 0 0 0-3l1.9-1.5-2-3.4-2.3.6a7.5 7.5 0 0 0-2.6-1.5L14 2h-4l-.4 2.7a7.5 7.5 0 0 0-2.6 1.5l-2.3-.6-2 3.4L4.6 10.5a7.4 7.4 0 0 0 0 3L2.7 15l2 3.4 2.3-.6a7.5 7.5 0 0 0 2.6 1.5L10 22h4l.4-2.7a7.5 7.5 0 0 0 2.6-1.5l2.3.6 2-3.4Z"/></svg></button>
+      <button class="btn icon-btn" onclick="openSettingsPage()" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.4 7.4 0 0 0 0-3l1.9-1.5-2-3.4-2.3.6a7.5 7.5 0 0 0-2.6-1.5L14 2h-4l-.4 2.7a7.5 7.5 0 0 0-2.6 1.5l-2.3-.6-2 3.4L4.6 10.5a7.4 7.4 0 0 0 0 3L2.7 15l2 3.4 2.3-.6a7.5 7.5 0 0 0 2.6 1.5L10 22h4l.4-2.7a7.5 7.5 0 0 0 2.6-1.5l2.3.6 2-3.4Z"/></svg></button>
       <button class="btn icon-btn" onclick="logout()" title="Abmelden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"/><path d="M18.4 6.6a8.5 8.5 0 1 1-12.8 0"/></svg></button>
     </div>
    </div>
@@ -264,12 +264,87 @@
             <div>
               <div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub Notizen konfigurieren</div>
               <div style="font-size:12px;color:#1e40af;line-height:1.5">Verbinde ein privates GitHub-Repo um Trainer-Notizen zu speichern. Token + Repo in den Einstellungen eintragen.</div>
-              <button class="trainer-link" onclick="showSettings()">⚙ Einstellungen öffnen →</button>
+              <button class="trainer-link" onclick="openSettingsPage()">⚙ Einstellungen öffnen →</button>
             </div>
           </div>
         </div>
         <div class="team-grid" id="teamGrid"></div>
         <div id="trainerInline" style="display:none;margin-bottom:14px"></div>
+      </div>
+    </section>
+
+    <!-- Einstellungen -->
+    <section id="section-settings" class="section">
+      <div class="content">
+        <div class="group-card">
+          <div class="group-card-body" style="--cols:3">
+            <div class="group-card-section">
+              <div class="settings-group-title">Intervals.icu</div>
+              <div class="setup-field setup-field-sm">
+                <label class="setup-label">Athlete ID</label>
+                <input class="setup-input setup-input-sm" id="settingsAthleteId" type="text">
+              </div>
+              <div class="setup-field setup-field-sm">
+                <label class="setup-label">API Key</label>
+                <input class="setup-input setup-input-sm" id="settingsApiKey" type="password">
+              </div>
+              <div class="setup-hint setup-hint-sm">intervals.icu → Einstellungen → API → API Key</div>
+            </div>
+            <div class="group-card-section">
+              <div class="settings-group-title">GitHub Notizen</div>
+              <div class="setup-field setup-field-sm">
+                <label class="setup-label">Personal Access Token</label>
+                <input class="setup-input setup-input-sm" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
+              </div>
+              <div class="setup-field setup-field-sm">
+                <label class="setup-label">Repository (Owner/Repo)</label>
+                <input class="setup-input setup-input-sm" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
+              </div>
+              <div class="setup-hint setup-hint-sm">github.com → Settings → Developer settings → Personal access tokens → Scopes: <strong>repo</strong>. Muss ein privates Repo sein.</div>
+            </div>
+            <div class="group-card-section">
+              <div class="settings-group-title">Trainingsziel</div>
+              <div class="setup-field setup-field-sm">
+                <textarea class="note-textarea" id="settingsTrainingGoal" style="min-height:54px;font-size:12px;padding:6px 10px" placeholder="z.B. Halbmarathon am 12.09., Zielzeit 1:45..."></textarea>
+              </div>
+              <div class="setup-hint setup-hint-sm">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
+            </div>
+          </div>
+        </div>
+        <div class="group-card">
+          <div class="group-card-body" style="--cols:1">
+            <div class="group-card-section">
+              <div class="settings-group-title">Trainings-Soll</div>
+              <div style="display:grid;grid-template-columns:160px repeat(4,1fr);gap:14px;max-width:620px">
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Wochenstunden</label>
+                  <input class="setup-input setup-input-sm" id="settingsGoalWeekHours" type="number" step="0.5" min="0" placeholder="z.B. 8">
+                </div>
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Laufen %</label>
+                  <input class="setup-input setup-input-sm" id="settingsGoalLaufenPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+                </div>
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Rad %</label>
+                  <input class="setup-input setup-input-sm" id="settingsGoalRadPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+                </div>
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Kraft %</label>
+                  <input class="setup-input setup-input-sm" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+                </div>
+                <div class="setup-field setup-field-sm">
+                  <label class="setup-label">Mobilität %</label>
+                  <input class="setup-input setup-input-sm" id="settingsGoalMobilitaetPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+                </div>
+              </div>
+              <div class="setup-hint setup-hint-sm" id="settingsGoalPctHint" style="margin-top:8px">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="setup-btn" style="width:160px;margin-top:0" onclick="saveSettingsModal()">Speichern</button>
+          <button class="setup-btn" style="width:160px;margin-top:0;background:transparent;color:var(--text);border:1px solid var(--border)" onclick="closeSettingsPage()">Abbrechen</button>
+        </div>
       </div>
     </section>
 
@@ -319,69 +394,6 @@
   </main>
 </div>
 
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)hideSettings()">
-  <div class="modal modal-wide">
-    <h3>⚙ Einstellungen</h3>
-    <div class="setup-field">
-      <label class="setup-label">Athlete ID</label>
-      <input class="setup-input" id="settingsAthleteId" type="text">
-    </div>
-    <div class="setup-field">
-      <label class="setup-label">API Key</label>
-      <input class="setup-input" id="settingsApiKey" type="password">
-    </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">GitHub Notizen (optional)</div>
-    <div class="setup-field">
-      <label class="setup-label">Personal Access Token</label>
-      <input class="setup-input" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
-      <div class="setup-hint">github.com → Settings → Developer settings → Personal access tokens → Scopes: <strong>repo</strong></div>
-    </div>
-    <div class="setup-field">
-      <label class="setup-label">Repository (Owner/Repo)</label>
-      <input class="setup-input" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
-      <div class="setup-hint">Muss ein privates Repo sein. Wird automatisch befüllt.</div>
-    </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">Trainingsziel (optional)</div>
-    <div class="setup-field">
-      <textarea class="note-textarea" id="settingsTrainingGoal" style="min-height:80px" placeholder="z.B. Halbmarathon am 12.09., Zielzeit 1:45..."></textarea>
-      <div class="setup-hint">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
-    </div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">Trainings-Soll (optional)</div>
-    <div class="setup-field">
-      <label class="setup-label">Wochenstunden gesamt</label>
-      <input class="setup-input" id="settingsGoalWeekHours" type="number" step="0.5" min="0" placeholder="z.B. 8">
-    </div>
-    <div class="setup-field" style="display:flex;flex-direction:row;align-items:flex-end;gap:14px">
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Laufen %</label>
-        <input class="setup-input" id="settingsGoalLaufenPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Rad %</label>
-        <input class="setup-input" id="settingsGoalRadPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Kraft %</label>
-        <input class="setup-input" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:6px">
-        <label class="setup-label" style="white-space:nowrap">Mobilität %</label>
-        <input class="setup-input" id="settingsGoalMobilitaetPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-      </div>
-    </div>
-    <div class="setup-hint" id="settingsGoalPctHint">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
-    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0 14px">
-    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:12px">KI-Trainer (optional)</div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveSettingsModal()">Speichern</button>
-      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="hideSettings()">Abbrechen</button>
-    </div>
-  </div>
-</div>
 
 <!-- Note Editor Modal -->
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
