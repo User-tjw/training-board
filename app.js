@@ -830,7 +830,7 @@ function renderZoneTrend(activities) {
   });
   const labels=Object.keys(weeks);
   const zc=['#60a5fa','#34d399','#fbbf24','#f87171'],zn=['Zone 1','Zone 2','Zone 3','Zone 4'];
-  renderChart('zoneTrendChart',{type:'bar',data:{labels,datasets:zc.map((c,i)=>({label:zn[i],data:labels.map(kw=>{const t=weeks[kw].reduce((s,v)=>s+v,0);return t?Math.round(weeks[kw][i]/t*100):0;}),backgroundColor:c,stack:'z'}))},options:{plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},boxWidth:10,color:CHART_TEXT}}},scales:{x:{grid:{display:false},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}},y:{stacked:true,max:100,grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,callback:v=>v+'%'}}}}});
+  renderChart('zoneTrendChart',{type:'bar',data:{labels,datasets:zc.map((c,i)=>({label:zn[i],data:labels.map(kw=>{const t=weeks[kw].reduce((s,v)=>s+v,0);return t?Math.round(weeks[kw][i]/t*100):0;}),backgroundColor:c,stack:'z'}))},options:{plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},boxWidth:10,color:CHART_TEXT}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}},y:{stacked:true,max:100,grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,callback:v=>v+'%'}}}}});
 }
 
 // ─── Fitness ─────────────────────────────────────────────────────────────────
