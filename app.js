@@ -748,8 +748,8 @@ function renderOverviewGroup() {
   renderActivityTable(activities,'allActivities',null,weightByDate);
 
   const mix = {};
-  Object.keys(TYPE_COLORS).forEach(t => { mix[t] = 0; });
-  activities.forEach(a => { const t = normalizeType(a.type); mix[t] = (mix[t]||0) + (a.moving_time||0); });
+  Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung').forEach(t => { mix[t] = 0; });
+  activities.forEach(a => { const t = normalizeType(a.type); if (t === 'Atmung') return; mix[t] = (mix[t]||0) + (a.moving_time||0); });
   const tot = Object.values(mix).reduce((s,v) => s+v, 0);
   document.getElementById('activitiesMix').innerHTML = Object.entries(mix).map(([t,s]) => {
     const p = tot ? Math.round(s/tot*100) : 0;
