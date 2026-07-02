@@ -179,11 +179,16 @@ function applyHfZonesToInputs() {
   document.getElementById('ant').value = z.ant ?? 168;
 }
 
-function saveHfZones() {
+function saveHfZonesLocal() {
   const aet = parseInt(document.getElementById('aet')?.value) || 148;
   const ant = parseInt(document.getElementById('ant')?.value) || 168;
   const zones = { aet, ant, updatedAt: Date.now() };
   localStorage.setItem('hf_zones', JSON.stringify(zones));
+  return zones;
+}
+
+function saveHfZones() {
+  const zones = saveHfZonesLocal();
   if (ghToken && ghRepo) {
     saveHfZonesToGH(zones).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
   }
