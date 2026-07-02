@@ -165,6 +165,39 @@ function getTrainingPlan() {
   try { return JSON.parse(localStorage.getItem('training_plan') || '{}'); } catch(e) { return {}; }
 }
 
+function getManualRespiration() {
+  try { return JSON.parse(localStorage.getItem('manual_respiration') || '{}'); } catch(e) { return {}; }
+}
+
+let _editingRespirationActId = null;
+
+function promptRespiration(actId) {
+  _editingRespirationActId = actId;
+  const data = getManualRespiration();
+  document.getElementById('respirationInput').value = data[actId] ?? '';
+  document.getElementById('respirationModal').style.display = 'flex';
+  document.getElementById('respirationInput').focus();
+}
+
+function closeRespirationEditor() {
+  document.getElementById('respirationModal').style.display = 'none';
+  _editingRespirationActId = null;
+}
+
+function saveRespirationEditor() {
+  if (!_editingRespirationActId) return;
+  const raw = document.getElementById('respirationInput').value.trim();
+  const value = raw === '' ? null : parseFloat(raw.replace(',', '.'));
+  if (raw !== '' && (isNaN(value) || value <= 0)) { alert('Bitte eine positive Zahl eingeben.'); return; }
+  const data = getManualRespiration();
+  if (value == null) delete data[_editingRespirationActId]; else data[_editingRespirationActId] = value;
+  data.updatedAt = Date.now();
+  localStorage.setItem('manual_respiration', JSON.stringify(data));
+  if (ghToken && ghRepo) saveManualRespirationToGH(data).catch(e => console.error('GitHub Atmung-Daten speichern:', e));
+  closeRespirationEditor();
+  renderFromCache();
+}
+
 let _settingsReturnSection = 'cockpit';
 function openSettingsPage() {
   const current = document.querySelector('.nav-item.active');
@@ -211,6 +244,8 @@ function saveApiSettings() {
   localStorage.setItem('gh_token', ghToken);
   localStorage.setItem('gh_repo', ghRepo);
 
+  syncTrainingPlanFromGH();
+  syncManualRespirationFromGH();
   loadAll();
   renderTeam();
   closeSettingsPage();
@@ -252,6 +287,7 @@ function init() {
   renderTeam();
   updateZones();
   syncTrainingPlanFromGH();
+  syncManualRespirationFromGH();
   loadAll();
 }
 
@@ -833,7 +869,9 @@ function refreshCockpitMoodTile() {
 
 const GH_NOTES_PATH = 'notes';
 const GH_PLAN_FILE = 'settings/training-plan.json';
+const GH_RESPIRATION_FILE = 'settings/respiration.json';
 let _planSha = null;
+let _respirationSha = null;
 let _notes = [];
 let _editingNote = null;
 let _viewingIndex = -1;
@@ -950,6 +988,42 @@ async function syncTrainingPlanFromGH() {
   if ((remote.updatedAt || 0) <= (local.updatedAt || 0)) return;
   localStorage.setItem('training_plan', JSON.stringify(remote));
   renderCockpitWeek();
+}
+
+async function loadManualRespirationFromGH() {
+  if (!ghToken || !ghRepo) return null;
+  try {
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_RESPIRATION_FILE}`);
+    _respirationSha = file.sha;
+    return JSON.parse(b64dec(file.content));
+  } catch(e) {
+    if (!e.message.includes('404') && !e.message.includes('Not Found')) console.error('GitHub Atmung-Daten:', e);
+    return null;
+  }
+}
+
+async function saveManualRespirationToGH(data) {
+  if (!ghToken || !ghRepo) return;
+  try {
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_RESPIRATION_FILE}`);
+    _respirationSha = file.sha;
+  } catch(e) {
+    if (!e.message.includes('404') && !e.message.includes('Not Found')) throw e;
+    _respirationSha = null;
+  }
+  const payload = { message: 'Update Atmung-Daten', content: b64enc(JSON.stringify(data, null, 2)) };
+  if (_respirationSha) payload.sha = _respirationSha;
+  const res = await ghFetch(`/repos/${ghRepo}/contents/${GH_RESPIRATION_FILE}`, { method:'PUT', body:JSON.stringify(payload) });
+  _respirationSha = res.content.sha;
+}
+
+async function syncManualRespirationFromGH() {
+  const remote = await loadManualRespirationFromGH();
+  if (!remote) return;
+  const local = getManualRespiration();
+  if ((remote.updatedAt || 0) <= (local.updatedAt || 0)) return;
+  localStorage.setItem('manual_respiration', JSON.stringify(remote));
+  renderFromCache();
 }
 
 function renderMarkdown(text) {
@@ -1397,7 +1471,9 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
 }
 
 function respirationRate(act) {
-  // Intervals.icu liefert die Atemfrequenz je nach Gerät/Import unter unterschiedlichen Feldnamen
+  const manual = getManualRespiration()[act.id];
+  if (manual != null) return manual;
+  // Fallback, falls Intervals.icu die Atemfrequenz doch einmal direkt mitliefert (Feldname unbestätigt)
   return act.icu_average_respiration ?? act.average_respiration ?? act.icu_respiration_rate ?? act.respiration_rate ?? null;
 }
 
@@ -1419,7 +1495,7 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       const w = weightByDate[fmtDate(new Date(a.start_date_local))];
       weightCell = `<td class="mono">${w!=null?w.toFixed(1)+' kg':'—'}</td>`;
     }
-    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono">${respCell}</td><td class="mono">${elev}</td>${weightCell}</tr>`;
+    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono" style="cursor:pointer" title="Klicken zum Bearbeiten" onclick="promptRespiration('${a.id}')">${respCell}</td><td class="mono">${elev}</td>${weightCell}</tr>`;
   }).join('')}</tbody></table>`;
 }
 
