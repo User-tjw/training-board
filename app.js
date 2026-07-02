@@ -974,6 +974,7 @@ async function loadNotes() {
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
     console.error('GitHub notes:', e);
+    showGhSyncError(e.message);
     return [];
   }
 }
@@ -995,6 +996,14 @@ async function deleteNoteFromGH(filename, sha) {
 // ein `updatedAt` (Date.now()), damit beim Sync die neuere Version gewinnt.
 const _ghShaCache = {};
 
+function showGhSyncError(message) {
+  const banner = document.getElementById('ghSyncErrorBanner');
+  const text = document.getElementById('ghSyncErrorText');
+  if (!banner || !text) return;
+  text.textContent = 'GitHub-Abgleich fehlgeschlagen: ' + message;
+  banner.style.display = 'block';
+}
+
 async function loadJSONFromGH(ghPath) {
   if (!ghToken || !ghRepo) return null;
   try {
@@ -1002,7 +1011,10 @@ async function loadJSONFromGH(ghPath) {
     _ghShaCache[ghPath] = file.sha;
     return JSON.parse(b64dec(file.content));
   } catch(e) {
-    if (!e.message.includes('404') && !e.message.includes('Not Found')) console.error(`GitHub ${ghPath}:`, e);
+    if (!e.message.includes('404') && !e.message.includes('Not Found')) {
+      console.error(`GitHub ${ghPath}:`, e);
+      showGhSyncError(e.message);
+    }
     return null;
   }
 }
