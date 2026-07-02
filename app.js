@@ -192,6 +192,12 @@ function saveHfZones() {
   if (ghToken && ghRepo) {
     saveHfZonesToGH(zones).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
   }
+  const saved = document.getElementById('hfZonesSaved');
+  if (saved) {
+    saved.style.display = 'block';
+    clearTimeout(saved._hideTimer);
+    saved._hideTimer = setTimeout(() => { saved.style.display = 'none'; }, 2000);
+  }
 }
 
 let _editingRespirationActId = null;

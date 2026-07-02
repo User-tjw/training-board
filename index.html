@@ -368,8 +368,12 @@
           <div class="group-card-body" style="--cols:1">
             <div class="group-card-section">
               <div class="zone-inputs">
-                <div class="input-group"><span class="input-label">Aerobe Schwelle (AeT)</span><input class="input-field" type="number" value="148" id="aet" oninput="updateZones(); renderZonesGroup(); saveHfZonesLocal();" onchange="saveHfZones()"><span class="input-hint">bpm · Nasenatemtest</span></div>
-                <div class="input-group"><span class="input-label">Anaerobe Schwelle (AnT)</span><input class="input-field" type="number" value="168" id="ant" oninput="updateZones(); renderZonesGroup(); saveHfZonesLocal();" onchange="saveHfZones()"><span class="input-hint">bpm · Laktatschwelle</span></div>
+                <div class="input-group"><span class="input-label">Aerobe Schwelle (AeT)</span><input class="input-field" type="number" value="148" id="aet" oninput="updateZones(); renderZonesGroup();"><span class="input-hint">bpm · Nasenatemtest</span></div>
+                <div class="input-group"><span class="input-label">Anaerobe Schwelle (AnT)</span><input class="input-field" type="number" value="168" id="ant" oninput="updateZones(); renderZonesGroup();"><span class="input-hint">bpm · Laktatschwelle</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+                <button class="setup-btn setup-btn-sm" onclick="saveHfZones()">Speichern</button>
+                <span id="hfZonesSaved" style="display:none;font-size:12px;color:var(--green)">✓ Gespeichert</span>
               </div>
               <table class="zones-table"><thead><tr><th>Zone</th><th>Bereich</th><th>Charakter</th></tr></thead><tbody id="zonesBody"></tbody></table>
             </div>
