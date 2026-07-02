@@ -169,6 +169,26 @@ function getManualRespiration() {
   try { return JSON.parse(localStorage.getItem('manual_respiration') || '{}'); } catch(e) { return {}; }
 }
 
+function getHfZones() {
+  try { return JSON.parse(localStorage.getItem('hf_zones') || '{}'); } catch(e) { return {}; }
+}
+
+function applyHfZonesToInputs() {
+  const z = getHfZones();
+  document.getElementById('aet').value = z.aet ?? 148;
+  document.getElementById('ant').value = z.ant ?? 168;
+}
+
+function saveHfZones() {
+  const aet = parseInt(document.getElementById('aet')?.value) || 148;
+  const ant = parseInt(document.getElementById('ant')?.value) || 168;
+  const zones = { aet, ant, updatedAt: Date.now() };
+  localStorage.setItem('hf_zones', JSON.stringify(zones));
+  if (ghToken && ghRepo) {
+    saveHfZonesToGH(zones).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
+}
+
 let _editingRespirationActId = null;
 
 function promptRespiration(actId) {
@@ -193,7 +213,9 @@ function saveRespirationEditor() {
   if (value == null) delete data[_editingRespirationActId]; else data[_editingRespirationActId] = value;
   data.updatedAt = Date.now();
   localStorage.setItem('manual_respiration', JSON.stringify(data));
-  if (ghToken && ghRepo) saveManualRespirationToGH(data).catch(e => console.error('GitHub Atmung-Daten speichern:', e));
+  if (ghToken && ghRepo) {
+    saveManualRespirationToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
   closeRespirationEditor();
   renderFromCache();
 }
@@ -217,8 +239,8 @@ function populateSettingsForm() {
   document.getElementById('settingsApiKey').value = apiKey;
   document.getElementById('settingsGhToken').value = ghToken;
   document.getElementById('settingsGhRepo').value = ghRepo;
-  document.getElementById('settingsTrainingGoal').value = localStorage.getItem('training_goal') || '';
   const plan = getTrainingPlan();
+  document.getElementById('settingsTrainingGoal').value = plan.trainingGoal || '';
   document.getElementById('settingsGoalWeekHours').value = plan.weekHours ?? '';
   document.getElementById('settingsGoalLaufenPct').value = plan.byTypePct?.Laufen ?? '';
   document.getElementById('settingsGoalRadPct').value = plan.byTypePct?.Rad ?? '';
@@ -246,6 +268,7 @@ function saveApiSettings() {
 
   syncTrainingPlanFromGH();
   syncManualRespirationFromGH();
+  syncHfZonesFromGH();
   loadAll();
   renderTeam();
   closeSettingsPage();
@@ -253,7 +276,6 @@ function saveApiSettings() {
 
 function saveTrainingGoals() {
   const trainingGoal = document.getElementById('settingsTrainingGoal').value.trim();
-  localStorage.setItem('training_goal', trainingGoal);
 
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
   const weekHours = num('settingsGoalWeekHours');
@@ -265,9 +287,11 @@ function saveTrainingGoals() {
   if (mo !== null) byTypePct['Mobilität'] = mo;
   const byType = {};
   if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
-  const plan = { weekHours, byTypePct, byType, updatedAt: Date.now() };
+  const plan = { weekHours, byTypePct, byType, trainingGoal, updatedAt: Date.now() };
   localStorage.setItem('training_plan', JSON.stringify(plan));
-  if (ghToken && ghRepo) saveTrainingPlanToGH(plan).catch(e => console.error('GitHub training plan save:', e));
+  if (ghToken && ghRepo) {
+    saveTrainingPlanToGH(plan).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
 
   renderCockpitWeek();
   closeSettingsPage();
@@ -285,9 +309,11 @@ function init() {
     `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   setupNav();
   renderTeam();
+  applyHfZonesToInputs();
   updateZones();
   syncTrainingPlanFromGH();
   syncManualRespirationFromGH();
+  syncHfZonesFromGH();
   loadAll();
 }
 
@@ -870,8 +896,7 @@ function refreshCockpitMoodTile() {
 const GH_NOTES_PATH = 'notes';
 const GH_PLAN_FILE = 'settings/training-plan.json';
 const GH_RESPIRATION_FILE = 'settings/respiration.json';
-let _planSha = null;
-let _respirationSha = null;
+const GH_ZONES_FILE = 'settings/hf-zones.json';
 let _notes = [];
 let _editingNote = null;
 let _viewingIndex = -1;
@@ -954,77 +979,53 @@ async function deleteNoteFromGH(filename, sha) {
   });
 }
 
-async function loadTrainingPlanFromGH() {
+// Generischer Sync für Einstellungen, die als ein JSON-Objekt in localStorage +
+// GitHub-Datei gehalten werden (Trainings-Soll, Atmungsdaten). Jedes Objekt trägt
+// ein `updatedAt` (Date.now()), damit beim Sync die neuere Version gewinnt.
+const _ghShaCache = {};
+
+async function loadJSONFromGH(ghPath) {
   if (!ghToken || !ghRepo) return null;
   try {
-    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`);
-    _planSha = file.sha;
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`);
+    _ghShaCache[ghPath] = file.sha;
     return JSON.parse(b64dec(file.content));
   } catch(e) {
-    if (!e.message.includes('404') && !e.message.includes('Not Found')) console.error('GitHub training plan:', e);
+    if (!e.message.includes('404') && !e.message.includes('Not Found')) console.error(`GitHub ${ghPath}:`, e);
     return null;
   }
 }
 
-async function saveTrainingPlanToGH(plan) {
+async function saveJSONToGH(ghPath, data, message) {
   if (!ghToken || !ghRepo) return;
   try {
-    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`);
-    _planSha = file.sha;
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`);
+    _ghShaCache[ghPath] = file.sha;
   } catch(e) {
     if (!e.message.includes('404') && !e.message.includes('Not Found')) throw e;
-    _planSha = null;
+    _ghShaCache[ghPath] = null;
   }
-  const payload = { message: 'Update training plan', content: b64enc(JSON.stringify(plan, null, 2)) };
-  if (_planSha) payload.sha = _planSha;
-  const res = await ghFetch(`/repos/${ghRepo}/contents/${GH_PLAN_FILE}`, { method:'PUT', body:JSON.stringify(payload) });
-  _planSha = res.content.sha;
+  const payload = { message, content: b64enc(JSON.stringify(data, null, 2)) };
+  if (_ghShaCache[ghPath]) payload.sha = _ghShaCache[ghPath];
+  const res = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`, { method:'PUT', body:JSON.stringify(payload) });
+  _ghShaCache[ghPath] = res.content.sha;
 }
 
-async function syncTrainingPlanFromGH() {
-  const remote = await loadTrainingPlanFromGH();
+async function syncJSONFromGH(ghPath, storageKey, getLocal, onApplied) {
+  const remote = await loadJSONFromGH(ghPath);
   if (!remote) return;
-  const local = getTrainingPlan();
+  const local = getLocal();
   if ((remote.updatedAt || 0) <= (local.updatedAt || 0)) return;
-  localStorage.setItem('training_plan', JSON.stringify(remote));
-  renderCockpitWeek();
+  localStorage.setItem(storageKey, JSON.stringify(remote));
+  if (onApplied) onApplied();
 }
 
-async function loadManualRespirationFromGH() {
-  if (!ghToken || !ghRepo) return null;
-  try {
-    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_RESPIRATION_FILE}`);
-    _respirationSha = file.sha;
-    return JSON.parse(b64dec(file.content));
-  } catch(e) {
-    if (!e.message.includes('404') && !e.message.includes('Not Found')) console.error('GitHub Atmung-Daten:', e);
-    return null;
-  }
-}
-
-async function saveManualRespirationToGH(data) {
-  if (!ghToken || !ghRepo) return;
-  try {
-    const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_RESPIRATION_FILE}`);
-    _respirationSha = file.sha;
-  } catch(e) {
-    if (!e.message.includes('404') && !e.message.includes('Not Found')) throw e;
-    _respirationSha = null;
-  }
-  const payload = { message: 'Update Atmung-Daten', content: b64enc(JSON.stringify(data, null, 2)) };
-  if (_respirationSha) payload.sha = _respirationSha;
-  const res = await ghFetch(`/repos/${ghRepo}/contents/${GH_RESPIRATION_FILE}`, { method:'PUT', body:JSON.stringify(payload) });
-  _respirationSha = res.content.sha;
-}
-
-async function syncManualRespirationFromGH() {
-  const remote = await loadManualRespirationFromGH();
-  if (!remote) return;
-  const local = getManualRespiration();
-  if ((remote.updatedAt || 0) <= (local.updatedAt || 0)) return;
-  localStorage.setItem('manual_respiration', JSON.stringify(remote));
-  renderFromCache();
-}
+function saveTrainingPlanToGH(plan) { return saveJSONToGH(GH_PLAN_FILE, plan, 'Update training plan'); }
+function syncTrainingPlanFromGH() { return syncJSONFromGH(GH_PLAN_FILE, 'training_plan', getTrainingPlan, renderCockpitWeek); }
+function saveManualRespirationToGH(data) { return saveJSONToGH(GH_RESPIRATION_FILE, data, 'Update Atmung-Daten'); }
+function syncManualRespirationFromGH() { return syncJSONFromGH(GH_RESPIRATION_FILE, 'manual_respiration', getManualRespiration, renderFromCache); }
+function saveHfZonesToGH(zones) { return saveJSONToGH(GH_ZONES_FILE, zones, 'Update HF-Zonen'); }
+function syncHfZonesFromGH() { return syncJSONFromGH(GH_ZONES_FILE, 'hf_zones', getHfZones, () => { applyHfZonesToInputs(); updateZones(); renderZonesGroup(); }); }
 
 function renderMarkdown(text) {
   const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
