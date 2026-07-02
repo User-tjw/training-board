@@ -15,7 +15,7 @@ function sliceDays(arr, days, getDate) {
 function applyStoredRanges() {
   document.querySelectorAll('.range-select').forEach(s => {
     const firstKey = s.dataset.keys ? s.dataset.keys.split(',')[0] : s.dataset.key;
-    s.value = getRangeDays(firstKey, parseInt(s.dataset.default) || 30);
+    s.value = getRangeDays(firstKey, parseInt(s.dataset.default) || 14);
   });
 }
 
@@ -673,7 +673,7 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
 // ─── Cockpit: Trainingsbelastung & Erholung (Fitness/Fatigue/Form, HRV-Trend, 80/20-Check) ────
 
 function renderCockpitLoad() {
-  const days = getRangeDays('cockpitLoad', 30);
+  const days = getRangeDays('cockpitLoad', 14);
   const rangeText = days === 365 ? 'Alle' : `Letzte ${days} Tage`;
 
   const fitnessSlice = sliceDays(_fitnessFull, days, d => new Date(d.date));
@@ -738,7 +738,7 @@ function renderCockpitLoad() {
 // ─── Übersicht ────────────────────────────────────────────────────────────────
 
 function renderOverviewGroup() {
-  const days = getRangeDays('overview', 90);
+  const days = getRangeDays('overview', 14);
 
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   const weightByDate = {};
@@ -773,7 +773,7 @@ function updateZones() {
 }
 
 function renderZonesGroup() {
-  const days = getRangeDays('zones', 90);
+  const days = getRangeDays('zones', 14);
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
 
   updateZones();
@@ -823,7 +823,7 @@ function renderZoneTrend(activities) {
 // ─── Wellness ────────────────────────────────────────────────────────────────
 
 function renderWellnessGroup() {
-  const days = getRangeDays('wellness', 30);
+  const days = getRangeDays('wellness', 14);
   const wellness = sliceDays(_wellnessFull, days, d => new Date(d.id));
 
   const sorted=sortedWellness(wellness);
