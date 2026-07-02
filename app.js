@@ -1,6 +1,6 @@
 // ─── Zeitraum pro Kachel-Gruppe ────────────────────────────────────────────────
 
-const RANGE_OPTIONS = [7, 30, 90, 365];
+const RANGE_OPTIONS = [7, 14, 30, 90, 365];
 let _wellnessFull = [], _activitiesFull = [], _fitnessFull = [];
 
 function getRangeDays(key, def) {
@@ -355,7 +355,7 @@ function setStatus(ok) {
 
 // ─── Cockpit ─────────────────────────────────────────────────────────────────
 
-const TYPE_COLORS = {Laufen:'#3b82f6',Rad:'#10b981',Kraft:'#8b5cf6',Mobilität:'#f59e0b'};
+const TYPE_COLORS = {Laufen:'#3b82f6',Rad:'#10b981',Kraft:'#8b5cf6',Atmung:'#06b6d4',Mobilität:'#f59e0b'};
 
 function buildWeekCalendar(weekStart, weekActs) {
   const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
@@ -391,6 +391,7 @@ function buildWeekCalendar(weekStart, weekActs) {
 
   function goalLabel(act, type) {
     if (type === 'Kraft') return 'Kraft/Mobilität';
+    if (type === 'Atmung') return 'Atemarbeit';
     const zones = window._zones;
     const hr = act.average_heartrate;
     if (!zones || !hr) return '';
@@ -432,8 +433,8 @@ function buildWeekCalendar(weekStart, weekActs) {
 
   const dayTotalRow = byDay.map((d,i) => {
     const today = d.isToday;
-    const dayH = ([...d.endurance, ...d.strength]).reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
-    return `<div class="week-cal-head-cell week-cal-day-total${today?' today':''}">${dayH > 0 ? dayH.toFixed(1)+' h' : '–'}</div>`;
+    const dayMin = Math.round(([...d.endurance, ...d.strength]).reduce((s,a) => s+(a.moving_time||0), 0) / 60);
+    return `<div class="week-cal-head-cell week-cal-day-total${today?' today':''}">${dayMin > 0 ? dayMin+' min' : '–'}</div>`;
   }).join('') + `<div class="week-cal-head-cell week-cal-day-total"></div>`;
 
   const plan = getTrainingPlan();
@@ -617,7 +618,13 @@ function renderCockpitLoad() {
     const day = fmtDate(new Date(a.start_date_local));
     loadByDate[day] = (loadByDate[day]||0) + a.icu_training_load;
   });
-  const fc = makeFitnessChart(fitnessSlice, hrvByDate, rhfByDate, loadByDate); fc.options.maintainAspectRatio = false;
+  const respByDate = {};
+  actSlice.forEach(a => {
+    const resp = respirationRate(a);
+    if (resp == null) return;
+    respByDate[fmtDate(new Date(a.start_date_local))] = Math.round(resp);
+  });
+  const fc = makeFitnessChart(fitnessSlice, hrvByDate, rhfByDate, loadByDate, respByDate); fc.options.maintainAspectRatio = false;
   renderChart('fitnessChart', fc);
 
   document.getElementById('avgHR').textContent = avg(actSlice.map(a=>a.average_heartrate).filter(Boolean)) ? Math.round(avg(actSlice.map(a=>a.average_heartrate).filter(Boolean))) : '—';
@@ -1328,7 +1335,7 @@ async function deleteCurrentNote() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate) {
+function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate) {
   const labels=fitness.map(d=>fmtAxisDate(d.date));
   const datasets=[];
   if (loadByDate) {
@@ -1360,6 +1367,9 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate) {
   if (rhfByDate) {
     datasets.push({type:'line',label:'Ruhepuls',data:fitness.map(d=>rhfByDate[d.date]||null),borderColor:'#06b6d4',backgroundColor:'transparent',borderWidth:3,borderDash:[8,2,2,2],pointRadius:0,tension:0.4,spanGaps:true,order:1});
   }
+  if (respByDate) {
+    datasets.push({type:'line',label:'Ø Atmung/Min',data:fitness.map(d=>respByDate[d.date]||null),borderColor:'#f472b6',backgroundColor:'transparent',borderWidth:3,borderDash:[3,3],pointRadius:0,tension:0.4,spanGaps:true,order:1});
+  }
   const todayLabel = fmtAxisDate(fmtDate(new Date()));
   const todayIndex = labels.indexOf(todayLabel);
   const plugins = [];
@@ -1386,23 +1396,30 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate) {
   return {type:'line',data:{labels,datasets},options,plugins};
 }
 
+function respirationRate(act) {
+  // Intervals.icu liefert die Atemfrequenz je nach Gerät/Import unter unterschiedlichen Feldnamen
+  return act.icu_average_respiration ?? act.average_respiration ?? act.icu_respiration_rate ?? act.respiration_rate ?? null;
+}
+
 function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
   const el=document.getElementById(containerId); if(!el) return;
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
   const weightCol = weightByDate ? '<th>Gewicht</th>' : '';
-  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Höhenmeter</th>${weightCol}</tr></thead><tbody>${list.map(a=>{
+  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Ø Atmung/Min</th><th>Höhenmeter</th>${weightCol}</tr></thead><tbody>${list.map(a=>{
     const date=new Date(a.start_date_local).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
     const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
     const dur=a.moving_time?formatDur(a.moving_time):'—';
     const hr=a.average_heartrate?Math.round(a.average_heartrate)+' bpm':'—';
+    const resp=respirationRate(a);
+    const respCell=resp!=null?Math.round(resp)+'/min':'—';
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
     let weightCell = '';
     if (weightByDate) {
       const w = weightByDate[fmtDate(new Date(a.start_date_local))];
       weightCell = `<td class="mono">${w!=null?w.toFixed(1)+' kg':'—'}</td>`;
     }
-    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono">${elev}</td>${weightCell}</tr>`;
+    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono">${respCell}</td><td class="mono">${elev}</td>${weightCell}</tr>`;
   }).join('')}</tbody></table>`;
 }
 
@@ -1430,6 +1447,7 @@ function normalizeType(type) {
   if(type.match(/Run|Lauf/i)) return 'Laufen';
   if(type.match(/Mountain|Ride|Cycling|Bike/i)) return 'Rad';
   if(type.match(/Weight|Workout|Strength|Kraft/i)) return 'Kraft';
+  if(type.match(/Breathwork|Atmung/i)) return 'Atmung';
   return 'Mobilität';
 }
 function daysAgo(n) { const d=new Date(); d.setDate(d.getDate()-n); return d; }
