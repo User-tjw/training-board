@@ -177,12 +177,14 @@ function applyHfZonesToInputs() {
   const z = getHfZones();
   document.getElementById('aet').value = z.aet ?? 148;
   document.getElementById('ant').value = z.ant ?? 168;
+  document.getElementById('maxHr').value = z.maxHr ?? '';
 }
 
 function saveHfZonesLocal() {
   const aet = parseInt(document.getElementById('aet')?.value) || 148;
   const ant = parseInt(document.getElementById('ant')?.value) || 168;
-  const zones = { aet, ant, updatedAt: Date.now() };
+  const maxHr = parseInt(document.getElementById('maxHr')?.value) || null;
+  const zones = { aet, ant, maxHr, updatedAt: Date.now() };
   localStorage.setItem('hf_zones', JSON.stringify(zones));
   return zones;
 }
@@ -760,16 +762,30 @@ function renderOverviewGroup() {
 function updateZones() {
   const aet = parseInt(document.getElementById('aet')?.value)||148;
   const ant = parseInt(document.getElementById('ant')?.value)||168;
+  const maxHr = parseInt(document.getElementById('maxHr')?.value) || null;
   const zones = [
     {low:Math.round(aet*0.80),high:Math.round(aet*0.90),name:'Zone 1',char:'Sehr leicht · aerobe Basis',color:'#60a5fa'},
     {low:Math.round(aet*0.90),high:aet,                  name:'Zone 2',char:'Locker · aerobe Kapazität',color:'#34d399'},
     {low:aet,                  high:ant,                  name:'Zone 3',char:'Mittel · Grauzone',color:'#fbbf24'},
-    {low:ant,                  high:'—',                  name:'Zone 4',char:'Hart · anaerob',color:'#f87171'},
+    {low:ant,                  high:maxHr ?? '—',         name:'Zone 4',char:'Hart · anaerob',color:'#f87171'},
   ];
   const tbody = document.getElementById('zonesBody');
   if (!tbody) return;
   tbody.innerHTML = zones.map(z=>`<tr><td><span class="zone-dot" style="background:${z.color}"></span><span class="zone-name">${z.name}</span></td><td class="zone-range">${z.low} – ${z.high} bpm</td><td class="zone-desc">${z.char}</td></tr>`).join('');
   window._zones = zones;
+
+  const gapEl = document.getElementById('aetAntGapCheck');
+  if (gapEl && ant > 0) {
+    const gapPct = Math.round((ant - aet) / ant * 100);
+    gapEl.style.display = 'flex';
+    if (gapPct > 10) {
+      gapEl.className = 'recommendation warn';
+      gapEl.innerHTML = `<div class="rec-icon">⚠</div><div><div class="rec-title">10%-Test: ${gapPct}% Abstand zwischen AeT und AnT</div><div class="rec-text">Ziel sind ~10%. Ein größerer Abstand ist ein Zeichen für eine unterentwickelte aerobe Basis ("Aerobic Deficiency") — geduldiges Training an/knapp unter der AeT schließt die Lücke über Zeit.</div></div>`;
+    } else {
+      gapEl.className = 'recommendation good';
+      gapEl.innerHTML = `<div class="rec-icon">✓</div><div><div class="rec-title">10%-Test bestanden: ${gapPct}% Abstand zwischen AeT und AnT</div><div class="rec-text">Im gesunden Bereich (~10%) — gute aerobe Basis im Verhältnis zur anaeroben Schwelle.</div></div>`;
+    }
+  }
 }
 
 function renderZonesGroup() {
@@ -790,7 +806,6 @@ function renderZonesGroup() {
   const pcts = dist.map(d=>total?Math.round(d/total*100):0);
   const zn=['Zone 1','Zone 2','Zone 3','Zone 4'],zs=['Basis','Aerob','Grauzone','Intensiv'],zc=['#60a5fa','#34d399','#fbbf24','#f87171'];
   document.getElementById('distBars').innerHTML = pcts.map((p,i)=>`<div class="dist-item"><div class="dist-label"><div class="dist-zone" style="color:${zc[i]}">${zn[i]}</div><div class="dist-sub">${zs[i]}</div></div><div class="dist-bar-wrap"><div class="dist-bar" style="width:${p}%;background:${zc[i]}"></div></div><span class="dist-val">${p}%</span><span class="dist-time">${formatDur(dist[i])}</span></div>`).join('');
-  renderChart('zoneDonut',{type:'doughnut',data:{labels:zn,datasets:[{data:pcts,backgroundColor:zc,borderWidth:0}]},options:{cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{family:CHART_FONT,size:11},boxWidth:10,padding:10,color:CHART_TEXT}}}}});
 
   const recEl = document.getElementById('zoneRecommendation');
   if (pcts[2]>30) { recEl.style.display='flex'; recEl.className='recommendation warn'; recEl.innerHTML=`<div class="rec-icon">⚠</div><div><div class="rec-title">Zu viel Zone 3 — klassische „Grauzone"</div><div class="rec-text">${pcts[2]}% deines Trainings liegt in Zone 3. Mehr Zone 1 & 2 stärkt die kardiovaskuläre Basis.</div></div>`; }
@@ -1440,11 +1455,12 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
     datasets.push({type:'bar',label:'Belastung (Ist)',data:fitness.map(d=>loadByDate[d.date]||0),backgroundColor:'rgba(59,130,246,0.25)',borderWidth:0,order:3});
   }
   datasets.push(
-    {type:'line',label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#3b82f6',backgroundColor:'transparent',borderWidth:3,pointRadius:0,tension:0.4,order:1},
-    {type:'line',label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',backgroundColor:'transparent',borderWidth:3,borderDash:[6,3],pointRadius:0,tension:0.4,order:1},
-    {type:'line',label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',backgroundColor:'transparent',borderWidth:3,borderDash:[2,2],pointRadius:0,tension:0.4,order:1},
+    {type:'line',label:'Fitness (CTL)',data:fitness.map(d=>d.ctl?Math.round(d.ctl):null),borderColor:'#3b82f6',backgroundColor:'transparent',borderWidth:2,pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,order:1},
+    {type:'line',label:'Fatigue (ATL)',data:fitness.map(d=>d.atl?Math.round(d.atl):null),borderColor:'#dc2626',backgroundColor:'transparent',borderWidth:2,borderDash:[6,3],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,order:1},
+    {type:'line',label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',backgroundColor:'transparent',borderWidth:2,borderDash:[2,2],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,order:1},
   );
   const options = lineOptions();
+  options.interaction = {mode:'nearest', intersect:true};
   options.plugins.legend.position = 'top';
   options.plugins.legend.align = 'center';
   options.plugins.legend.labels.boxWidth = 18;
@@ -1460,13 +1476,13 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
   options.scales.y.grid.color = ctx => ctx.tick?.value === 0 ? 'rgba(100,100,100,0.6)' : CHART_GRID;
   options.scales.y.grid.lineWidth = ctx => ctx.tick?.value === 0 ? 2 : 1;
   if (hrvByDate) {
-    datasets.push({type:'line',label:'HRV',data:fitness.map(d=>hrvByDate[d.date]||null),borderColor:'#10b981',backgroundColor:'transparent',borderWidth:3,borderDash:[1,3],pointRadius:0,tension:0.4,spanGaps:true,order:1});
+    datasets.push({type:'line',label:'HRV',data:fitness.map(d=>hrvByDate[d.date]||null),borderColor:'#10b981',backgroundColor:'transparent',borderWidth:2,borderDash:[1,3],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,spanGaps:true,order:1});
   }
   if (rhfByDate) {
-    datasets.push({type:'line',label:'Ruhepuls',data:fitness.map(d=>rhfByDate[d.date]||null),borderColor:'#06b6d4',backgroundColor:'transparent',borderWidth:3,borderDash:[8,2,2,2],pointRadius:0,tension:0.4,spanGaps:true,order:1});
+    datasets.push({type:'line',label:'Ruhepuls',data:fitness.map(d=>rhfByDate[d.date]||null),borderColor:'#06b6d4',backgroundColor:'transparent',borderWidth:2,borderDash:[8,2,2,2],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,spanGaps:true,order:1});
   }
   if (respByDate) {
-    datasets.push({type:'line',label:'Ø Atmung/Min',data:fitness.map(d=>respByDate[d.date]||null),borderColor:'#f472b6',backgroundColor:'transparent',borderWidth:3,borderDash:[3,3],pointRadius:0,tension:0.4,spanGaps:true,order:1});
+    datasets.push({type:'line',label:'Ø Atmung/Min',data:fitness.map(d=>respByDate[d.date]||null),borderColor:'#f472b6',backgroundColor:'transparent',borderWidth:2,borderDash:[3,3],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,spanGaps:true,order:1});
   }
   const todayLabel = fmtAxisDate(fmtDate(new Date()));
   const todayIndex = labels.indexOf(todayLabel);
@@ -1491,6 +1507,33 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
       }
     });
   }
+  plugins.push({
+    id: 'hoverCrosshair',
+    afterEvent(chart, args) {
+      const e = args.event;
+      if (e.type === 'mousemove') {
+        const {left, right, top, bottom} = chart.chartArea;
+        chart._crosshairX = (e.x >= left && e.x <= right && e.y >= top && e.y <= bottom) ? e.x : null;
+        args.changed = true;
+      } else if (e.type === 'mouseout') {
+        chart._crosshairX = null;
+        args.changed = true;
+      }
+    },
+    afterDraw(chart) {
+      if (chart._crosshairX == null) return;
+      const {top, bottom} = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(100,100,100,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(chart._crosshairX, top);
+      ctx.lineTo(chart._crosshairX, bottom);
+      ctx.stroke();
+      ctx.restore();
+    }
+  });
   return {type:'line',data:{labels,datasets},options,plugins};
 }
 

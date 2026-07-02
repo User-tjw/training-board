@@ -121,6 +121,7 @@
     .group-card-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); }
     .group-card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
     .group-card-body { display: grid; grid-template-columns: repeat(var(--cols, 3), 1fr); }
+    .group-card-body.zones-golden { grid-template-columns: 1.618fr 1fr; }
     .group-card-section { padding: 18px 20px; border-right: 1px solid var(--border); }
     .group-card-section:last-child { border-right: none; }
     .group-card-body[style*="--cols:1"] .group-card-section { border-right: none; border-bottom: 1px solid var(--border); }
@@ -162,7 +163,8 @@
     .mix-bar { height: 8px; border-radius: 4px; }
     .mix-val { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 35px; text-align: right; }
     .mix-time { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 45px; text-align: right; }
-    .zone-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .zone-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+    @media (max-width: 700px) { .zone-inputs { grid-template-columns: 1fr 1fr; } }
     .input-group { display: flex; flex-direction: column; gap: 6px; }
     .input-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
     .input-field { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--mono); font-size: 16px; font-weight: 500; background: var(--bg); color: var(--text); outline: none; width: 100%; }
