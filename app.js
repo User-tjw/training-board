@@ -736,7 +736,8 @@ function renderOverviewGroup() {
   const merged = [...activities, ...noteOnlyEntries]
     .sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
 
-  document.getElementById('journalCount').textContent = `${activities.length} Aktivität${activities.length !== 1 ? 'en' : ''}`;
+  // Angezeigte (im Zeitraum) / Gesamtzahl aller geladenen Aktivitäten
+  document.getElementById('journalCount').textContent = `${activities.length} / ${_activitiesFull.length} Aktivitäten`;
   renderActivityTable(merged,'allActivities',null,weightByDate,sleepByDate,journalByDate);
 
   const mix = {};
