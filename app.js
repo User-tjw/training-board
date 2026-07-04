@@ -1482,7 +1482,9 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const respVal=isNoteOnly?'—':(resp!=null?Math.round(resp)+'/min':'—');
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
     const nameVal = isNoteOnly ? '<span style="color:var(--text2)">Ruhetag</span>' : escHtml(a.name||normalizeType(a.type));
-    const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag tag-${a.type}">${normalizeType(a.type)}</span>`;
+    const typName = normalizeType(a.type);
+    const typColor = TYPE_COLORS[typName] || '#94a3b8';
+    const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
     let weightVal = '—', sleepVal = '—', moodVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
