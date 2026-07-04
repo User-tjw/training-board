@@ -942,7 +942,6 @@ const GH_RESPIRATION_FILE = 'settings/respiration.json';
 const GH_ZONES_FILE = 'settings/hf-zones.json';
 let _notes = [];
 let _editingNote = null;
-let _viewingIndex = -1;
 
 function ghHeaders() {
   return {
@@ -1082,37 +1081,12 @@ function syncManualRespirationFromGH() { return syncJSONFromGH(GH_RESPIRATION_FI
 function saveHfZonesToGH(zones) { return saveJSONToGH(GH_ZONES_FILE, zones, 'Update HF-Zonen'); }
 function syncHfZonesFromGH() { return syncJSONFromGH(GH_ZONES_FILE, 'hf_zones', getHfZones, () => { applyHfZonesToInputs(); updateZones(); renderZonesGroup(); }); }
 
-function renderMarkdown(text) {
-  const e = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const lines = e.split('\n');
-  let html = '', inList = false;
-  for (const raw of lines) {
-    const line = raw
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g,'<em>$1</em>');
-    if (/^### /.test(line)) { if(inList){html+='</ul>';inList=false;} html+=`<h3>${line.slice(4)}</h3>`; }
-    else if (/^## /.test(line))  { if(inList){html+='</ul>';inList=false;} html+=`<h2>${line.slice(3)}</h2>`; }
-    else if (/^# /.test(line))   { if(inList){html+='</ul>';inList=false;} html+=`<h1>${line.slice(2)}</h1>`; }
-    else if (/^[-*] /.test(line)){ if(!inList){html+='<ul>';inList=true;} html+=`<li>${line.slice(2)}</li>`; }
-    else if (/^---$/.test(raw))  { if(inList){html+='</ul>';inList=false;} html+=`<hr>`; }
-    else if (line.trim()==='')   { if(inList){html+='</ul>';inList=false;} html+=`<p></p>`; }
-    else                         { if(inList){html+='</ul>';inList=false;} html+=`<p>${line}</p>`; }
-  }
-  if (inList) html+='</ul>';
-  return html;
-}
-
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function nowLocalISO() {
   const d = new Date();
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 16);
-}
-
-function fmtNoteDate(d) {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
 
@@ -1154,6 +1128,8 @@ function openNoteEditor(dateStr) {
 
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
+  // Löschen-Button nur bei bestehender Notiz zeigen
+  document.getElementById('noteEditorDeleteBtn').style.display = existing ? 'block' : 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
 }
 
@@ -1175,6 +1151,8 @@ function openDayNoteEditor(localNoteId) {
   document.getElementById('noteEditorRespirationField').style.display = 'none';
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'block';
+  // Lokaler Modus hat eigene Löschliste unten — Editor-Löschbutton hier aus
+  document.getElementById('noteEditorDeleteBtn').style.display = 'none';
   renderLocalDayNotesList();
   document.getElementById('noteEditorModal').style.display = 'flex';
 }
@@ -1304,38 +1282,21 @@ async function copyNoteForClaude() {
 
 // ─── Note Viewer ──────────────────────────────────────────────────────────────
 
-function openNoteViewer(index) {
-  _viewingIndex = index;
-  const n = _notes[index];
-  document.getElementById('noteViewerBadge').innerHTML = '';
-  document.getElementById('noteViewerTitle').innerHTML = escHtml(n.title) + (n.mood ? ` <span style="color:var(--text2);vertical-align:-4px">${moodIcon(n.mood,16)}</span>` : '');
-  document.getElementById('noteViewerDate').textContent  = fmtNoteDate(n.date);
-  document.getElementById('noteViewerContent').innerHTML = renderMarkdown(n.body);
-  document.getElementById('noteViewerModal').style.display = 'flex';
-}
-
-function closeNoteViewer() {
-  document.getElementById('noteViewerModal').style.display = 'none';
-  _viewingIndex = -1;
-}
-
-function editCurrentNote() {
-  const n = _notes[_viewingIndex];
-  closeNoteViewer();
-  openNoteEditor((n.date || fmtDate(new Date())).slice(0,10));
-}
-
-async function deleteCurrentNote() {
-  const n = _notes[_viewingIndex];
-  if (!confirm(`Notiz "${n.title}" wirklich löschen?`)) return;
+// Löscht die im Editor gerade bearbeitete (bestehende) Notiz aus dem GitHub-Repo
+async function deleteEditingNote() {
+  if (!_editingNote) return;
+  const title = document.getElementById('noteEditorTitleInput').value.trim() || 'Notiz';
+  if (!confirm(`Notiz "${title}" wirklich löschen?`)) return;
   try {
-    await deleteNoteFromGH(n.filename, n.sha);
-    _notes = _notes.filter(x => x.filename !== n.filename);
-    closeNoteViewer();
+    await deleteNoteFromGH(_editingNote.filename, _editingNote.sha);
+    _notes = _notes.filter(x => x.filename !== _editingNote.filename);
+    closeNoteEditor();
     refreshCockpitMoodTile();
     renderFromCache();
   } catch(e) {
-    alert('Fehler beim Löschen: ' + e.message);
+    const errEl = document.getElementById('noteEditorError');
+    errEl.textContent = 'Fehler beim Löschen: ' + e.message;
+    errEl.style.display = 'block';
   }
 }
 
@@ -1447,9 +1408,9 @@ function journalByDateMap() {
   return map;
 }
 
-function wrenchIcon(size) {
+function pencilIcon(size) {
   size = size || 15;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
 }
 
 function statChip(label, valueHtml) {
@@ -1491,10 +1452,10 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
     if (journalByDate) {
       const n = journalByDate[dayKey];
-      const viewIdx = n ? _notes.indexOf(n) : -1;
       moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—';
+      // Titel nur noch als Text — Bearbeiten/Löschen läuft über den Stift-Button rechts
       titleHtml = n
-        ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;${viewIdx>=0?'cursor:pointer':''}" ${viewIdx>=0?`onclick="openNoteViewer(${viewIdx})"`:''} title="${viewIdx>=0?'Notiz ansehen':''}">${escHtml(n.title)}</span>`
+        ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
         : '<span style="color:var(--text2)">—</span>';
     }
 
@@ -1518,7 +1479,7 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       ${weightByDate?statChip('Gewicht', weightVal):''}
       ${sleepByDate?statChip('Schlaf', sleepVal):''}
       ${journalByDate?statChip('Schlafqual.', moodVal):''}
-      ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Notiz bearbeiten" onclick="openNoteEditor('${dayKey}')">${wrenchIcon(13)}</button></div>`:''}
+      ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Notiz bearbeiten" onclick="openNoteEditor('${dayKey}')">${pencilIcon(13)}</button></div>`:''}
     </div>`;
   }).join('');
 }
