@@ -1498,17 +1498,16 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     }
 
     return `${yearDivider}<div class="note-card" style="cursor:default;flex-wrap:wrap;row-gap:10px">
-      <div style="display:flex;flex-direction:column;align-items:center;min-width:70px">
-        <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Datum</span>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
         <span class="mono" style="font-size:12px">${date}</span>
       </div>
-      <div style="display:flex;flex-direction:column;min-width:110px">
-        <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Aktivität</span>
-        <span style="font-size:12px;font-weight:600">${nameVal}</span>
+      <div style="display:flex;flex-direction:column;width:150px;flex-shrink:0">
+        <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Aktivität</span>
+        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word">${nameVal}</span>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:center;min-width:60px">
-        <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Typ</span>
-        ${typVal}
+      <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:60px">
+        <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Typ</span>
+        <span style="display:flex;align-items:center;min-height:18px">${typVal}</span>
       </div>
       ${statChip('Distanz', km)}
       ${statChip('Zeit', dur)}
