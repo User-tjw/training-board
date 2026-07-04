@@ -216,11 +216,27 @@
     .modal.modal-wide { width:560px; max-width:96vw; max-height:88vh; overflow-y:auto; }
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
-    .mood-picker { display:flex; gap:8px; }
-    .mood-btn { flex:1; padding:9px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text2); cursor:pointer; text-align:center; font-family:var(--font); display:flex; flex-direction:column; align-items:center; }
-    .mood-btn svg { display:block; }
-    .mood-btn.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
+    /* Schlaf- UND Trainingsbefinden-Picker teilen sich diese Smiley-Optik */
+    .mood-picker, .feel-picker { display:flex; gap:8px; }
+    .mood-btn, .feel-btn { flex:1; padding:9px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text2); cursor:pointer; text-align:center; font-family:var(--font); display:flex; flex-direction:column; align-items:center; }
+    .mood-btn svg, .feel-btn svg { display:block; }
+    .mood-btn.active, .feel-btn.active { border-color:var(--accent); background:var(--accent-light); color:var(--accent); }
     .mood-btn-label { display:block; font-size:9px; color:inherit; margin-top:2px; }
+    /* RPE-Picker: 10 farbige Zahlen-Buttons (Farbe/Aktiv-Zustand werden per JS inline gesetzt) */
+    .rpe-picker { display:flex; gap:4px; }
+    .rpe-btn { flex:1; padding:8px 0; border-radius:7px; border:1px solid transparent; font-family:var(--mono); font-size:13px; font-weight:600; cursor:pointer; transition:transform 0.1s; }
+    .rpe-btn:hover { transform:translateY(-1px); }
+    .rpe-btn.active { box-shadow:0 1px 6px rgba(0,0,0,0.2); }
+    /* Note-Editor kompakt: Titel/Datum nebeneinander, engere Abstände, kleineres Textfeld → möglichst kein Scrollen */
+    .note-editor-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    #noteEditorModal .setup-field { margin-bottom:11px; }
+    #noteEditorModal .note-textarea { min-height:96px; }
+    #noteEditorModal .modal { padding:22px 26px; max-height:90vh; }
+    #noteEditorModal h3 { margin-bottom:12px; }
+    /* Beschrifteter Trennstrich zwischen Schlaf- und Trainingsdaten */
+    .note-editor-divider { display:flex; align-items:center; gap:10px; margin:6px 0 12px; }
+    .note-editor-divider::before, .note-editor-divider::after { content:''; flex:1; border-top:1px solid var(--border); }
+    .note-editor-divider span { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); }
     .note-rendered { font-size:13px; line-height:1.75; color:var(--text); }
     .note-rendered h1,.note-rendered h2,.note-rendered h3 { font-weight:600; margin:12px 0 4px; color:var(--text); }
     .note-rendered p { margin-bottom:8px; }

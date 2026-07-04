@@ -912,6 +912,18 @@ function moodIcon(v, size) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/><path d="${mouth}"/></svg>`;
 }
 
+// Empfundene Anstrengung (session-RPE 1–10, Ankertexte). Farbe: 1 = grün → 10 = rot.
+const RPE_OPTIONS = [
+  {v:1, l:'Sehr leicht'}, {v:2, l:'Leicht'}, {v:3, l:'Locker'}, {v:4, l:'Moderat'}, {v:5, l:'Etwas fordernd'},
+  {v:6, l:'Fordernd'}, {v:7, l:'Anstrengend'}, {v:8, l:'Sehr anstrengend'}, {v:9, l:'Sehr hart'}, {v:10, l:'Maximum'},
+];
+function rpeHue(v) { return Math.round(130 - (v-1)/9*130); } // 130=grün, 0=rot
+
+// Trainingsbefinden (5 Stufen, nutzt die Schlaf-Smileys moodIcon). Wie GUT hat sich das Training angefühlt.
+const FEEL_OPTIONS = [
+  {v:1, l:'Schwach'}, {v:2, l:'Zäh'}, {v:3, l:'Normal'}, {v:4, l:'Gut'}, {v:5, l:'Stark'},
+];
+
 // ─── Tagesnotizen lokal (Fallback ohne GitHub) ────────────────────────────────
 
 let _localDayNotes = JSON.parse(localStorage.getItem('tb_day_notes') || '[]');
@@ -979,10 +991,12 @@ function parseFrontmatter(content) {
   return { fm, body: body.trim() };
 }
 
-function buildNoteContent(body, trainer, title, date, mood) {
+function buildNoteContent(body, trainer, title, date, mood, rpe, feel) {
   date = date || nowLocalISO();
   const moodLine = mood ? `\nmood: ${mood}` : '';
-  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
+  const rpeLine  = rpe  ? `\nrpe: ${rpe}`   : '';
+  const feelLine = feel ? `\nfeel: ${feel}` : '';
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}${rpeLine}${feelLine}\n---\n\n${body}`;
 }
 
 async function loadNotes() {
@@ -1000,7 +1014,7 @@ async function loadNotes() {
     const notes = await Promise.all(mdFiles.map(async f => {
       const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
       const { fm, body } = parseFrontmatter(b64dec(file.content));
-      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, body };
+      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body };
     }));
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
@@ -1104,6 +1118,41 @@ function selectMood(v) {
   document.getElementById('moodPicker').dataset.selected = v;
 }
 
+function renderRpePicker(selected) {
+  const el = document.getElementById('rpePicker');
+  if (!el) return;
+  el.dataset.selected = selected || '';
+  el.innerHTML = RPE_OPTIONS.map(o => {
+    const h = rpeHue(o.v), on = o.v === selected;
+    const style = on
+      ? `background:hsl(${h},70%,45%);border-color:hsl(${h},70%,45%);color:#fff`
+      : `background:hsla(${h},70%,45%,0.14);border-color:transparent;color:var(--text)`;
+    return `<button type="button" class="rpe-btn${on?' active':''}" data-rpe="${o.v}" title="${o.l}" onclick="selectRpe(${o.v})" style="${style}">${o.v}</button>`;
+  }).join('');
+  const lab = document.getElementById('rpeLabel');
+  if (lab) lab.textContent = selected ? `${selected}/10 · ${RPE_OPTIONS.find(o=>o.v===selected).l}` : '';
+}
+
+function selectRpe(v) {
+  const el = document.getElementById('rpePicker');
+  const cur = parseInt(el.dataset.selected) || null;
+  renderRpePicker(cur === v ? null : v); // erneut tippen = abwählen
+}
+
+function renderFeelPicker(selected) {
+  const el = document.getElementById('feelPicker');
+  if (!el) return;
+  el.innerHTML = FEEL_OPTIONS.map(m =>
+    `<button type="button" class="feel-btn${m.v===selected?' active':''}" data-feel="${m.v}" onclick="selectFeel(${m.v})">${moodIcon(m.v,22)}<span class="mood-btn-label">${m.l}</span></button>`
+  ).join('');
+  el.dataset.selected = selected || '';
+}
+
+function selectFeel(v) {
+  document.querySelectorAll('.feel-btn').forEach(b => b.classList.toggle('active', +b.dataset.feel === v));
+  document.getElementById('feelPicker').dataset.selected = v;
+}
+
 let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
 let _noteEditorRespirationActId = null;
@@ -1120,6 +1169,8 @@ function openNoteEditor(dateStr) {
   document.getElementById('noteEditorDate').value = targetDate;
   document.getElementById('noteEditorContent').value = existing ? existing.body : '';
   renderMoodPicker(existing ? existing.mood : null);
+  renderRpePicker(existing ? existing.rpe : null);
+  renderFeelPicker(existing ? existing.feel : null);
 
   const dayAct = _activitiesFull.find(a => fmtDate(new Date(a.start_date_local)) === targetDate);
   _noteEditorRespirationActId = dayAct ? dayAct.id : null;
@@ -1147,6 +1198,8 @@ function openDayNoteEditor(localNoteId) {
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
   renderMoodPicker(n ? n.mood : null);
+  renderRpePicker(n ? n.rpe : null);
+  renderFeelPicker(n ? n.feel : null);
   _noteEditorRespirationActId = null;
   document.getElementById('noteEditorRespirationField').style.display = 'none';
   document.getElementById('noteEditorError').style.display = 'none';
@@ -1203,6 +1256,10 @@ async function saveNoteEditor() {
   const date     = dateVal + 'T' + timeVal;
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood    = moodSel ? parseInt(moodSel) : null;
+  const rpeSel  = document.getElementById('rpePicker').dataset.selected;
+  const rpe     = rpeSel ? parseInt(rpeSel) : null;
+  const feelSel = document.getElementById('feelPicker').dataset.selected;
+  const feel    = feelSel ? parseInt(feelSel) : null;
   const errEl   = document.getElementById('noteEditorError');
   if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
@@ -1210,9 +1267,9 @@ async function saveNoteEditor() {
   if (_noteEditorLocalMode) {
     if (_editingLocalNoteId) {
       const n = _localDayNotes.find(x => x.id === _editingLocalNoteId);
-      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; }
+      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.rpe = rpe; n.feel = feel; }
     } else {
-      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body, date, mood });
+      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body, date, mood, rpe, feel });
     }
     saveLocalDayNotes();
     closeNoteEditor();
@@ -1221,16 +1278,16 @@ async function saveNoteEditor() {
     return;
   }
 
-  const content  = buildNoteContent(body, 'journal', title, date, mood);
+  const content  = buildNoteContent(body, 'journal', title, date, mood, rpe, feel);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-journal.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
   try {
     const res = await saveNoteToGH(filename, content, sha);
     if (_editingNote) {
       const n = _notes.find(x => x.filename === filename);
-      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.sha = res.content.sha; }
+      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.rpe = rpe; n.feel = feel; n.sha = res.content.sha; }
     } else {
-      _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, body });
+      _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, rpe, feel, body });
     }
     if (_noteEditorRespirationActId) {
       saveManualRespirationValue(_noteEditorRespirationActId, document.getElementById('noteEditorRespiration').value.trim());
@@ -1249,6 +1306,10 @@ async function copyNoteForClaude() {
   const body  = document.getElementById('noteEditorContent').value.trim();
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood  = moodSel ? parseInt(moodSel) : null;
+  const rpeSel = document.getElementById('rpePicker').dataset.selected;
+  const rpe   = rpeSel ? parseInt(rpeSel) : null;
+  const feelSel = document.getElementById('feelPicker').dataset.selected;
+  const feel  = feelSel ? parseInt(feelSel) : null;
   const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
   const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
@@ -1263,10 +1324,30 @@ async function copyNoteForClaude() {
     '',
     '## Weitere Werte',
     `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
-    '',
-    `## ${title || 'Journal-Eintrag'}`,
   ];
+
+  // Letzte Trainingseinheiten (7 Tage) als Kontext für die Trainer-Empfehlung
+  const since = daysAgo(7);
+  const recent = (_activitiesFull || [])
+    .filter(a => !a._noteOnly && new Date(a.start_date_local) >= since)
+    .sort((a,b) => new Date(b.start_date_local) - new Date(a.start_date_local));
+  if (recent.length) {
+    lines.push('', '## Trainingseinheiten der letzten 7 Tage');
+    recent.forEach(a => {
+      const d = new Date(a.start_date_local).toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
+      const parts = [];
+      if (a.moving_time) parts.push(formatDur(a.moving_time));
+      if (a.distance) parts.push((a.distance/1000).toFixed(1)+' km');
+      if (a.average_heartrate) parts.push('Ø '+Math.round(a.average_heartrate)+' bpm');
+      if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
+      lines.push(`- ${d} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
+    });
+  }
+
+  lines.push('', `## ${title || 'Journal-Eintrag'}`);
   if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
+  if (rpe) lines.push(`Empfundene Anstrengung: ${RPE_OPTIONS.find(o=>o.v===rpe)?.l} (RPE ${rpe}/10)`);
+  if (feel) lines.push(`Trainingsbefinden: ${FEEL_OPTIONS.find(o=>o.v===feel)?.l} (${feel}/5)`);
   lines.push(body || '_Keine Notiz eingegeben._');
   lines.push('');
   lines.push('---');
@@ -1447,12 +1528,14 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
-    let weightVal = '—', sleepVal = '—', moodVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
+    let weightVal = '—', sleepVal = '—', moodVal = '—', rpeVal = '—', feelVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
     if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
     if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
     if (journalByDate) {
       const n = journalByDate[dayKey];
       moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—';
+      rpeVal = n && n.rpe!=null ? `<span style="color:hsl(${rpeHue(n.rpe)},70%,45%);font-weight:600">${n.rpe}</span>` : '—';
+      feelVal = n && n.feel!=null ? moodIcon(n.feel,16) : '—';
       // Titel nur noch als Text — Bearbeiten/Löschen läuft über den Stift-Button rechts
       titleHtml = n
         ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
@@ -1479,6 +1562,8 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       ${weightByDate?statChip('Gewicht', weightVal):''}
       ${sleepByDate?statChip('Schlaf', sleepVal):''}
       ${journalByDate?statChip('Schlafqual.', moodVal):''}
+      ${journalByDate?statChip('Anstreng.', rpeVal):''}
+      ${journalByDate?statChip('Befinden', feelVal):''}
       ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Notiz bearbeiten" onclick="openNoteEditor('${dayKey}')">${pencilIcon(13)}</button></div>`:''}
     </div>`;
   }).join('');

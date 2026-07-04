@@ -373,17 +373,34 @@
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
   <div class="modal modal-wide">
     <h3 id="noteEditorHeading">Neue Notiz</h3>
-    <div class="setup-field" style="margin-top:16px">
-      <label class="setup-label">Titel</label>
-      <input class="setup-input" id="noteEditorTitleInput" type="text" placeholder="z.B. Morgen Check-In">
+    <!-- Titel + Datum nebeneinander (spart Höhe → weniger Scrollen) -->
+    <div class="note-editor-grid2" style="margin-top:14px">
+      <div class="setup-field">
+        <label class="setup-label">Titel</label>
+        <input class="setup-input" id="noteEditorTitleInput" type="text" placeholder="z.B. Morgen Check-In">
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Datum</label>
+        <input class="setup-input" id="noteEditorDate" type="date">
+      </div>
     </div>
-    <div class="setup-field">
-      <label class="setup-label">Datum</label>
-      <input class="setup-input" id="noteEditorDate" type="date">
-    </div>
+    <!-- ── Schlaf/Erholung ── -->
     <div class="setup-field">
       <label class="setup-label">Schlafqualität (optional)</label>
       <div class="mood-picker" id="moodPicker"></div>
+    </div>
+    <!-- Trennstrich: Schlafdaten oben / Trainingsdaten unten -->
+    <div class="note-editor-divider"><span>Training</span></div>
+    <!-- Empfundene Anstrengung (RPE 1–10): farbige Zahlen-Buttons, Auswahl-Text in #rpeLabel -->
+    <div class="setup-field">
+      <label class="setup-label">Empfundene Anstrengung <span id="rpeLabel" style="text-transform:none;font-weight:400;color:var(--text2)"></span></label>
+      <div class="rpe-picker" id="rpePicker"></div>
+      <div class="setup-hint">RPE 1–10 · sehr leicht bis Maximum (optional)</div>
+    </div>
+    <!-- Trainingsbefinden (5 Smileys wie Schlaf): wie gut hat sich das Training angefühlt -->
+    <div class="setup-field">
+      <label class="setup-label">Trainingsbefinden (optional)</label>
+      <div class="feel-picker" id="feelPicker"></div>
     </div>
     <div class="setup-field" id="noteEditorRespirationField" style="display:none">
       <label class="setup-label">Ø Atmung/Min (optional)</label>
