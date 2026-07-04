@@ -265,7 +265,7 @@
             </div>
           </div>
         </div>
-        <div class="card"><div class="card-header"><span class="card-title">Journal</span><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Journal <span id="journalCount" class="mono" style="font-size:11px;font-weight:500;color:var(--text2)"></span></span><div style="display:flex;gap:8px"><button class="btn icon-btn" title="Historie" onclick="openHistoryModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="8"/><line x1="16" y1="20" x2="16" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></button><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
       </div>
     </section>
 
@@ -438,6 +438,18 @@
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:10px">Bisherige Einträge (nur lokal in diesem Browser)</div>
       <div id="localDayNotesList"></div>
     </div>
+  </div>
+</div>
+
+<!-- Historie Modal -->
+<div class="modal-overlay" id="historyModal" style="display:none" onclick="if(event.target===this)closeHistoryModal()">
+  <div class="modal modal-wide">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h3 style="margin:0">Historie</h3>
+      <button class="btn" onclick="closeHistoryModal()">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:14px">Basierend auf den geladenen Daten (letzte ~13 Monate)</div>
+    <div id="historyContent"></div>
   </div>
 </div>
 

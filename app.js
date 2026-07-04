@@ -736,6 +736,7 @@ function renderOverviewGroup() {
   const merged = [...activities, ...noteOnlyEntries]
     .sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
 
+  document.getElementById('journalCount').textContent = `${activities.length} Aktivität${activities.length !== 1 ? 'en' : ''}`;
   renderActivityTable(merged,'allActivities',null,weightByDate,sleepByDate,journalByDate);
 
   const mix = {};
@@ -751,6 +752,48 @@ function renderOverviewGroup() {
 async function refreshTagesjournal() {
   if (ghToken && ghRepo) _notes = await loadNotes();
   await loadAll();
+}
+
+function openHistoryModal() {
+  const byYear = {};
+  _activitiesFull.forEach(a => {
+    const year = new Date(a.start_date_local).getFullYear();
+    const type = normalizeType(a.type);
+    if (!byYear[year]) byYear[year] = {};
+    if (!byYear[year][type]) byYear[year][type] = { count: 0, seconds: 0, meters: 0 };
+    byYear[year][type].count++;
+    byYear[year][type].seconds += a.moving_time || 0;
+    byYear[year][type].meters += a.distance || 0;
+  });
+
+  const years = Object.keys(byYear).sort((a,b) => b - a);
+  document.getElementById('historyContent').innerHTML = years.length === 0
+    ? '<div class="loading">Keine Daten</div>'
+    : years.map(year => {
+        const types = byYear[year];
+        const yearSeconds = Object.values(types).reduce((s,t) => s + t.seconds, 0);
+        const yearMeters = Object.values(types).reduce((s,t) => s + t.meters, 0);
+        const rows = Object.entries(types).sort((a,b) => b[1].seconds - a[1].seconds).map(([type, t]) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--bg3)">
+            <span class="tag" style="background:${TYPE_COLORS[type]||'#94a3b8'}20;color:${TYPE_COLORS[type]||'#94a3b8'};min-width:80px;text-align:center">${type}</span>
+            <span class="mono" style="font-size:12px;color:var(--text2)">${t.count} ×</span>
+            <span class="mono" style="font-size:12px;margin-left:auto">${formatDur(t.seconds)}</span>
+            <span class="mono" style="font-size:12px;min-width:70px;text-align:right">${t.meters?(t.meters/1000).toFixed(0)+' km':'—'}</span>
+          </div>`).join('');
+        return `<div style="margin-bottom:20px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:15px;font-weight:700">${year}</span>
+            <span class="mono" style="font-size:12px;color:var(--text2)">${formatDur(yearSeconds)} · ${(yearMeters/1000).toFixed(0)} km gesamt</span>
+          </div>
+          ${rows}
+        </div>`;
+      }).join('');
+
+  document.getElementById('historyModal').style.display = 'flex';
+}
+
+function closeHistoryModal() {
+  document.getElementById('historyModal').style.display = 'none';
 }
 
 // ─── HF-Zonen ────────────────────────────────────────────────────────────────
@@ -1422,9 +1465,16 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
 
+  let lastYear = null;
   el.innerHTML = list.map(a => {
     const isNoteOnly = a._noteOnly === true;
-    const date=new Date(a.start_date_local).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const activityDate = new Date(a.start_date_local);
+    const year = activityDate.getFullYear();
+    const yearDivider = year !== lastYear
+      ? `<div style="display:flex;align-items:center;gap:14px;margin:${lastYear!==null?'26px':'4px'} 0 12px;color:var(--text);font-size:20px;font-weight:700;letter-spacing:0.02em">${lastYear!==null?'<div style="flex:1;height:2px;background:var(--border)"></div>':''}<span class="mono">${year}</span><div style="flex:1;height:2px;background:var(--border)"></div></div>`
+      : '';
+    lastYear = year;
+    const date=activityDate.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
     const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
     const dur=a.moving_time?formatDur(a.moving_time):'—';
     const hr=a.average_heartrate?Math.round(a.average_heartrate)+' bpm':'—';
@@ -1447,7 +1497,7 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
         : '<span style="color:var(--text2)">—</span>';
     }
 
-    return `<div class="note-card" style="cursor:default;flex-wrap:wrap;row-gap:10px">
+    return `${yearDivider}<div class="note-card" style="cursor:default;flex-wrap:wrap;row-gap:10px">
       <div style="display:flex;flex-direction:column;align-items:center;min-width:70px">
         <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Datum</span>
         <span class="mono" style="font-size:12px">${date}</span>
