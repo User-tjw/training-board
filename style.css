@@ -1,4 +1,5 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Zentrale Design-Variablen: alle Farben/Fonts/Radien der App werden hier einmal definiert */
     :root {
       --bg: #f4f6f9; --bg2: #ffffff; --bg3: #eef1f5; --border: #dde2ea;
       --accent: #3b82f6; --accent-light: #eff6ff;
@@ -11,9 +12,10 @@
     }
     html, body { height: 100%; overflow: hidden; }
     body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; }
+    /* Dark Mode: überschreibt die obigen Variablen, sobald body die Klasse "dark" hat */
     body.dark { --bg:#2b2d30; --bg2:#35373b; --bg3:#3d3f43; --border:#4a4c51; --text:#e0e2e6; --text2:#9da3ae; --accent-light:#1e3a6e; }
 
-    /* Setup Screen */
+    /* Setup Screen: Login/Verbindungs-Screens (Passwort + intervals.icu Setup) sowie Einstellungen-Formulare (teilen sich diese Klassen mit setup-*) */
     #setupScreen {
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
       background: var(--bg);
@@ -60,7 +62,7 @@
     .setup-btn-outline:hover { background: var(--bg3); }
     .setup-error { color: var(--red); font-size: 12px; margin-top: 8px; display: none; }
 
-    /* App */
+    /* App: Layout-Grundgerüst als Flexbox-Spalte (Topnav fix oben, main scrollt darunter) */
     .app { display: flex; flex-direction: column; height: 100vh; }
     .topnav {
       background: var(--bg2);
@@ -98,10 +100,12 @@
     .content { padding: 16px 24px; }
     .section { display: none; }
     .section.active { display: block; }
+    /* Karten-System: .card = einfache Karte, .group-card = Karte mit mehreren Spalten/Sections via --cols Variable (siehe unten) */
     .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
     .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
     .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); }
     .card-meta { font-size: 11px; font-family: var(--mono); color: var(--text2); }
+    /* KPI-Kacheln-Grid (z.B. Kennzahlen-Übersicht), -6 Variante für 6 statt 4 Spalten */
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
     .kpi-grid-6 { grid-template-columns: repeat(6, 1fr); }
     .kpi-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
@@ -126,6 +130,7 @@
     .group-card-section:last-child { border-right: none; }
     .group-card-body[style*="--cols:1"] .group-card-section { border-right: none; border-bottom: 1px solid var(--border); }
     .group-card-body[style*="--cols:1"] .group-card-section:last-child { border-bottom: none; }
+    /* Responsive: unter 1000px brechen die Karten-Spalten auf 1 Spalte um (Hinweis: Media Queries sind an mehreren Stellen im File verstreut, u.a. hier, Zeile ~167 und ~230-232, statt gebündelt) */
     @media (max-width: 1000px) {
       .group-card-body { grid-template-columns: 1fr !important; }
       .group-card-section { border-right: none !important; border-bottom: 1px solid var(--border); }
@@ -134,6 +139,7 @@
     .chart-box { position: relative; height: 160px; }
     .chart-box-sm { height: 70px; }
     .grid-2 .card, .grid-3-1 .card, .grid-2x2 .card, .grid-3 .card { margin-bottom: 14px; }
+    /* Trend-Hero: die große Tagesbericht-Kachel oben im Cockpit (Verdikt + KPI-Reihe) */
     .trend-hero { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
     .trend-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); margin-bottom: 6px; }
     .trend-verdict { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
@@ -147,6 +153,7 @@
     .trend-kpi-trend.up { color: #10b981; }
     .trend-kpi-trend.down { color: #ef4444; }
     .trend-kpi-trend.flat { color: var(--text2); }
+    /* Hinweis: hier sind einige Farben hart codiert (#15803d, #166534, #bbf7d0 etc.) statt der zentralen CSS-Variablen aus :root zu folgen — Inkonsistenz, nicht selbst gefixt */
     .recommendation { border-radius: var(--radius); padding: 14px 18px; margin-bottom: 14px; display: flex; align-items: flex-start; gap: 12px; }
     .recommendation.good { background: var(--green-light); border: 1px solid #bbf7d0; }
     .recommendation.warn { background: #fffbeb; border: 1px solid #fde68a; }
@@ -163,6 +170,7 @@
     .mix-bar { height: 8px; border-radius: 4px; }
     .mix-val { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 35px; text-align: right; }
     .mix-time { font-family: var(--mono); font-size: 11px; color: var(--text2); width: 45px; text-align: right; }
+    /* HF-Zonen-Tabelle: Schwellenwerte-Eingabefelder + tabellarische Darstellung der 4 Zonen */
     .zone-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
     @media (max-width: 700px) { .zone-inputs { grid-template-columns: 1fr 1fr; } }
     .input-group { display: flex; flex-direction: column; gap: 6px; }
@@ -196,6 +204,7 @@
     .loading { color: var(--text2); font-family: var(--mono); font-size: 12px; padding: 20px; text-align: center; }
     #zoneDonut, #zoneTrendChart { max-height: 140px !important; }
 
+    /* Notizen/Journal-Styles: GitHub-Setup-Hinweis, Notiz-Karten in der Liste, Textarea und Markdown-Rendering im Note Viewer */
     .gh-setup-banner { background:var(--accent-light); border:1px solid #bfdbfe; border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
     .note-card { display:flex; flex-wrap:wrap; align-items:center; gap:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 14px; margin-bottom:6px; cursor:pointer; transition:box-shadow 0.15s, border-color 0.15s; }
     .note-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); border-color:#bfdbfe; }
@@ -222,15 +231,17 @@
     .note-rendered hr { border:none; border-top:1px solid var(--border); margin:12px 0; }
     .notes-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 
-    /* Settings Modal */
+    /* Settings Modal: generisches Overlay/Modal-Fenster, wird für Note Editor, Historie und Note Viewer wiederverwendet */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: flex; align-items: center; justify-content: center; }
     .modal { background: var(--bg2); border-radius: 14px; padding: 32px; width: 380px; max-width: 95vw; }
     .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
 
+    /* Hinweis: Media Queries sind über 3 Stellen im File verstreut (hier, Zeile ~129 und ~167) statt an einer Stelle gebündelt */
     @media (max-width: 1000px) { .grid-2, .grid-3-1, .grid-2x2, .grid-3 { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub { display: none; } }
     @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
 
+    /* Week-Cal: Trainingswoche-Kalender-Grid (7 Tage + Zusammenfassungs-Spalte) inkl. Soll-Ist-Balken (hbar-Klassen) */
     .week-cal { display: grid; grid-template-columns: repeat(7, 0.86fr) 210px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
     .week-cal-summary-span { grid-row: span 2; }
     .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; text-align: center; }

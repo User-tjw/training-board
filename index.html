@@ -11,40 +11,50 @@
 </head>
 <body>
 
-<!-- Password Screen -->
+<!-- ================================================================= -->
+<!-- Logo einmal zentral definiert (statt 3x im Code dupliziert).       -->
+<!-- Wird per <svg><use href="#tb-logo"/></svg> eingebunden — Größe/    -->
+<!-- Rundung stellt man am jeweiligen <svg> per width/height/style ein. -->
+<!-- Zum Ändern des Logos NUR dieses eine Symbol anpassen.              -->
+<!-- ================================================================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="tb-logo" viewBox="0 0 48 48">
+    <rect width="48" height="48" rx="10" fill="#060b18"/>
+    <circle cx="6" cy="6" r="0.7" fill="white" opacity="0.8"/>
+    <circle cx="15" cy="3" r="0.6" fill="white" opacity="0.6"/>
+    <circle cx="30" cy="6" r="0.7" fill="white" opacity="0.9"/>
+    <circle cx="41" cy="4" r="0.6" fill="white" opacity="0.7"/>
+    <circle cx="3" cy="15" r="0.5" fill="white" opacity="0.5"/>
+    <circle cx="44" cy="12" r="0.5" fill="white" opacity="0.6"/>
+    <circle cx="38" cy="18" r="0.4" fill="white" opacity="0.5"/>
+    <defs>
+      <radialGradient id="tb-logo-glow" cx="50%" cy="36%" r="42%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+        <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
+        <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="tb-logo-planet" cx="50%" cy="28%" r="70%">
+        <stop offset="0%" stop-color="#1e3a5f"/>
+        <stop offset="100%" stop-color="#0a0f1e"/>
+      </radialGradient>
+      <clipPath id="tb-logo-clip"><rect width="48" height="48" rx="10"/></clipPath>
+    </defs>
+    <g clip-path="url(#tb-logo-clip)">
+      <circle cx="24" cy="58" r="33" fill="url(#tb-logo-planet)"/>
+      <circle cx="24" cy="58" r="33" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
+      <circle cx="24" cy="58" r="33" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.35"/>
+      <ellipse cx="24" cy="26" rx="12" ry="4.5" fill="url(#tb-logo-glow)" opacity="0.95"/>
+      <circle cx="24" cy="23.5" r="2.5" fill="white" opacity="0.95"/>
+      <circle cx="24" cy="23.5" r="5" fill="#bfdbfe" opacity="0.3"/>
+    </g>
+  </symbol>
+</svg>
+
+<!-- Password Screen: erster Zugangsschutz vor der eigentlichen App -->
 <div id="passwordScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)">
   <div class="setup-card" style="width:360px">
     <div class="setup-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" style="border-radius:10px">
-        <rect width="48" height="48" rx="10" fill="#060b18"/>
-        <circle cx="6" cy="6" r="0.7" fill="white" opacity="0.8"/>
-        <circle cx="15" cy="3" r="0.6" fill="white" opacity="0.6"/>
-        <circle cx="30" cy="6" r="0.7" fill="white" opacity="0.9"/>
-        <circle cx="41" cy="4" r="0.6" fill="white" opacity="0.7"/>
-        <circle cx="3" cy="15" r="0.5" fill="white" opacity="0.5"/>
-        <circle cx="44" cy="12" r="0.5" fill="white" opacity="0.6"/>
-        <circle cx="38" cy="18" r="0.4" fill="white" opacity="0.5"/>
-        <defs>
-          <radialGradient id="sg" cx="50%" cy="36%" r="42%">
-            <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-            <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
-            <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
-          </radialGradient>
-          <radialGradient id="sp" cx="50%" cy="28%" r="70%">
-            <stop offset="0%" stop-color="#1e3a5f"/>
-            <stop offset="100%" stop-color="#0a0f1e"/>
-          </radialGradient>
-          <clipPath id="sc"><rect width="48" height="48" rx="10"/></clipPath>
-        </defs>
-        <g clip-path="url(#sc)">
-          <circle cx="24" cy="58" r="33" fill="url(#sp)"/>
-          <circle cx="24" cy="58" r="33" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
-          <circle cx="24" cy="58" r="33" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.35"/>
-          <ellipse cx="24" cy="26" rx="12" ry="4.5" fill="url(#sg)" opacity="0.95"/>
-          <circle cx="24" cy="23.5" r="2.5" fill="white" opacity="0.95"/>
-          <circle cx="24" cy="23.5" r="5" fill="#bfdbfe" opacity="0.3"/>
-        </g>
-      </svg>
+      <svg width="48" height="48" style="border-radius:10px"><use href="#tb-logo"/></svg>
       Training Board
     </div>
     <div class="setup-sub" id="pwSub">Bitte Passwort eingeben.</div>
@@ -57,40 +67,11 @@
   </div>
 </div>
 
-<!-- Setup Screen -->
+<!-- Setup Screen: Erstverbindung mit intervals.icu (Athlete ID + API Key), erscheint nur beim allerersten Start -->
 <div id="setupScreen" style="display:none">
   <div class="setup-card">
     <div class="setup-logo" style="display:flex;align-items:center;justify-content:center;gap:10px">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" style="border-radius:10px">
-        <rect width="48" height="48" rx="10" fill="#060b18"/>
-        <circle cx="6" cy="6" r="0.7" fill="white" opacity="0.8"/>
-        <circle cx="15" cy="3" r="0.6" fill="white" opacity="0.6"/>
-        <circle cx="30" cy="6" r="0.7" fill="white" opacity="0.9"/>
-        <circle cx="41" cy="4" r="0.6" fill="white" opacity="0.7"/>
-        <circle cx="3" cy="15" r="0.5" fill="white" opacity="0.5"/>
-        <circle cx="44" cy="12" r="0.5" fill="white" opacity="0.6"/>
-        <circle cx="38" cy="18" r="0.4" fill="white" opacity="0.5"/>
-        <defs>
-          <radialGradient id="sg2" cx="50%" cy="36%" r="42%">
-            <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-            <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
-            <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
-          </radialGradient>
-          <radialGradient id="sp2" cx="50%" cy="28%" r="70%">
-            <stop offset="0%" stop-color="#1e3a5f"/>
-            <stop offset="100%" stop-color="#0a0f1e"/>
-          </radialGradient>
-          <clipPath id="sc2"><rect width="48" height="48" rx="10"/></clipPath>
-        </defs>
-        <g clip-path="url(#sc2)">
-          <circle cx="24" cy="58" r="33" fill="url(#sp2)"/>
-          <circle cx="24" cy="58" r="33" fill="none" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
-          <circle cx="24" cy="58" r="33" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.35"/>
-          <ellipse cx="24" cy="26" rx="12" ry="4.5" fill="url(#sg2)" opacity="0.95"/>
-          <circle cx="24" cy="23.5" r="2.5" fill="white" opacity="0.95"/>
-          <circle cx="24" cy="23.5" r="5" fill="#bfdbfe" opacity="0.3"/>
-        </g>
-      </svg>
+      <svg width="48" height="48" style="border-radius:10px"><use href="#tb-logo"/></svg>
       Training Board
     </div>
     <div class="setup-sub">Verbinde dein intervals.icu-Konto um loszulegen.</div>
@@ -112,40 +93,13 @@
 <!-- Main App -->
 <div class="app" id="appContainer" style="display:none">
 
+  <!-- Kopfbereich: Logo, Hauptnavigation, Status/Settings/Logout, darunter die Subbar mit Titel und Zeitraum-Auswahl -->
   <header class="topnav">
    <div class="topnav-row">
+    <!-- Logo (kleiner, 32px) — nutzt dasselbe zentrale #tb-logo Symbol wie oben -->
     <div class="logo" onclick="goToCockpit()" style="cursor:pointer">
       <div class="logo-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="32" height="32">
-          <rect width="36" height="36" rx="8" fill="#060b18"/>
-          <circle cx="4" cy="4" r="0.5" fill="white" opacity="0.8"/>
-          <circle cx="11" cy="2" r="0.4" fill="white" opacity="0.6"/>
-          <circle cx="22" cy="5" r="0.5" fill="white" opacity="0.9"/>
-          <circle cx="30" cy="3" r="0.4" fill="white" opacity="0.7"/>
-          <circle cx="2" cy="11" r="0.3" fill="white" opacity="0.5"/>
-          <circle cx="33" cy="9" r="0.4" fill="white" opacity="0.6"/>
-          <circle cx="28" cy="14" r="0.3" fill="white" opacity="0.5"/>
-          <defs>
-            <radialGradient id="lg" cx="50%" cy="36%" r="42%">
-              <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
-              <stop offset="25%" stop-color="#60a5fa" stop-opacity="0.9"/>
-              <stop offset="100%" stop-color="#1e3a5f" stop-opacity="0"/>
-            </radialGradient>
-            <radialGradient id="pl" cx="50%" cy="28%" r="70%">
-              <stop offset="0%" stop-color="#1e3a5f"/>
-              <stop offset="100%" stop-color="#0a0f1e"/>
-            </radialGradient>
-            <clipPath id="lc"><rect width="36" height="36" rx="8"/></clipPath>
-          </defs>
-          <g clip-path="url(#lc)">
-            <circle cx="18" cy="44" r="25" fill="url(#pl)"/>
-            <circle cx="18" cy="44" r="25" fill="none" stroke="#3b82f6" stroke-width="2.5" opacity="0.5"/>
-            <circle cx="18" cy="44" r="25" fill="none" stroke="#93c5fd" stroke-width="1" opacity="0.35"/>
-            <ellipse cx="18" cy="19.5" rx="9" ry="3.5" fill="url(#lg)" opacity="0.95"/>
-            <circle cx="18" cy="18" r="1.8" fill="white" opacity="0.95"/>
-            <circle cx="18" cy="18" r="3.5" fill="#bfdbfe" opacity="0.35"/>
-          </g>
-        </svg>
+        <svg width="32" height="32"><use href="#tb-logo"/></svg>
       </div>
       <div class="logo-titles">
         <span class="logo-text">Training Board</span>
@@ -153,6 +107,7 @@
       </div>
     </div>
 
+    <!-- Hauptnavigation: data-section legt fest, welche <section id="section-*"> per JS eingeblendet wird -->
     <nav class="topnav-items">
       <a class="nav-item active" data-section="cockpit">Dashboard</a>
       <a class="nav-item" data-section="zones">HF-Zonen</a>
@@ -160,6 +115,7 @@
       <a class="nav-item" data-section="activities">Journal</a>
     </nav>
 
+    <!-- Verbindungsstatus zu intervals.icu, Theme-Umschalter, Einstellungen und Logout -->
     <div class="topnav-right">
       <div class="api-status">
         <span class="status-dot" id="statusDot"></span>
@@ -170,6 +126,7 @@
       <button class="btn icon-btn" onclick="logout()" title="Abmelden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"/><path d="M18.4 6.6a8.5 8.5 0 1 1-12.8 0"/></svg></button>
     </div>
    </div>
+    <!-- Subbar: Seitentitel + Wochen-Navigation (nur Cockpit) + Zeitraum-Auswahl -->
     <div class="page-subbar">
       <div class="page-subbar-title">
         <span class="page-title" id="pageTitle">Dashboard</span>
@@ -179,6 +136,7 @@
         <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
         <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
         <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
+        <!-- data-keys legt fest, welche Bereiche (Zonen, Wellness, Übersicht, Cockpit-Load) den gewählten Zeitraum übernehmen -->
         <select class="btn range-select" data-keys="zones,wellness,overview,cockpitLoad" data-default="14">
           <option value="7">7 Tage</option>
 	  <option value="14">14 Tage</option>
@@ -191,14 +149,16 @@
     </div>
   </header>
 
+  <!-- Banner erscheint nur bei Fehlern beim Notizen-Sync mit GitHub -->
   <div id="ghSyncErrorBanner" style="display:none;background:var(--red);color:#fff;padding:9px 20px;font-size:13px;text-align:center;cursor:pointer" onclick="this.style.display='none'" title="Zum Ausblenden klicken">
     <span id="ghSyncErrorText"></span> — zum Ausblenden klicken
   </div>
 
   <main class="main">
-    <!-- Cockpit -->
+    <!-- Cockpit: Dashboard-Startseite mit Tagesbericht, KPI-Kacheln, Trainingswoche-Kalender, Fitness-Chart und 80/20-Check -->
     <section id="section-cockpit" class="section active">
       <div class="content">
+        <!-- Tagesbericht-Kachel: Verdikt/Beschreibung oben, KPI-Reihe (HRV, Ruhepuls, CTL/ATL/TSB, Gewicht, ...) darunter -->
         <div class="trend-hero" style="flex-direction:column;align-items:stretch;gap:18px">
           <div class="trend-left">
             <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
@@ -220,6 +180,7 @@
             <div class="trend-kpi-item"><div class="trend-kpi-label">Schlafqualität</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
           </div>
         </div>
+        <!-- Trainingswoche-Kalender mit Soll-Ist-Balken -->
         <div class="card">
           <div class="card-header" style="align-items:flex-start">
             <div style="display:flex;align-items:center;gap:14px">
@@ -233,6 +194,7 @@
           </div>
           <div class="week-cal" id="cockpitWeekCal"></div>
         </div>
+        <!-- Fitness/Fatigue/Form-Chart und 80/20-Zonen-Check -->
         <div class="group-card">
           <div class="group-card-header">
             <span class="group-card-title">Trainingsbelastung & Erholung</span>
@@ -252,7 +214,7 @@
       </div>
     </section>
 
-    <!-- Journal -->
+    <!-- Journal: Tagesnotizen + Aktivitäten-Übersicht/-Mix, GitHub-Sync-Hinweis wenn nicht konfiguriert -->
     <section id="section-activities" class="section">
       <div class="content">
         <div class="gh-setup-banner" id="ghSetupBanner" style="display:none">
@@ -265,6 +227,7 @@
             </div>
           </div>
         </div>
+        <!-- Hinweis: diese Zeile ist als sehr langer Einzeiler geschrieben (Card mit Header, Historie/Reload-Buttons, Aktivitäten-Mix und Liste) — schwer manuell zu editieren, ggf. Suche nach eindeutigen IDs statt Lesen im Fließtext -->
         <div class="card"><div class="card-header"><span class="card-title">Journal <span id="journalCount" class="mono" style="font-size:11px;font-weight:500;color:var(--text2)"></span></span><div style="display:flex;gap:8px"><button class="btn icon-btn" title="Historie" onclick="openHistoryModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="8"/><line x1="16" y1="20" x2="16" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></button><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
       </div>
     </section>
@@ -273,6 +236,7 @@
     <section id="section-settings" class="section">
       <div class="content">
         <div class="settings-content">
+          <!-- Gruppe 1: Intervals.icu Zugangsdaten + Gruppe 2: GitHub Notizen Zugangsdaten -->
           <div class="group-card">
             <div class="group-card-section">
               <div class="settings-group-title">Intervals.icu</div>
@@ -308,6 +272,7 @@
             <button class="setup-btn setup-btn-sm setup-btn-outline" onclick="closeSettingsPage()">Abbrechen</button>
           </div>
 
+          <!-- Gruppe 3: Trainingsziel (Freitext für KI-Trainer) + Trainings-Soll (Wochenstunden/Prozent-Aufteilung je Sportart) -->
           <div class="group-card">
             <div class="group-card-section">
               <div class="settings-group-title">Trainingsziel</div>
@@ -351,7 +316,7 @@
       </div>
     </section>
 
-    <!-- HF-Zonen -->
+    <!-- HF-Zonen: Schwellenwerte-Eingabe (AeT/AnT/MaxHF), daraus abgeleitete Zonen-Tabelle, Zonen-Verteilung und Wochenverlauf-Chart -->
     <section id="section-zones" class="section">
       <div class="content">
         <div class="recommendation" id="zoneRecommendation" style="display:none"></div>
@@ -384,7 +349,7 @@
       </div>
     </section>
 
-    <!-- Wellness -->
+    <!-- Wellness: Charts für HRV/Ruhepuls, Schlaf und Gewicht im Zeitverlauf -->
     <section id="section-wellness" class="section">
       <div class="content">
         <div class="group-card">
@@ -404,7 +369,7 @@
 </div>
 
 
-<!-- Note Editor Modal -->
+<!-- Note Editor Modal: Anlegen/Bearbeiten einer Tagesnotiz (Titel, Datum, Schlafqualität, Atmung, Markdown-Inhalt) -->
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
   <div class="modal modal-wide">
     <h3 id="noteEditorHeading">Neue Notiz</h3>
@@ -441,7 +406,7 @@
   </div>
 </div>
 
-<!-- Historie Modal -->
+<!-- Historie Modal: Rückblick über bisherige Notizen/Verlauf der geladenen Daten -->
 <div class="modal-overlay" id="historyModal" style="display:none" onclick="if(event.target===this)closeHistoryModal()">
   <div class="modal modal-wide">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -453,7 +418,7 @@
   </div>
 </div>
 
-<!-- Note Viewer Modal -->
+<!-- Note Viewer Modal: Anzeige einer einzelnen Notiz (gerendertes Markdown) mit Bearbeiten/Löschen-Aktionen -->
 <div class="modal-overlay" id="noteViewerModal" style="display:none" onclick="if(event.target===this)closeNoteViewer()">
   <div class="modal modal-wide">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
