@@ -200,35 +200,17 @@ function saveHfZones() {
   }
 }
 
-let _editingRespirationActId = null;
-
-function promptRespiration(actId) {
-  _editingRespirationActId = actId;
+function saveManualRespirationValue(actId, raw) {
+  if (!actId) return;
+  const value = raw === '' || raw == null ? null : parseFloat(String(raw).replace(',', '.'));
+  if (raw !== '' && raw != null && (isNaN(value) || value <= 0)) { alert('Bitte eine positive Zahl für Atmung eingeben.'); return; }
   const data = getManualRespiration();
-  document.getElementById('respirationInput').value = data[actId] ?? '';
-  document.getElementById('respirationModal').style.display = 'flex';
-  document.getElementById('respirationInput').focus();
-}
-
-function closeRespirationEditor() {
-  document.getElementById('respirationModal').style.display = 'none';
-  _editingRespirationActId = null;
-}
-
-function saveRespirationEditor() {
-  if (!_editingRespirationActId) return;
-  const raw = document.getElementById('respirationInput').value.trim();
-  const value = raw === '' ? null : parseFloat(raw.replace(',', '.'));
-  if (raw !== '' && (isNaN(value) || value <= 0)) { alert('Bitte eine positive Zahl eingeben.'); return; }
-  const data = getManualRespiration();
-  if (value == null) delete data[_editingRespirationActId]; else data[_editingRespirationActId] = value;
+  if (value == null) delete data[actId]; else data[actId] = value;
   data.updatedAt = Date.now();
   localStorage.setItem('manual_respiration', JSON.stringify(data));
   if (ghToken && ghRepo) {
     saveManualRespirationToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
   }
-  closeRespirationEditor();
-  renderFromCache();
 }
 
 let _settingsReturnSection = 'cockpit';
@@ -281,7 +263,6 @@ function saveApiSettings() {
   syncManualRespirationFromGH();
   syncHfZonesFromGH();
   loadAll();
-  renderTeam();
   closeSettingsPage();
 }
 
@@ -319,7 +300,6 @@ function init() {
   document.getElementById('dateLabel').textContent =
     `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   setupNav();
-  renderTeam();
   applyHfZonesToInputs();
   updateZones();
   syncTrainingPlanFromGH();
@@ -359,15 +339,13 @@ function setupNav() {
   document.getElementById('pageTitle').textContent = 'Dashboard';
 
   if (lastSection) {
-    const navSection = lastSection === 'trainer' ? 'team' : lastSection;
-    const savedItem = document.querySelector(`.nav-item[data-section="${navSection}"]`);
+    const savedItem = document.querySelector(`.nav-item[data-section="${lastSection}"]`);
     if (savedItem) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       savedItem.classList.add('active');
-      document.getElementById(`section-${navSection}`)?.classList.add('active');
-      document.getElementById('pageTitle').textContent = navSection === 'team' ? 'KI-Trainer' : savedItem.textContent.trim();
-      if (navSection === 'team' && lastSection !== 'team') sessionStorage.setItem('tb_active_section', 'team');
+      document.getElementById(`section-${lastSection}`)?.classList.add('active');
+      document.getElementById('pageTitle').textContent = savedItem.textContent.trim();
     }
   }
 
@@ -379,9 +357,8 @@ function setupNav() {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       item.classList.add('active');
       document.getElementById(`section-${sec}`).classList.add('active');
-      document.getElementById('pageTitle').textContent = sec === 'team' ? 'KI-Trainer' : item.textContent.trim();
+      document.getElementById('pageTitle').textContent = item.textContent.trim();
       sessionStorage.setItem('tb_active_section', sec);
-      if (sec === 'team') renderTeam();
     });
   });
 }
@@ -738,6 +715,8 @@ function renderCockpitLoad() {
 // ─── Übersicht ────────────────────────────────────────────────────────────────
 
 function renderOverviewGroup() {
+  document.getElementById('ghSetupBanner').style.display = (ghToken && ghRepo) ? 'none' : 'block';
+
   const days = getRangeDays('overview', 14);
 
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
@@ -747,8 +726,17 @@ function renderOverviewGroup() {
     if (d.weight != null) weightByDate[d.id] = d.weight;
     if (d.sleepSecs) sleepByDate[d.id] = d.sleepSecs;
   });
-  const moodByDate = moodByDateMap();
-  renderActivityTable(activities,'allActivities',null,weightByDate,sleepByDate,moodByDate);
+  const journalByDate = journalByDateMap();
+
+  const activityDays = new Set(activities.map(a => fmtDate(new Date(a.start_date_local))));
+  const from = daysAgo(days);
+  const noteOnlyEntries = Object.keys(journalByDate)
+    .filter(day => !activityDays.has(day) && new Date(day) >= from)
+    .map(day => ({ id: 'note-' + day, _noteOnly: true, start_date_local: day + 'T12:00:00' }));
+  const merged = [...activities, ...noteOnlyEntries]
+    .sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
+
+  renderActivityTable(merged,'allActivities',null,weightByDate,sleepByDate,journalByDate);
 
   const mix = {};
   Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung').forEach(t => { mix[t] = 0; });
@@ -758,6 +746,11 @@ function renderOverviewGroup() {
     const p = tot ? Math.round(s/tot*100) : 0;
     return `<div class="mix-item"><div class="mix-label" style="color:${TYPE_COLORS[t]||'#94a3b8'};font-size:12px;font-weight:600">${t}</div><div class="mix-bar-wrap"><div class="mix-bar" style="width:${p}%;background:${TYPE_COLORS[t]||'#94a3b8'}"></div></div><span class="mix-val">${p}%</span><span class="mix-time">${formatDur(s)}</span></div>`;
   }).join('');
+}
+
+async function refreshTagesjournal() {
+  if (ghToken && ghRepo) _notes = await loadNotes();
+  await loadAll();
 }
 
 // ─── HF-Zonen ────────────────────────────────────────────────────────────────
@@ -1079,58 +1072,6 @@ function fmtNoteDate(d) {
   return new Date(d).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
-// ─── Team Tab Render (Übersicht) ──────────────────────────────────────────────
-
-async function renderTeam() {
-  const configured = !!(ghToken && ghRepo);
-  document.getElementById('ghSetupBanner').style.display = configured ? 'none' : 'block';
-
-  if (configured && _notes.length === 0) _notes = await loadNotes();
-
-  document.getElementById('trainerInline').style.display = 'block';
-  renderJournal();
-}
-
-// ─── Tagesjournal ─────────────────────────────────────────────────────────────
-
-async function renderJournal() {
-  if (!ghToken || !ghRepo) {
-    document.getElementById('trainerInline').innerHTML =
-      `<div class="gh-setup-banner"><div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub nicht konfiguriert</div>
-      <div style="font-size:12px;color:#1e40af;margin-bottom:10px">Token + Repo in den Einstellungen eintragen.</div>
-      <button class="trainer-link" onclick="openSettingsPage()">⚙ Einstellungen →</button></div>`;
-    return;
-  }
-
-  document.getElementById('trainerInline').innerHTML = `
-    <div class="notes-header" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
-      <span class="card-title" id="journalCount">${_notes.length} Eintrag${_notes.length !== 1 ? 'e' : ''}</span>
-      <button class="btn icon-btn" title="Neu laden" onclick="refreshJournal()">↻</button>
-    </div>
-    <div id="journalList">${renderJournalListHtml(_notes)}</div>`;
-}
-
-async function refreshJournal() {
-  _notes = await loadNotes();
-  renderJournal();
-}
-
-function renderJournalListHtml(notes) {
-  if (notes.length === 0)
-    return `<div class="notes-loading">Noch kein Journal-Eintrag — über "✎ Notiz" im Dashboard anlegen.</div>`;
-  return notes.map(n => {
-    const idx = _notes.indexOf(n);
-    return `<div class="note-card" onclick="openNoteViewer(${idx})">
-      <div class="note-card-head">
-        <span class="note-card-date">${fmtNoteDate(n.date)}</span>
-      </div>
-      <div class="note-card-main">
-        ${n.mood ? `<span style="margin-right:6px;vertical-align:-3px">${moodIcon(n.mood,16)}</span>` : ''}
-        <span class="note-card-title">${escHtml(n.title)}</span>
-      </div>
-    </div>`;
-  }).join('');
-}
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
 
@@ -1148,19 +1089,26 @@ function selectMood(v) {
 
 let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
+let _noteEditorRespirationActId = null;
 
-function openNoteEditor() {
+function openNoteEditor(dateStr) {
   if (!ghToken || !ghRepo) { openSettingsPage(); return; }
   _noteEditorLocalMode = false;
   _editingLocalNoteId = null;
-  const todayStr = fmtDate(new Date());
-  const existing = _notes.find(n => n.date && n.date.slice(0,10) === todayStr);
+  const targetDate = dateStr || fmtDate(new Date());
+  const existing = _notes.find(n => n.date && n.date.slice(0,10) === targetDate);
   _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date } : null;
   document.getElementById('noteEditorHeading').textContent = existing ? '✎ Notiz / Schlafqualität bearbeiten' : '✎ Notiz / Schlafqualität';
   document.getElementById('noteEditorTitleInput').value = existing ? existing.title : 'Tagesnotiz';
-  document.getElementById('noteEditorDate').value = todayStr;
+  document.getElementById('noteEditorDate').value = targetDate;
   document.getElementById('noteEditorContent').value = existing ? existing.body : '';
   renderMoodPicker(existing ? existing.mood : null);
+
+  const dayAct = _activitiesFull.find(a => fmtDate(new Date(a.start_date_local)) === targetDate);
+  _noteEditorRespirationActId = dayAct ? dayAct.id : null;
+  document.getElementById('noteEditorRespirationField').style.display = dayAct ? 'block' : 'none';
+  document.getElementById('noteEditorRespiration').value = dayAct ? (getManualRespiration()[dayAct.id] ?? '') : '';
+
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
@@ -1180,6 +1128,8 @@ function openDayNoteEditor(localNoteId) {
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
   renderMoodPicker(n ? n.mood : null);
+  _noteEditorRespirationActId = null;
+  document.getElementById('noteEditorRespirationField').style.display = 'none';
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'block';
   renderLocalDayNotesList();
@@ -1262,8 +1212,10 @@ async function saveNoteEditor() {
     } else {
       _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, body });
     }
+    if (_noteEditorRespirationActId) {
+      saveManualRespirationValue(_noteEditorRespirationActId, document.getElementById('noteEditorRespiration').value.trim());
+    }
     closeNoteEditor();
-    await renderTeam();
     refreshCockpitMoodTile();
     renderFromCache();
   } catch(e) {
@@ -1328,17 +1280,7 @@ function closeNoteViewer() {
 function editCurrentNote() {
   const n = _notes[_viewingIndex];
   closeNoteViewer();
-  _noteEditorLocalMode = false;
-  _editingLocalNoteId = null;
-  _editingNote = { filename: n.filename, sha: n.sha, date: n.date };
-  document.getElementById('noteEditorHeading').textContent = 'Journal-Eintrag bearbeiten';
-  document.getElementById('noteEditorTitleInput').value = n.title;
-  document.getElementById('noteEditorDate').value = (n.date || fmtDate(new Date())).slice(0,10);
-  document.getElementById('noteEditorContent').value = n.body;
-  document.getElementById('localDayNotesSection').style.display = 'none';
-  renderMoodPicker(n.mood || null);
-  document.getElementById('noteEditorError').style.display = 'none';
-  document.getElementById('noteEditorModal').style.display = 'flex';
+  openNoteEditor((n.date || fmtDate(new Date())).slice(0,10));
 }
 
 async function deleteCurrentNote() {
@@ -1348,7 +1290,6 @@ async function deleteCurrentNote() {
     await deleteNoteFromGH(n.filename, n.sha);
     _notes = _notes.filter(x => x.filename !== n.filename);
     closeNoteViewer();
-    await renderTeam();
     refreshCockpitMoodTile();
     renderFromCache();
   } catch(e) {
@@ -1454,49 +1395,82 @@ function respirationRate(act) {
   return act.icu_average_respiration ?? act.average_respiration ?? act.icu_respiration_rate ?? act.respiration_rate ?? null;
 }
 
-function moodByDateMap() {
+function journalByDateMap() {
   const map = {};
   [..._notes, ..._localDayNotes].forEach(n => {
-    if (!n.date || !n.mood) return;
+    if (!n.date) return;
     const day = n.date.slice(0,10);
-    if (!(day in map)) map[day] = n.mood;
+    if (!(day in map)) map[day] = n;
   });
   return map;
 }
 
-function renderActivityTable(activities, containerId, limit=null, weightByDate=null, sleepByDate=null, moodByDate=null) {
+function wrenchIcon(size) {
+  size = size || 15;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+}
+
+function statChip(label, valueHtml) {
+  return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:48px">
+    <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">${label}</span>
+    <span class="mono" style="font-size:12px;display:flex;align-items:center;justify-content:center;min-height:18px">${valueHtml}</span>
+  </div>`;
+}
+
+function renderActivityTable(activities, containerId, limit=null, weightByDate=null, sleepByDate=null, journalByDate=null) {
   const el=document.getElementById(containerId); if(!el) return;
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
-  const weightCol = weightByDate ? '<th>Gewicht</th>' : '';
-  const sleepCol = sleepByDate ? '<th>Schlaf</th>' : '';
-  const moodCol = moodByDate ? '<th>Schlafqualität</th>' : '';
-  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Ø Atmung/Min</th><th>Höhenmeter</th>${weightCol}${sleepCol}${moodCol}</tr></thead><tbody>${list.map(a=>{
+
+  el.innerHTML = list.map(a => {
+    const isNoteOnly = a._noteOnly === true;
     const date=new Date(a.start_date_local).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
     const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
     const dur=a.moving_time?formatDur(a.moving_time):'—';
     const hr=a.average_heartrate?Math.round(a.average_heartrate)+' bpm':'—';
     const resp=respirationRate(a);
-    const respCell=resp!=null?Math.round(resp)+'/min':'—';
+    const respVal=isNoteOnly?'—':(resp!=null?Math.round(resp)+'/min':'—');
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
+    const nameVal = isNoteOnly ? '<span style="color:var(--text2)">Ruhetag</span>' : escHtml(a.name||normalizeType(a.type));
+    const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag tag-${a.type}">${normalizeType(a.type)}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
-    let weightCell = '';
-    if (weightByDate) {
-      const w = weightByDate[dayKey];
-      weightCell = `<td class="mono">${w!=null?w.toFixed(1)+' kg':'—'}</td>`;
+
+    let weightVal = '—', sleepVal = '—', moodVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
+    if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
+    if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
+    if (journalByDate) {
+      const n = journalByDate[dayKey];
+      const viewIdx = n ? _notes.indexOf(n) : -1;
+      moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—';
+      titleHtml = n
+        ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;${viewIdx>=0?'cursor:pointer':''}" ${viewIdx>=0?`onclick="openNoteViewer(${viewIdx})"`:''} title="${viewIdx>=0?'Notiz ansehen':''}">${escHtml(n.title)}</span>`
+        : '<span style="color:var(--text2)">—</span>';
     }
-    let sleepCell = '';
-    if (sleepByDate) {
-      const s = sleepByDate[dayKey];
-      sleepCell = `<td class="mono">${s!=null?(s/3600).toFixed(1)+' h':'—'}</td>`;
-    }
-    let moodCell = '';
-    if (moodByDate) {
-      const m = moodByDate[dayKey];
-      moodCell = `<td class="mono">${m!=null?moodIcon(m,16):'—'}</td>`;
-    }
-    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono" style="cursor:pointer" title="Klicken zum Bearbeiten" onclick="promptRespiration('${a.id}')">${respCell}</td><td class="mono">${elev}</td>${weightCell}${sleepCell}${moodCell}</tr>`;
-  }).join('')}</tbody></table>`;
+
+    return `<div class="note-card" style="cursor:default;flex-wrap:wrap;row-gap:10px">
+      <div style="display:flex;flex-direction:column;align-items:center;min-width:70px">
+        <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Datum</span>
+        <span class="mono" style="font-size:12px">${date}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;min-width:110px">
+        <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Aktivität</span>
+        <span style="font-size:12px;font-weight:600">${nameVal}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;min-width:60px">
+        <span style="font-size:9px;color:var(--text2);text-transform:uppercase">Typ</span>
+        ${typVal}
+      </div>
+      ${statChip('Distanz', km)}
+      ${statChip('Zeit', dur)}
+      ${statChip('Ø HF', hr)}
+      ${statChip('Atmung', respVal)}
+      ${statChip('Höhe', elev)}
+      ${weightByDate?statChip('Gewicht', weightVal):''}
+      ${sleepByDate?statChip('Schlaf', sleepVal):''}
+      ${journalByDate?statChip('Schlafqual.', moodVal):''}
+      ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Notiz bearbeiten" onclick="openNoteEditor('${dayKey}')">${wrenchIcon(13)}</button></div>`:''}
+    </div>`;
+  }).join('');
 }
 
 if (window.Chart) {

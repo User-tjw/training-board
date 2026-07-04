@@ -157,8 +157,7 @@
       <a class="nav-item active" data-section="cockpit">Dashboard</a>
       <a class="nav-item" data-section="zones">HF-Zonen</a>
       <a class="nav-item" data-section="wellness">Wellness</a>
-      <a class="nav-item" data-section="activities">Aktivitäten</a>
-      <a class="nav-item" data-section="team">KI-Trainer</a>
+      <a class="nav-item" data-section="activities">Journal</a>
     </nav>
 
     <div class="topnav-right">
@@ -253,27 +252,20 @@
       </div>
     </section>
 
-    <!-- Aktivitäten -->
+    <!-- Journal -->
     <section id="section-activities" class="section">
-      <div class="content">
-        <div class="card"><div class="card-header"><span class="card-title">Alle Aktivitäten</span></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
-      </div>
-    </section>
-
-    <!-- Trainer Team -->
-    <section id="section-team" class="section">
       <div class="content">
         <div class="gh-setup-banner" id="ghSetupBanner" style="display:none">
           <div style="display:flex;align-items:center;gap:14px">
             <span style="font-size:24px">⚙</span>
             <div>
               <div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub Notizen konfigurieren</div>
-              <div style="font-size:12px;color:#1e40af;line-height:1.5">Verbinde ein privates GitHub-Repo um Trainer-Notizen zu speichern. Token + Repo in den Einstellungen eintragen.</div>
+              <div style="font-size:12px;color:#1e40af;line-height:1.5">Verbinde ein privates GitHub-Repo um Notizen zu speichern. Token + Repo in den Einstellungen eintragen.</div>
               <button class="trainer-link" onclick="openSettingsPage()">⚙ Einstellungen öffnen →</button>
             </div>
           </div>
         </div>
-        <div id="trainerInline" style="display:none;margin-bottom:14px"></div>
+        <div class="card"><div class="card-header"><span class="card-title">Journal</span><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
       </div>
     </section>
 
@@ -428,6 +420,10 @@
       <label class="setup-label">Schlafqualität (optional)</label>
       <div class="mood-picker" id="moodPicker"></div>
     </div>
+    <div class="setup-field" id="noteEditorRespirationField" style="display:none">
+      <label class="setup-label">Ø Atmung/Min (optional)</label>
+      <input class="setup-input" id="noteEditorRespiration" type="number" min="1" step="0.1" placeholder="z.B. 14">
+    </div>
     <div class="setup-field">
       <label class="setup-label">Inhalt (Markdown)</label>
       <textarea class="note-textarea" id="noteEditorContent" placeholder="Notiz hier eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
@@ -462,21 +458,6 @@
       <button class="btn" onclick="editCurrentNote()">✎ Bearbeiten</button>
       <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="deleteCurrentNote()">✕ Löschen</button>
       <button class="setup-btn" style="margin-left:auto;padding:7px 20px;width:auto" onclick="closeNoteViewer()">Schließen</button>
-    </div>
-  </div>
-</div>
-
-<!-- Atmungsfrequenz-Editor Modal -->
-<div class="modal-overlay" id="respirationModal" style="display:none" onclick="if(event.target===this)closeRespirationEditor()">
-  <div class="modal">
-    <h3>Atemfrequenz</h3>
-    <div class="setup-field">
-      <label class="setup-label">Ø Atemzüge/Min</label>
-      <input class="setup-input" id="respirationInput" type="number" min="1" step="0.1" placeholder="z.B. 14">
-    </div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveRespirationEditor()">Speichern</button>
-      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeRespirationEditor()">Abbrechen</button>
     </div>
   </div>
 </div>
