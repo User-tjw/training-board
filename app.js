@@ -1243,7 +1243,6 @@ async function saveNoteEditor() {
     return;
   }
 
-  if (!body) { errEl.textContent = 'Inhalt erforderlich.'; errEl.style.display='block'; return; }
   const content  = buildNoteContent(body, 'journal', title, date, mood);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-journal.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
