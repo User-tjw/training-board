@@ -77,7 +77,6 @@ function logout() {
   sessionStorage.removeItem('tb_authenticated');
   sessionStorage.removeItem('tb_login_time');
   sessionStorage.removeItem('tb_active_section');
-  sessionStorage.removeItem('tb_active_trainer');
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('passwordScreen').style.display = 'flex';
@@ -90,7 +89,6 @@ function unlockApp(fromReload = false) {
   sessionStorage.setItem('tb_login_time', Date.now().toString());
   if (!fromReload) {
     sessionStorage.removeItem('tb_active_section');
-    sessionStorage.removeItem('tb_active_trainer');
   }
   document.getElementById('passwordScreen').style.display = 'none';
   if (athleteId && apiKey) {
@@ -744,8 +742,13 @@ function renderOverviewGroup() {
 
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   const weightByDate = {};
-  _wellnessFull.forEach(d => { if (d.weight != null) weightByDate[d.id] = d.weight; });
-  renderActivityTable(activities,'allActivities',null,weightByDate);
+  const sleepByDate = {};
+  _wellnessFull.forEach(d => {
+    if (d.weight != null) weightByDate[d.id] = d.weight;
+    if (d.sleepSecs) sleepByDate[d.id] = d.sleepSecs;
+  });
+  const moodByDate = moodByDateMap();
+  renderActivityTable(activities,'allActivities',null,weightByDate,sleepByDate,moodByDate);
 
   const mix = {};
   Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung').forEach(t => { mix[t] = 0; });
@@ -852,28 +855,6 @@ function renderWellnessGroup() {
   renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
 }
 
-// ─── Trainer Team ─────────────────────────────────────────────────────────────
-
-const TRAINERS = [
-  {slug:'head-coach', icon:'⊙', name:'Head Coach',    role:'Tagessteuerung & Planung',       color:'#3b82f6', desc:'HRV-Ampel, Check-In, Wochenplanung, Load-Management und Saisonplanung.'},
-  {slug:'reha',       icon:'◈', name:'Reha-Trainer',  role:'Verletzung & Prävention',         color:'#dc2626', desc:'Gate-System, Protokolle für parallele Reha-Programme, Schmerzmonitoring.'},
-  {slug:'kraft',      icon:'◆', name:'Kraft-Trainer', role:'Kraft & Stabilität',              color:'#8b5cf6', desc:'Ganzkörper-Programm, Posterior Chain, Progression, Heimtraining.'},
-  {slug:'ernaehrung', icon:'◐', name:'Sporternährung',role:'Ernährung & Supplements',         color:'#10b981', desc:'Basis-Protokoll, Race-Day-Ernährung, Taper, Protein-Strategie.'},
-  {slug:'methodik',   icon:'▲', name:'UA-Methodik',   role:'Uphill Athlete Prinzipien',       color:'#b45309', desc:'Polarisiertes Training, AeT/AnT, 80/20-Verteilung, Zonenlogik.'},
-];
-
-const TRAINER_SVG_PATHS = {
-  'head-coach': '<path d="M12 3.5l2.5 5.3 5.8.7-4.3 4 1.2 5.8-5.2-3.1-5.2 3.1 1.2-5.8-4.3-4 5.8-.7L12 3.5z"/>',
-  'reha':       '<path d="M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6l7-3z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="9.5" y1="11.5" x2="14.5" y2="11.5"/>',
-  'kraft':      '<rect x="1.5" y="9" width="3" height="6" rx="1"/><rect x="19.5" y="9" width="3" height="6" rx="1"/><line x1="6.5" y1="12" x2="17.5" y2="12"/><rect x="6" y="6.5" width="2.5" height="11" rx="1"/><rect x="15.5" y="6.5" width="2.5" height="11" rx="1"/>',
-  'ernaehrung': '<path d="M19 4C12 4 5 8 5 15c0 2.5 2 4.5 4.5 4.5C16 19.5 19 11 19 4z"/><line x1="9" y1="19" x2="18" y2="6"/>',
-  'methodik':   '<path d="M3 18l6-10 4 6 2-3 6 7H3z"/>',
-};
-
-function trainerIconSvg(slug, size) {
-  size = size || 28;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${TRAINER_SVG_PATHS[slug] || ''}</svg>`;
-}
 
 const MOOD_OPTIONS = [
   {v:1, l:'Schlecht'},
@@ -1106,28 +1087,13 @@ async function renderTeam() {
 
   if (configured && _notes.length === 0) _notes = await loadNotes();
 
-  const activeSlug = sessionStorage.getItem('tb_active_trainer') || 'head-coach';
-
-  document.getElementById('teamGrid').innerHTML = TRAINERS.map(t => {
-    return `<div class="trainer-card${t.slug === activeSlug ? ' active' : ''}" data-slug="${t.slug}" onclick="selectTrainer('${t.slug}')">
-      <div class="trainer-icon" style="color:${t.color}">${trainerIconSvg(t.slug, 18)}</div>
-      <div class="trainer-name">${t.name}</div>
-    </div>`;
-  }).join('');
-
-  if (activeSlug) selectTrainer(activeSlug);
-}
-
-function selectTrainer(slug) {
-  sessionStorage.setItem('tb_active_trainer', slug);
-  document.querySelectorAll('.trainer-card').forEach(c => c.classList.toggle('active', c.dataset.slug === slug));
   document.getElementById('trainerInline').style.display = 'block';
-  showTrainerDetail(slug);
+  renderJournal();
 }
 
-// ─── Trainer Detail ───────────────────────────────────────────────────────────
+// ─── Tagesjournal ─────────────────────────────────────────────────────────────
 
-async function showTrainerDetail(slug) {
+async function renderJournal() {
   if (!ghToken || !ghRepo) {
     document.getElementById('trainerInline').innerHTML =
       `<div class="gh-setup-banner"><div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub nicht konfiguriert</div>
@@ -1136,52 +1102,22 @@ async function showTrainerDetail(slug) {
     return;
   }
 
-  const t = TRAINERS.find(x => x.slug === slug);
-  if (!t) return;
-
-  if (_notes.length === 0) _notes = await loadNotes();
-  const trainerNotes = _notes.filter(n => n.trainer === slug);
-
   document.getElementById('trainerInline').innerHTML = `
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-      <span style="color:${t.color}">${trainerIconSvg(t.slug, 32)}</span>
-      <div>
-        <div style="font-size:20px;font-weight:700">${t.name}</div>
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:${t.color};margin-top:2px">${t.role}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:4px">${t.desc}</div>
-      </div>
+    <div class="notes-header" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span class="card-title" id="journalCount">${_notes.length} Eintrag${_notes.length !== 1 ? 'e' : ''}</span>
+      <button class="btn icon-btn" title="Neu laden" onclick="refreshJournal()">↻</button>
     </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><span class="card-title">Neue Notiz</span></div>
-      <div class="setup-field" style="margin-bottom:10px">
-        <input class="setup-input" id="tnTitle" type="text" placeholder="Titel (z.B. Morgen Check-In)" onkeydown="if(event.key==='Enter')document.getElementById('tnContent').focus()">
-      </div>
-      <textarea class="note-textarea" id="tnContent" style="min-height:110px" placeholder="Notiz eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button style="padding:9px 20px;border-radius:8px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="saveTrainerNote('${slug}')">Speichern</button>
-        <button id="copyTBtn_${slug}" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);line-height:1" onclick="copyTrainerNotes('${slug}')">Für Claude kopieren</button>
-        <button class="btn icon-btn" title="Neu laden" onclick="refreshTrainerDetail('${slug}')">↻</button>
-        <div class="setup-error" id="tnError" style="display:none;margin:0;align-self:center"></div>
-      </div>
-    </div>
-
-    <div class="notes-header" style="margin-bottom:12px">
-      <span class="card-title" id="trainerNotesCount">${trainerNotes.length} Notiz${trainerNotes.length !== 1 ? 'en' : ''}</span>
-    </div>
-    <div id="trainerNotesList">
-      ${renderTrainerNotesHtml(trainerNotes)}
-    </div>`;
+    <div id="journalList">${renderJournalListHtml(_notes)}</div>`;
 }
 
-async function refreshTrainerDetail(slug) {
+async function refreshJournal() {
   _notes = await loadNotes();
-  showTrainerDetail(slug);
+  renderJournal();
 }
 
-function renderTrainerNotesHtml(notes) {
+function renderJournalListHtml(notes) {
   if (notes.length === 0)
-    return `<div class="notes-loading">Noch keine Notizen — oben erste Notiz erstellen.</div>`;
+    return `<div class="notes-loading">Noch kein Journal-Eintrag — über "✎ Notiz" im Dashboard anlegen.</div>`;
   return notes.map(n => {
     const idx = _notes.indexOf(n);
     return `<div class="note-card" onclick="openNoteViewer(${idx})">
@@ -1189,71 +1125,11 @@ function renderTrainerNotesHtml(notes) {
         <span class="note-card-date">${fmtNoteDate(n.date)}</span>
       </div>
       <div class="note-card-main">
+        ${n.mood ? `<span style="margin-right:6px;vertical-align:-3px">${moodIcon(n.mood,16)}</span>` : ''}
         <span class="note-card-title">${escHtml(n.title)}</span>
       </div>
     </div>`;
   }).join('');
-}
-
-async function saveTrainerNote(slug) {
-  const title = document.getElementById('tnTitle').value.trim();
-  const body  = document.getElementById('tnContent').value.trim();
-  const errEl = document.getElementById('tnError');
-  if (!title || !body) { errEl.textContent = 'Titel und Inhalt erforderlich.'; errEl.style.display='block'; return; }
-  errEl.style.display = 'none';
-  try {
-    const content  = buildNoteContent(body, slug, title);
-    const filename = `${Date.now()}-${slug}.md`;
-    const res = await saveNoteToGH(filename, content, null);
-    const newNote = {
-      filename,
-      sha:     res.content.sha,
-      trainer: slug,
-      title,
-      date:    nowLocalISO(),
-      body,
-    };
-    _notes.unshift(newNote);
-    document.getElementById('tnTitle').value   = '';
-    document.getElementById('tnContent').value = '';
-    const trainerNotes = _notes.filter(n => n.trainer === slug);
-    document.getElementById('trainerNotesCount').textContent =
-      `${trainerNotes.length} Notiz${trainerNotes.length !== 1 ? 'en' : ''}`;
-    document.getElementById('trainerNotesList').innerHTML = renderTrainerNotesHtml(trainerNotes);
-  } catch(e) {
-    errEl.textContent = 'Fehler: ' + e.message;
-    errEl.style.display = 'block';
-  }
-}
-
-async function copyTrainerNotes(slug) {
-  const t    = TRAINERS.find(x => x.slug === slug);
-  const notes = _notes.filter(n => n.trainer === slug);
-  const today = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  const lines = [
-    `# ${t.icon} ${t.name} — Notizverlauf (${today})`,
-    `**Athlet:** Thomas Wagner | 50J | 74.6 kg | FTP 250W | Max-HF 183`,
-    '',
-  ];
-  if (notes.length === 0) {
-    lines.push('_Noch keine Notizen vorhanden._');
-  } else {
-    notes.forEach(n => {
-      lines.push(`## ${fmtNoteDate(n.date)} — ${n.title}`);
-      lines.push(n.body);
-      lines.push('');
-    });
-  }
-  lines.push('---');
-  lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
-
-  const btn = document.getElementById(`copyTBtn_${slug}`);
-  try {
-    await navigator.clipboard.writeText(lines.join('\n'));
-    btn.textContent = '✓ Kopiert!';
-    btn.style.background = 'var(--green)'; btn.style.color = 'white'; btn.style.borderColor = 'var(--green)';
-    setTimeout(() => { btn.textContent = '✦ Für Claude kopieren'; btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }, 2500);
-  } catch(e) { alert('Kopieren fehlgeschlagen.'); }
 }
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
@@ -1273,17 +1149,18 @@ function selectMood(v) {
 let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
 
-function openNoteEditor(trainerSlug) {
+function openNoteEditor() {
   if (!ghToken || !ghRepo) { openSettingsPage(); return; }
   _noteEditorLocalMode = false;
   _editingLocalNoteId = null;
-  _editingNote = null;
-  document.getElementById('noteEditorHeading').textContent = 'Neue Notiz';
-  document.getElementById('noteEditorTrainer').value = trainerSlug || 'head-coach';
-  document.getElementById('noteEditorTitleInput').value = '';
-  document.getElementById('noteEditorDate').value = fmtDate(new Date());
-  document.getElementById('noteEditorContent').value = '';
-  renderMoodPicker(null);
+  const todayStr = fmtDate(new Date());
+  const existing = _notes.find(n => n.date && n.date.slice(0,10) === todayStr);
+  _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date } : null;
+  document.getElementById('noteEditorHeading').textContent = existing ? '✎ Notiz / Schlafqualität bearbeiten' : '✎ Notiz / Schlafqualität';
+  document.getElementById('noteEditorTitleInput').value = existing ? existing.title : 'Tagesnotiz';
+  document.getElementById('noteEditorDate').value = todayStr;
+  document.getElementById('noteEditorContent').value = existing ? existing.body : '';
+  renderMoodPicker(existing ? existing.mood : null);
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
   document.getElementById('noteEditorModal').style.display = 'flex';
@@ -1291,17 +1168,14 @@ function openNoteEditor(trainerSlug) {
 
 function openDayNoteEditor(localNoteId) {
   if (ghToken && ghRepo) {
-    openNoteEditor('head-coach');
-    document.getElementById('noteEditorHeading').textContent = '✎ Notiz / Tagesbefinden';
-    document.getElementById('noteEditorTitleInput').value = 'Tagesnotiz';
+    openNoteEditor();
     return;
   }
   _editingNote = null;
   _noteEditorLocalMode = true;
   _editingLocalNoteId = localNoteId || null;
   const n = localNoteId ? _localDayNotes.find(x => x.id === localNoteId) : null;
-  document.getElementById('noteEditorHeading').textContent = n ? '✎ Notiz bearbeiten' : '✎ Notiz / Tagesbefinden';
-  document.getElementById('noteEditorTrainer').value = 'head-coach';
+  document.getElementById('noteEditorHeading').textContent = n ? '✎ Notiz bearbeiten' : '✎ Notiz / Schlafqualität';
   document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
@@ -1349,7 +1223,6 @@ function deleteLocalDayNote(id) {
 }
 
 async function saveNoteEditor() {
-  const trainer = document.getElementById('noteEditorTrainer').value;
   const title   = document.getElementById('noteEditorTitleInput').value.trim();
   const body    = document.getElementById('noteEditorContent').value.trim();
   const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
@@ -1376,16 +1249,16 @@ async function saveNoteEditor() {
   }
 
   if (!body) { errEl.textContent = 'Inhalt erforderlich.'; errEl.style.display='block'; return; }
-  const content  = buildNoteContent(body, trainer, title, date, mood);
-  const filename = _editingNote ? _editingNote.filename : `${Date.now()}-${trainer}.md`;
+  const content  = buildNoteContent(body, 'journal', title, date, mood);
+  const filename = _editingNote ? _editingNote.filename : `${Date.now()}-journal.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
   try {
     const res = await saveNoteToGH(filename, content, sha);
     if (_editingNote) {
       const n = _notes.find(x => x.filename === filename);
-      if (n) { n.trainer = trainer; n.title = title; n.body = body; n.date = date; n.mood = mood; n.sha = res.content.sha; }
+      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.sha = res.content.sha; }
     } else {
-      _notes.unshift({ filename, sha: res.content.sha, trainer, title, date, mood, body });
+      _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, body });
     }
     closeNoteEditor();
     await renderTeam();
@@ -1396,14 +1269,48 @@ async function saveNoteEditor() {
   }
 }
 
+async function copyNoteForClaude() {
+  const title = document.getElementById('noteEditorTitleInput').value.trim();
+  const body  = document.getElementById('noteEditorContent').value.trim();
+  const moodSel = document.getElementById('moodPicker').dataset.selected;
+  const mood  = moodSel ? parseInt(moodSel) : null;
+  const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
+  const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+  const text = id => document.getElementById(id)?.textContent.trim() || '—';
+  const lines = [
+    `# Tagesbericht — ${dateLong}`,
+    `Athlet: Thomas Wagner | 50J | 74.6kg | FTP 250W | Max-HF 183`,
+    '',
+    '## Automatische Einschätzung (Training Board)',
+    text('cockpitVerdict'),
+    text('cockpitDesc'),
+    '',
+    '## Weitere Werte',
+    `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
+    '',
+    `## ${title || 'Journal-Eintrag'}`,
+  ];
+  if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
+  lines.push(body || '_Keine Notiz eingegeben._');
+  lines.push('');
+  lines.push('---');
+  lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
+
+  const btn = document.getElementById('copyNoteBtn');
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    btn.textContent = '✓ Kopiert!';
+    setTimeout(() => { btn.textContent = '✦ Tagesbericht + Notiz für Claude kopieren'; }, 2500);
+  } catch(e) { alert('Kopieren fehlgeschlagen.'); }
+}
+
 // ─── Note Viewer ──────────────────────────────────────────────────────────────
 
 function openNoteViewer(index) {
   _viewingIndex = index;
   const n = _notes[index];
-  const t = TRAINERS.find(x => x.slug === n.trainer) || {icon:'✦', name:'Allgemein', color:'#64748b'};
-  document.getElementById('noteViewerBadge').innerHTML =
-    `<span class="note-card-badge" style="background:${t.color}20;color:${t.color}">${t.icon} ${t.name}</span>`;
+  document.getElementById('noteViewerBadge').innerHTML = '';
   document.getElementById('noteViewerTitle').innerHTML = escHtml(n.title) + (n.mood ? ` <span style="color:var(--text2);vertical-align:-4px">${moodIcon(n.mood,16)}</span>` : '');
   document.getElementById('noteViewerDate').textContent  = fmtNoteDate(n.date);
   document.getElementById('noteViewerContent').innerHTML = renderMarkdown(n.body);
@@ -1421,8 +1328,7 @@ function editCurrentNote() {
   _noteEditorLocalMode = false;
   _editingLocalNoteId = null;
   _editingNote = { filename: n.filename, sha: n.sha, date: n.date };
-  document.getElementById('noteEditorHeading').textContent = 'Notiz bearbeiten';
-  document.getElementById('noteEditorTrainer').value = n.trainer;
+  document.getElementById('noteEditorHeading').textContent = 'Journal-Eintrag bearbeiten';
   document.getElementById('noteEditorTitleInput').value = n.title;
   document.getElementById('noteEditorDate').value = (n.date || fmtDate(new Date())).slice(0,10);
   document.getElementById('noteEditorContent').value = n.body;
@@ -1544,12 +1450,24 @@ function respirationRate(act) {
   return act.icu_average_respiration ?? act.average_respiration ?? act.icu_respiration_rate ?? act.respiration_rate ?? null;
 }
 
-function renderActivityTable(activities, containerId, limit=null, weightByDate=null) {
+function moodByDateMap() {
+  const map = {};
+  [..._notes, ..._localDayNotes].forEach(n => {
+    if (!n.date || !n.mood) return;
+    const day = n.date.slice(0,10);
+    if (!(day in map)) map[day] = n.mood;
+  });
+  return map;
+}
+
+function renderActivityTable(activities, containerId, limit=null, weightByDate=null, sleepByDate=null, moodByDate=null) {
   const el=document.getElementById(containerId); if(!el) return;
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
   const weightCol = weightByDate ? '<th>Gewicht</th>' : '';
-  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Ø Atmung/Min</th><th>Höhenmeter</th>${weightCol}</tr></thead><tbody>${list.map(a=>{
+  const sleepCol = sleepByDate ? '<th>Schlaf</th>' : '';
+  const moodCol = moodByDate ? '<th>Schlafqualität</th>' : '';
+  el.innerHTML=`<table class="act-table"><thead><tr><th>Datum</th><th>Name</th><th>Typ</th><th>Distanz</th><th>Zeit</th><th>Ø HF</th><th>Ø Atmung/Min</th><th>Höhenmeter</th>${weightCol}${sleepCol}${moodCol}</tr></thead><tbody>${list.map(a=>{
     const date=new Date(a.start_date_local).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
     const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
     const dur=a.moving_time?formatDur(a.moving_time):'—';
@@ -1557,12 +1475,23 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const resp=respirationRate(a);
     const respCell=resp!=null?Math.round(resp)+'/min':'—';
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
+    const dayKey = fmtDate(new Date(a.start_date_local));
     let weightCell = '';
     if (weightByDate) {
-      const w = weightByDate[fmtDate(new Date(a.start_date_local))];
+      const w = weightByDate[dayKey];
       weightCell = `<td class="mono">${w!=null?w.toFixed(1)+' kg':'—'}</td>`;
     }
-    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono" style="cursor:pointer" title="Klicken zum Bearbeiten" onclick="promptRespiration('${a.id}')">${respCell}</td><td class="mono">${elev}</td>${weightCell}</tr>`;
+    let sleepCell = '';
+    if (sleepByDate) {
+      const s = sleepByDate[dayKey];
+      sleepCell = `<td class="mono">${s!=null?(s/3600).toFixed(1)+' h':'—'}</td>`;
+    }
+    let moodCell = '';
+    if (moodByDate) {
+      const m = moodByDate[dayKey];
+      moodCell = `<td class="mono">${m!=null?moodIcon(m,16):'—'}</td>`;
+    }
+    return `<tr><td class="mono">${date}</td><td>${a.name||normalizeType(a.type)}</td><td><span class="tag tag-${a.type}">${normalizeType(a.type)}</span></td><td class="mono">${km}</td><td class="mono">${dur}</td><td class="mono">${hr}</td><td class="mono" style="cursor:pointer" title="Klicken zum Bearbeiten" onclick="promptRespiration('${a.id}')">${respCell}</td><td class="mono">${elev}</td>${weightCell}${sleepCell}${moodCell}</tr>`;
   }).join('')}</tbody></table>`;
 }
 

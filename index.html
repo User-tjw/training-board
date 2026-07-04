@@ -187,7 +187,7 @@
           <option value="90">90 Tage</option>
           <option value="365">Alle</option>
         </select>
-        <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Tagesbefinden">✎ Notiz</button>
+        <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Schlafqualität">✎ Notiz</button>
       </div>
     </div>
   </header>
@@ -218,7 +218,7 @@
             <div class="trend-kpi-item"><div class="trend-kpi-label">Gewicht</div><div class="trend-kpi-val" id="cockpitWeight">— <span class="trend-kpi-trend" id="cockpitWeightTrend"></span></div></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Trainingspuls Ø</div><div class="trend-kpi-val" id="avgHR">—</div></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Schlaf Ø</div><div class="trend-kpi-val" id="avgSleep">—</div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Befinden</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Schlafqualität</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
           </div>
         </div>
         <div class="card">
@@ -273,7 +273,6 @@
             </div>
           </div>
         </div>
-        <div class="team-grid" id="teamGrid"></div>
         <div id="trainerInline" style="display:none;margin-bottom:14px"></div>
       </div>
     </section>
@@ -418,16 +417,6 @@
   <div class="modal modal-wide">
     <h3 id="noteEditorHeading">Neue Notiz</h3>
     <div class="setup-field" style="margin-top:16px">
-      <label class="setup-label">Trainer</label>
-      <select class="setup-input" id="noteEditorTrainer" style="cursor:pointer">
-        <option value="head-coach">Head Coach</option>
-        <option value="reha">Reha-Trainer</option>
-        <option value="kraft">Kraft-Trainer</option>
-        <option value="ernaehrung">Sporternährung</option>
-        <option value="methodik">UA-Methodik</option>
-      </select>
-    </div>
-    <div class="setup-field">
       <label class="setup-label">Titel</label>
       <input class="setup-input" id="noteEditorTitleInput" type="text" placeholder="z.B. Morgen Check-In">
     </div>
@@ -436,16 +425,17 @@
       <input class="setup-input" id="noteEditorDate" type="date">
     </div>
     <div class="setup-field">
-      <label class="setup-label">Tagesbefinden (optional)</label>
+      <label class="setup-label">Schlafqualität (optional)</label>
       <div class="mood-picker" id="moodPicker"></div>
     </div>
     <div class="setup-field">
       <label class="setup-label">Inhalt (Markdown)</label>
       <textarea class="note-textarea" id="noteEditorContent" placeholder="Notiz hier eingeben…&#10;&#10;**Fett**, *kursiv*, ## Überschrift, - Liste"></textarea>
     </div>
-    <div style="display:flex;gap:10px;margin-top:8px">
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveNoteEditor()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeNoteEditor()">Abbrechen</button>
+      <button id="copyNoteBtn" class="btn" style="flex-basis:100%;padding:12px;font-size:14px" onclick="copyNoteForClaude()">✦ Tagesbericht + Notiz für Claude kopieren</button>
     </div>
     <div class="setup-error" id="noteEditorError">Fehler beim Speichern.</div>
     <div id="localDayNotesSection" style="display:none;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">

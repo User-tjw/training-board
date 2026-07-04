@@ -201,14 +201,6 @@
     .loading { color: var(--text2); font-family: var(--mono); font-size: 12px; padding: 20px; text-align: center; }
     #zoneDonut, #zoneTrendChart { max-height: 140px !important; }
 
-    /* Team */
-    .team-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-    .trainer-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; transition: box-shadow 0.2s, transform 0.15s; display: flex; flex-direction: row; align-items: center; gap: 10px; cursor: pointer; }
-    .trainer-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
-    .trainer-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
-    .trainer-icon { font-size: 18px; flex-shrink: 0; display: flex; }
-    .trainer-icon svg { width: 18px; height: 18px; }
-    .trainer-name { font-size: 13px; font-weight: 600; }
     .gh-setup-banner { background:var(--accent-light); border:1px solid #bfdbfe; border-radius:var(--radius); padding:18px 20px; margin-bottom:16px; }
     .note-card { display:flex; align-items:center; gap:12px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 14px; margin-bottom:6px; cursor:pointer; transition:box-shadow 0.15s, border-color 0.15s; }
     .note-card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.08); border-color:#bfdbfe; }
@@ -216,7 +208,6 @@
     .note-card-main { display:flex; align-items:baseline; gap:8px; flex:1; min-width:0; }
     .note-card-title { font-size:13px; font-weight:600; color:var(--text); white-space:nowrap; flex-shrink:0; }
     .note-card-date { font-size:11px; font-family:var(--mono); color:var(--text2); white-space:nowrap; flex-shrink:0; }
-    .note-card-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap; }
     .note-card-excerpt { font-size:12px; color:var(--text2); line-height:1.4; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; min-width:0; }
     .modal.modal-wide { width:560px; max-width:96vw; max-height:88vh; overflow-y:auto; }
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
@@ -243,8 +234,6 @@
 
     @media (max-width: 1000px) { .grid-2, .grid-3-1, .grid-2x2, .grid-3 { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub { display: none; } }
-    @media (max-width: 720px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 460px) { .team-grid { grid-template-columns: 1fr; } }
     @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
 
     .week-cal { display: grid; grid-template-columns: repeat(7, 0.86fr) 210px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
