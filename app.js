@@ -1220,6 +1220,7 @@ function deleteLocalDayNote(id) {
   saveLocalDayNotes();
   renderLocalDayNotesList();
   refreshCockpitMoodTile();
+  renderFromCache();
 }
 
 async function saveNoteEditor() {
@@ -1245,6 +1246,7 @@ async function saveNoteEditor() {
     saveLocalDayNotes();
     closeNoteEditor();
     refreshCockpitMoodTile();
+    renderFromCache();
     return;
   }
 
@@ -1263,6 +1265,7 @@ async function saveNoteEditor() {
     closeNoteEditor();
     await renderTeam();
     refreshCockpitMoodTile();
+    renderFromCache();
   } catch(e) {
     errEl.textContent = 'Fehler: ' + e.message;
     errEl.style.display = 'block';
@@ -1347,6 +1350,7 @@ async function deleteCurrentNote() {
     closeNoteViewer();
     await renderTeam();
     refreshCockpitMoodTile();
+    renderFromCache();
   } catch(e) {
     alert('Fehler beim Löschen: ' + e.message);
   }
