@@ -226,6 +226,10 @@ async function syncSessionToICU(dateStr, session) {
     type: icuType,
     name: session.note || session.type,
     moving_time: session.min ? session.min * 60 : undefined,
+    // Reine Zeitangabe (moving_time) allein erzeugt keine Workout-Struktur (workout_doc.steps bleibt leer) —
+    // Garmin Connect pusht aber offenbar nur strukturierte Workouts. Ein Schritt in Intervals.icus
+    // Text-Workout-Syntax reicht, um beim Anlegen echte Steps zu erzeugen.
+    description: session.min ? `- ${session.min}m` : undefined,
   };
   try {
     if (session.icuEventId) {
@@ -241,6 +245,19 @@ function deleteSessionFromICU(session) {
   if (!session || !session.icuEventId) return Promise.resolve();
   return icuWrite(`/athlete/${athleteId}/events/${session.icuEventId}`, 'DELETE')
     .catch(e => console.error('Intervals.icu-Event konnte nicht gelöscht werden:', e));
+}
+// Löscht ein Event, das nicht von Training Board angelegt wurde (direkt in ICU oder via Garmin geplant),
+// direkt bei Intervals.icu. Es gibt kein lokales Session-Objekt dafür — nach Erfolg nur aus dem
+// geladenen Cache entfernen und neu rendern.
+async function deleteIcuOnlyEvent(icuEventId) {
+  if (!confirm('Dieses in Intervals.icu geplante Training wirklich löschen?')) return;
+  try {
+    await icuWrite(`/athlete/${athleteId}/events/${icuEventId}`, 'DELETE');
+    _icuEventsFull = _icuEventsFull.filter(ev => ev.id !== icuEventId);
+    renderCockpitWeek();
+  } catch(e) {
+    alert('Löschen bei Intervals.icu fehlgeschlagen: ' + e.message);
+  }
 }
 // Wandelt ein von Intervals.icu geladenes Event (nicht durch Training Board angelegt, z.B. direkt
 // in ICU oder via Garmin geplant) in eine anzeigbare, schreibgeschützte Plan-Session um.
@@ -607,9 +624,12 @@ function buildWeekCalendar(weekStart, weekActs) {
     const color = planTypeColor(s.type);
     const readOnly = s.source === 'icu';
     const sub = [s.min ? s.min + ' min' : '', done ? 'erledigt' : 'geplant'].filter(Boolean).join(' · ');
-    const click = readOnly ? '' : `onclick="event.stopPropagation();openPlanModal('${dayStr}','${s.id}')"`;
+    // ICU-eigene Einträge sind nicht editierbar (kein lokales Session-Objekt), aber löschbar
+    const click = readOnly
+      ? `onclick="event.stopPropagation();deleteIcuOnlyEvent(${s.icuEventId})"`
+      : `onclick="event.stopPropagation();openPlanModal('${dayStr}','${s.id}')"`;
     const tag = done ? '✓' : (readOnly ? 'ICU' : 'GEPLANT');
-    const title = readOnly ? 'Aus Intervals.icu (nicht über Training Board bearbeitbar)' : 'Geplante Einheit bearbeiten';
+    const title = readOnly ? 'Aus Intervals.icu — klicken zum Löschen' : 'Geplante Einheit bearbeiten';
     return `<div class="wc-planbar${done?' done':''}" style="--wc-c:${color}" ${click} title="${title}">
       <div class="wc-bar-top"><span class="wc-planbar-type">${s.type.toUpperCase()}</span><span class="wc-planbar-tag">${tag}</span></div>
       ${s.note?`<div class="wc-bar-name">${escHtml(s.note)}</div>`:''}
