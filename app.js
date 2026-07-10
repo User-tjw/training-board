@@ -220,16 +220,18 @@ async function syncSessionToICU(dateStr, session) {
     if (session.icuEventId) { await deleteSessionFromICU(session); delete session.icuEventId; }
     return session;
   }
+  const sec = session.min ? session.min * 60 : 0;
   const body = {
     category: 'WORKOUT',
     start_date_local: `${dateStr}T00:00:00`,
     type: icuType,
     name: session.note || session.type,
-    moving_time: session.min ? session.min * 60 : undefined,
-    // Reine Zeitangabe (moving_time) allein erzeugt keine Workout-Struktur (workout_doc.steps bleibt leer) —
-    // Garmin Connect pusht aber offenbar nur strukturierte Workouts. Ein Schritt in Intervals.icus
-    // Text-Workout-Syntax reicht, um beim Anlegen echte Steps zu erzeugen.
-    description: session.min ? `- ${session.min}m` : undefined,
+    moving_time: session.min ? sec : undefined,
+    // Entscheidend für den Garmin-Push ist offenbar nicht der Inhalt, sondern dass workout_doc
+    // überhaupt ein Objekt ist (nicht null) — ein per API angelegtes Event ohne workout_doc wird
+    // von Garmin Connect nicht abgeholt, ein in der ICU-Oberfläche angelegtes (auch mit leeren
+    // steps) schon. Per Vergleich zweier echter Events am 2026-07-10 verifiziert.
+    workout_doc: { steps: [], locales: [], options: {}, distance: 0, duration: sec },
   };
   try {
     if (session.icuEventId) {
