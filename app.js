@@ -1,7 +1,7 @@
 // ─── Zeitraum pro Kachel-Gruppe ────────────────────────────────────────────────
 
 const RANGE_OPTIONS = [7, 14, 30, 90, 365];
-let _wellnessFull = [], _activitiesFull = [], _fitnessFull = [];
+let _wellnessFull = [], _activitiesFull = [], _fitnessFull = [], _icuEventsFull = [];
 
 function getRangeDays(key, def) {
   const v = parseInt(localStorage.getItem('tb_range_' + key));
@@ -132,6 +132,17 @@ function icuFetch(path) {
   });
 }
 
+function icuWrite(path, method, body) {
+  return fetch(ICU_BASE + path, {
+    method,
+    headers: { ...authHeader(), 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return method === 'DELETE' ? null : r.json();
+  });
+}
+
 // ─── Setup ───────────────────────────────────────────────────────────────────
 
 // App startet erst nach Passwort-Check (siehe unlockApp)
@@ -195,9 +206,59 @@ function saveActivityMetaValue(actId, patch) {
 function getPlanSessions() {
   try { return JSON.parse(localStorage.getItem('plan_sessions') || '{}'); } catch(e) { return {}; }
 }
+// Nur "echte" Trainingsarten werden zu Intervals.icu (und damit an Garmin Connect) übertragen.
+// Ruhetag/Krankheit/Atmung/Mobilität bleiben rein lokal in Training Board.
+const PLAN_TO_ICU_TYPE = { Laufen: 'Run', Rad: 'Ride', Kraft: 'WeightTraining' };
+
+// Legt/aktualisiert das zugehörige Intervals.icu-Event für eine geplante Einheit (falls Typ unterstützt).
+// Gibt die Session mit gesetzter/entfernter icuEventId zurück; scheitert lautlos (Konsole), damit
+// lokales Speichern nie an einem ICU-Fehler hängen bleibt.
+async function syncSessionToICU(dateStr, session) {
+  const icuType = PLAN_TO_ICU_TYPE[session.type];
+  if (!icuType) {
+    // Typ wurde auf einen nicht übertragbaren geändert (z.B. Laufen → Ruhetag) → verwaistes Event entfernen
+    if (session.icuEventId) { await deleteSessionFromICU(session); delete session.icuEventId; }
+    return session;
+  }
+  const body = {
+    category: 'WORKOUT',
+    start_date_local: `${dateStr}T00:00:00`,
+    type: icuType,
+    name: session.note || session.type,
+    moving_time: session.min ? session.min * 60 : undefined,
+  };
+  try {
+    if (session.icuEventId) {
+      await icuWrite(`/athlete/${athleteId}/events/${session.icuEventId}`, 'PUT', body);
+    } else {
+      const created = await icuWrite(`/athlete/${athleteId}/events`, 'POST', body);
+      session.icuEventId = created.id;
+    }
+  } catch(e) { console.error('Intervals.icu-Sync fehlgeschlagen:', e); }
+  return session;
+}
+function deleteSessionFromICU(session) {
+  if (!session || !session.icuEventId) return Promise.resolve();
+  return icuWrite(`/athlete/${athleteId}/events/${session.icuEventId}`, 'DELETE')
+    .catch(e => console.error('Intervals.icu-Event konnte nicht gelöscht werden:', e));
+}
+// Wandelt ein von Intervals.icu geladenes Event (nicht durch Training Board angelegt, z.B. direkt
+// in ICU oder via Garmin geplant) in eine anzeigbare, schreibgeschützte Plan-Session um.
+function icuEventToPlanSession(ev) {
+  const type = normalizeType(ev.type || '');
+  if (!PLAN_TO_ICU_TYPE[type]) return null;
+  const sec = ev.moving_time || (ev.workout_doc && ev.workout_doc.duration) || null;
+  return { id: 'icu' + ev.id, type, min: sec ? Math.round(sec/60) : null, note: ev.name || '', icuEventId: ev.id, source: 'icu' };
+}
 function getPlanSessionsFor(dayStr) {
-  const arr = getPlanSessions()[dayStr];
-  return Array.isArray(arr) ? arr : [];
+  const local = getPlanSessions()[dayStr];
+  const localArr = Array.isArray(local) ? local : [];
+  const linkedIcuIds = new Set(localArr.filter(s => s.icuEventId).map(s => s.icuEventId));
+  const icuOnly = _icuEventsFull
+    .filter(ev => fmtDate(new Date(ev.start_date_local)) === dayStr && !linkedIcuIds.has(ev.id))
+    .map(icuEventToPlanSession)
+    .filter(Boolean);
+  return [...localArr, ...icuOnly];
 }
 function savePlanSessions(data) {
   data.updatedAt = Date.now();
@@ -206,7 +267,8 @@ function savePlanSessions(data) {
     savePlanSessionsToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Plan ist trotzdem lokal gespeichert.'));
   }
 }
-function upsertPlanSession(dayStr, session) {
+async function upsertPlanSession(dayStr, session) {
+  await syncSessionToICU(dayStr, session);
   const data = getPlanSessions();
   const arr = Array.isArray(data[dayStr]) ? data[dayStr] : [];
   const idx = session.id ? arr.findIndex(s => s.id === session.id) : -1;
@@ -214,9 +276,11 @@ function upsertPlanSession(dayStr, session) {
   data[dayStr] = arr;
   savePlanSessions(data);
 }
-function removePlanSession(dayStr, id) {
+async function removePlanSession(dayStr, id) {
   const data = getPlanSessions();
   if (!Array.isArray(data[dayStr])) return;
+  const session = data[dayStr].find(s => s.id === id);
+  await deleteSessionFromICU(session);
   data[dayStr] = data[dayStr].filter(s => s.id !== id);
   if (data[dayStr].length === 0) delete data[dayStr];
   savePlanSessions(data);
@@ -451,15 +515,18 @@ async function loadAll() {
   applyStoredRanges();
 
   try {
-    const [wellnessFull, activitiesFull] = await Promise.all([
+    const [wellnessFull, activitiesFull, eventsFull] = await Promise.all([
       icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(maxDays))}`),
       icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(daysAgo(maxDays))}`),
+      // geplante Events (WORKOUT) aus Intervals.icu — inkl. dort/via Garmin direkt angelegter, nicht nur der von Training Board gepushten
+      icuFetch(`/athlete/${athleteId}/events?oldest=${fmtDate(daysAgo(7))}&newest=${fmtDate(daysAgo(-60))}&category=WORKOUT`),
     ]);
 
     if (ghToken && ghRepo && _notes.length === 0) _notes = await loadNotes();
 
     _wellnessFull = wellnessFull;
     _activitiesFull = filterHiddenActivities(activitiesFull); // ausgeblendete Aktivitäten (nur lokal, intervals.icu bleibt unberührt)
+    _icuEventsFull = eventsFull;
     // CTL/ATL/TSB aus Wellness-Daten extrahieren (wie im Original-Backend)
     _fitnessFull = wellnessFull
       .filter(d => d.ctl != null || d.atl != null)
@@ -535,11 +602,16 @@ function buildWeekCalendar(weekStart, weekActs) {
   }
 
   // Geplante Einheit als „Geister-Balken" (gestrichelt). done = es gab an dem Tag eine echte Einheit gleichen Typs.
+  // ICU-Herkunft (direkt in Intervals.icu oder via Garmin geplant, nicht durch Training Board) ist schreibgeschützt.
   function planBar(dayStr, s, done) {
     const color = planTypeColor(s.type);
+    const readOnly = s.source === 'icu';
     const sub = [s.min ? s.min + ' min' : '', done ? 'erledigt' : 'geplant'].filter(Boolean).join(' · ');
-    return `<div class="wc-planbar${done?' done':''}" style="--wc-c:${color}" onclick="event.stopPropagation();openPlanModal('${dayStr}','${s.id}')" title="Geplante Einheit bearbeiten">
-      <div class="wc-bar-top"><span class="wc-planbar-type">${s.type.toUpperCase()}</span><span class="wc-planbar-tag">${done?'✓':'GEPLANT'}</span></div>
+    const click = readOnly ? '' : `onclick="event.stopPropagation();openPlanModal('${dayStr}','${s.id}')"`;
+    const tag = done ? '✓' : (readOnly ? 'ICU' : 'GEPLANT');
+    const title = readOnly ? 'Aus Intervals.icu (nicht über Training Board bearbeitbar)' : 'Geplante Einheit bearbeiten';
+    return `<div class="wc-planbar${done?' done':''}" style="--wc-c:${color}" ${click} title="${title}">
+      <div class="wc-bar-top"><span class="wc-planbar-type">${s.type.toUpperCase()}</span><span class="wc-planbar-tag">${tag}</span></div>
       ${s.note?`<div class="wc-bar-name">${escHtml(s.note)}</div>`:''}
       <div class="wc-bar-sub">${sub}</div>
     </div>`;
@@ -1401,20 +1473,22 @@ function closePlanModal() {
   _planDay = null; _planId = null;
 }
 
-function savePlanModal() {
+async function savePlanModal() {
   if (!_planDay) return;
   const type = document.getElementById('planType').value;
   const minRaw = document.getElementById('planMin').value.trim();
   const min = minRaw ? parseInt(minRaw) : null;
   const note = document.getElementById('planNote').value.trim();
-  upsertPlanSession(_planDay, { id: _planId || 'p' + Date.now(), type, min, note });
+  const existing = _planId ? getPlanSessionsFor(_planDay).find(s => s.id === _planId) : null;
+  const icuEventId = existing && existing.icuEventId;
+  await upsertPlanSession(_planDay, { id: _planId || 'p' + Date.now(), type, min, note, ...(icuEventId ? { icuEventId } : {}) });
   closePlanModal();
   renderCockpitWeek();
 }
 
-function deletePlanModalSession() {
+async function deletePlanModalSession() {
   if (!_planDay || !_planId) return;
-  removePlanSession(_planDay, _planId);
+  await removePlanSession(_planDay, _planId);
   closePlanModal();
   renderCockpitWeek();
 }
@@ -1468,13 +1542,17 @@ function previewPlanImport() {
   el.innerHTML = html;
 }
 
-function confirmPlanImport() {
+async function confirmPlanImport() {
   const { sessions } = parsePlanText(document.getElementById('planImportText').value);
   if (!sessions.length) { closePlanImport(); return; }
   const data = getPlanSessions();
-  // pro Tag ersetzen: betroffene Tage leeren, dann neu befüllen; andere Tage bleiben
-  [...new Set(sessions.map(s => s.date))].forEach(day => { data[day] = []; });
-  sessions.forEach(s => { data[s.date].push({ id: 'p' + Date.now() + Math.random().toString(36).slice(2,6), type: s.type, min: s.min, note: s.note }); });
+  const affectedDays = [...new Set(sessions.map(s => s.date))];
+  // alte Intervals.icu-Events der betroffenen Tage entfernen, bevor die Tage neu befüllt werden
+  await Promise.all(affectedDays.flatMap(day => (Array.isArray(data[day]) ? data[day] : []).map(deleteSessionFromICU)));
+  affectedDays.forEach(day => { data[day] = []; });
+  const newSessions = sessions.map(s => ({ id: 'p' + Date.now() + Math.random().toString(36).slice(2,6), type: s.type, min: s.min, note: s.note, date: s.date }));
+  await Promise.all(newSessions.map(s => syncSessionToICU(s.date, s)));
+  newSessions.forEach(s => { const { date, ...session } = s; data[date].push(session); });
   savePlanSessions(data);
   closePlanImport();
   renderCockpitWeek();
