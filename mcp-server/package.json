@@ -1,7 +1,7 @@
 {
   "name": "trainiq-intervals-mcp",
   "version": "0.1.0",
-  "description": "MCP-Server, der Intervals.icu als Tools fuer KI-Assistenten bereitstellt (Training Board / TrainIQ)",
+  "description": "MCP-Server, der Intervals.icu als Tools fuer KI-Assistenten bereitstellt (TrainIQ)",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

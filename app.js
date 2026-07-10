@@ -260,7 +260,7 @@ function deleteSessionFromICU(session) {
   return icuWrite(`/athlete/${athleteId}/events/${session.icuEventId}`, 'DELETE')
     .catch(e => console.error('Intervals.icu-Event konnte nicht gelöscht werden:', e));
 }
-// Löscht ein Event, das nicht von Training Board angelegt wurde (direkt in ICU oder via Garmin geplant),
+// Löscht ein Event, das nicht von TrainIQ angelegt wurde (direkt in ICU oder via Garmin geplant),
 // direkt bei Intervals.icu. Es gibt kein lokales Session-Objekt dafür — nach Erfolg nur aus dem
 // geladenen Cache entfernen und neu rendern.
 async function deleteIcuOnlyEvent(icuEventId) {
@@ -273,7 +273,7 @@ async function deleteIcuOnlyEvent(icuEventId) {
     alert('Löschen bei Intervals.icu fehlgeschlagen: ' + e.message);
   }
 }
-// Wandelt ein von Intervals.icu geladenes Event (nicht durch Training Board angelegt, z.B. direkt
+// Wandelt ein von Intervals.icu geladenes Event (nicht durch TrainIQ angelegt, z.B. direkt
 // in ICU oder via Garmin geplant) in eine anzeigbare, schreibgeschützte Plan-Session um.
 function icuEventToPlanSession(ev) {
   const type = ICU_TYPE_TO_PLAN_TYPE[ev.type];
@@ -549,7 +549,7 @@ async function loadAll() {
     const [wellnessFull, activitiesFull, eventsFull] = await Promise.all([
       icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(maxDays))}`),
       icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(daysAgo(maxDays))}`),
-      // geplante Events (WORKOUT) aus Intervals.icu — inkl. dort/via Garmin direkt angelegter, nicht nur der von Training Board gepushten
+      // geplante Events (WORKOUT) aus Intervals.icu — inkl. dort/via Garmin direkt angelegter, nicht nur der von TrainIQ gepushten
       icuFetch(`/athlete/${athleteId}/events?oldest=${fmtDate(daysAgo(7))}&newest=${fmtDate(daysAgo(-60))}&category=WORKOUT`),
     ]);
 
@@ -635,7 +635,7 @@ function buildWeekCalendar(weekStart, weekActs) {
   }
 
   // Geplante Einheit als „Geister-Balken" (gestrichelt). done = es gab an dem Tag eine echte Einheit gleichen Typs.
-  // ICU-Herkunft (direkt in Intervals.icu oder via Garmin geplant, nicht durch Training Board) ist schreibgeschützt.
+  // ICU-Herkunft (direkt in Intervals.icu oder via Garmin geplant, nicht durch TrainIQ) ist schreibgeschützt.
   function planBar(dayStr, s, done) {
     const color = planTypeColor(s.type);
     const readOnly = s.source === 'icu';
@@ -1739,7 +1739,7 @@ async function copyNoteForClaude() {
     `# Tagesbericht — ${dateLong}`,
     `Athlet: Thomas Wagner | 50J | 74.6kg | FTP 250W | Max-HF 183`,
     '',
-    '## Automatische Einschätzung (Training Board)',
+    '## Automatische Einschätzung (TrainIQ)',
     text('cockpitVerdict'),
     text('cockpitDesc'),
     '',
@@ -1780,11 +1780,11 @@ async function copyNoteForClaude() {
   lines.push('');
   lines.push('## Falls du einen Trainingsplan vorschlägst');
   lines.push('Gib ihn bitte maschinenlesbar aus — eine Einheit pro Zeile, Format: `Datum | Typ | Minuten | Notiz`');
-  lines.push('(Datum als JJJJ-MM-TT; Typen: Laufen, Rad, Kraft, Mobilität, Atmung, Ruhetag, Krankheit). Beispiel:');
+  lines.push('(Datum als JJJJ-MM-TT; Typen: Laufen, Rad, Kraft, Mobilität, Ruhetag, Krankheit). Beispiel:');
   lines.push('2026-07-14 | Laufen | 60 | GA1 locker');
   lines.push('');
   lines.push('---');
-  lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
+  lines.push('_Kontext aus TrainIQ — bitte berücksichtigen._');
 
   const btn = document.getElementById('copyNoteBtn');
   try {

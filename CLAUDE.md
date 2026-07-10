@@ -1,4 +1,4 @@
-# Training Board — Projektdokumentation
+# TrainIQ — Projektdokumentation
 
 ## Arbeitshinweise
 

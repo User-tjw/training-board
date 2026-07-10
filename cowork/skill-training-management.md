@@ -77,7 +77,7 @@ Jeden Sonntag (oder auf Anfrage):
 
 ## Wochenplan-Ausgabe für den Kalender-Import
 
-Wenn Thomas einen konkreten Wochenplan anfordert (z.B. "Plan für nächste Woche"), gib ihn **zusätzlich zur normalen Erklärung** als fertigen Import-Block aus, den Thomas direkt in Training Board einfügen kann (Kalender → Import-Button).
+Wenn Thomas einen konkreten Wochenplan anfordert (z.B. "Plan für nächste Woche"), gib ihn **zusätzlich zur normalen Erklärung** als fertigen Import-Block aus, den Thomas direkt in TrainIQ einfügen kann (Kalender → Import-Button).
 
 ### Format
 Ein Codeblock, eine Einheit pro Zeile:
