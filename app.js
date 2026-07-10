@@ -1208,11 +1208,14 @@ async function loadNotes() {
     }
     if (!Array.isArray(files)) return [];
     const mdFiles = files.filter(f => f.name.endsWith('.md'));
-    const notes = await Promise.all(mdFiles.map(async f => {
+    // Nacheinander statt Promise.all: viele parallele Requests an die GitHub-API können deren
+    // Missbrauchserkennung (Secondary Rate Limit) auslösen und dann wie ein CORS-Fehler aussehen.
+    const notes = [];
+    for (const f of mdFiles) {
       const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
       const { fm, body } = parseFrontmatter(b64dec(file.content));
-      return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body };
-    }));
+      notes.push({ filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body });
+    }
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
     console.error('GitHub notes:', e);
