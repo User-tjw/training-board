@@ -206,32 +206,44 @@ function saveActivityMetaValue(actId, patch) {
 function getPlanSessions() {
   try { return JSON.parse(localStorage.getItem('plan_sessions') || '{}'); } catch(e) { return {}; }
 }
-// Nur "echte" Trainingsarten werden zu Intervals.icu (und damit an Garmin Connect) übertragen.
-// Ruhetag/Krankheit/Atmung/Mobilität bleiben rein lokal in Training Board.
-const PLAN_TO_ICU_TYPE = { Laufen: 'Run', Rad: 'Ride', Kraft: 'WeightTraining' };
+// Alle Plan-Typen werden zu Intervals.icu übertragen. Laufen/Rad/Kraft/Mobilität als echtes
+// WORKOUT-Event (Sportart-Typ nötig, damit Garmin Connect es abholen kann); Krankheit nutzt ICUs
+// eigene "Krank"-Kategorie; Ruhetag als einfache Notiz — beide ohne Sportart, kein Garmin-Push nötig.
+const PLAN_ICU_CONFIG = {
+  Laufen:     { category: 'WORKOUT', type: 'Run' },
+  Rad:        { category: 'WORKOUT', type: 'Ride' },
+  Kraft:      { category: 'WORKOUT', type: 'WeightTraining' },
+  Mobilität:  { category: 'WORKOUT', type: 'Workout' },
+  Krankheit:  { category: 'SICK' },
+  Ruhetag:    { category: 'NOTE' },
+};
+const ICU_TYPE_TO_PLAN_TYPE = Object.fromEntries(
+  Object.entries(PLAN_ICU_CONFIG).filter(([,c]) => c.type).map(([planType, c]) => [c.type, planType])
+);
 
-// Legt/aktualisiert das zugehörige Intervals.icu-Event für eine geplante Einheit (falls Typ unterstützt).
+// Legt/aktualisiert das zugehörige Intervals.icu-Event für eine geplante Einheit.
 // Gibt die Session mit gesetzter/entfernter icuEventId zurück; scheitert lautlos (Konsole), damit
 // lokales Speichern nie an einem ICU-Fehler hängen bleibt.
 async function syncSessionToICU(dateStr, session) {
-  const icuType = PLAN_TO_ICU_TYPE[session.type];
-  if (!icuType) {
-    // Typ wurde auf einen nicht übertragbaren geändert (z.B. Laufen → Ruhetag) → verwaistes Event entfernen
+  const icuConfig = PLAN_ICU_CONFIG[session.type];
+  if (!icuConfig) {
     if (session.icuEventId) { await deleteSessionFromICU(session); delete session.icuEventId; }
     return session;
   }
   const sec = session.min ? session.min * 60 : 0;
   const body = {
-    category: 'WORKOUT',
+    category: icuConfig.category,
     start_date_local: `${dateStr}T00:00:00`,
-    type: icuType,
     name: session.note || session.type,
-    moving_time: session.min ? sec : undefined,
-    // Entscheidend für den Garmin-Push ist offenbar nicht der Inhalt, sondern dass workout_doc
-    // überhaupt ein Objekt ist (nicht null) — ein per API angelegtes Event ohne workout_doc wird
-    // von Garmin Connect nicht abgeholt, ein in der ICU-Oberfläche angelegtes (auch mit leeren
-    // steps) schon. Per Vergleich zweier echter Events am 2026-07-10 verifiziert.
-    workout_doc: { steps: [], locales: [], options: {}, distance: 0, duration: sec },
+    ...(icuConfig.type ? {
+      type: icuConfig.type,
+      moving_time: session.min ? sec : undefined,
+      // Entscheidend für den Garmin-Push ist offenbar nicht der Inhalt, sondern dass workout_doc
+      // überhaupt ein Objekt ist (nicht null) — ein per API angelegtes Event ohne workout_doc wird
+      // von Garmin Connect nicht abgeholt, ein in der ICU-Oberfläche angelegtes (auch mit leeren
+      // steps) schon. Per Vergleich zweier echter Events am 2026-07-10 verifiziert.
+      workout_doc: { steps: [], locales: [], options: {}, distance: 0, duration: sec },
+    } : {}),
   };
   try {
     if (session.icuEventId) {
@@ -264,8 +276,8 @@ async function deleteIcuOnlyEvent(icuEventId) {
 // Wandelt ein von Intervals.icu geladenes Event (nicht durch Training Board angelegt, z.B. direkt
 // in ICU oder via Garmin geplant) in eine anzeigbare, schreibgeschützte Plan-Session um.
 function icuEventToPlanSession(ev) {
-  const type = normalizeType(ev.type || '');
-  if (!PLAN_TO_ICU_TYPE[type]) return null;
+  const type = ICU_TYPE_TO_PLAN_TYPE[ev.type];
+  if (!type) return null;
   const sec = ev.moving_time || (ev.workout_doc && ev.workout_doc.duration) || null;
   return { id: 'icu' + ev.id, type, min: sec ? Math.round(sec/60) : null, note: ev.name || '', icuEventId: ev.id, source: 'icu' };
 }
@@ -575,7 +587,9 @@ function setStatus(ok) {
 const TYPE_COLORS = {Laufen:'#3b82f6',Rad:'#10b981',Kraft:'#8b5cf6',Atmung:'#06b6d4',Mobilität:'#f59e0b'};
 // Plan-Typen = Trainingsarten + Sonderfälle (kein echtes Training). Eigene Farben für die Sonderfälle.
 const PLAN_EXTRA_COLORS = {Ruhetag:'#94a3b8', Krankheit:'#dc2626'};
-const PLAN_TYPES = [...Object.keys(TYPE_COLORS), 'Ruhetag', 'Krankheit'];
+// Atmung ist bei echten (abgeschlossenen) Aktivitäten weiter erkennbar/eingefärbt (TYPE_COLORS),
+// aber als Plan-Typ zum manuellen Anlegen nicht mehr wählbar.
+const PLAN_TYPES = [...Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung'), 'Ruhetag', 'Krankheit'];
 function planTypeColor(t) { return TYPE_COLORS[t] || PLAN_EXTRA_COLORS[t] || '#94a3b8'; }
 
 function buildWeekCalendar(weekStart, weekActs) {
