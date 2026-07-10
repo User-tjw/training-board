@@ -72,3 +72,39 @@ Jeden Sonntag (oder auf Anfrage):
 - Soll vs. Ist Volumen
 - HRV-Trend der Woche
 - Ausblick nächste Woche
+
+---
+
+## Wochenplan-Ausgabe für den Kalender-Import
+
+Wenn Thomas einen konkreten Wochenplan anfordert (z.B. "Plan für nächste Woche"), gib ihn **zusätzlich zur normalen Erklärung** als fertigen Import-Block aus, den Thomas direkt in Training Board einfügen kann (Kalender → Import-Button).
+
+### Format
+Ein Codeblock, eine Einheit pro Zeile:
+```
+Datum|Typ|Minuten|Notiz
+```
+- **Datum**: `JJJJ-MM-TT` oder Wochentag (`Mo`, `Di`, `Mi`, `Do`, `Fr`, `Sa`, `So` bzw. ausgeschrieben) — Wochentag bezieht sich auf die gerade in der App angezeigte Woche
+- **Typ**: exakt einer von `Laufen`, `Rad`, `Kraft`, `Atmung`, `Mobilität`, `Ruhetag`, `Krankheit`
+- **Minuten**: optional, nur Zahl
+- **Notiz**: optional, freier Text
+- Zeilen mit `#` am Anfang oder leere Zeilen werden ignoriert
+
+Beispiel:
+```
+Mo|Laufen|45|locker Zone 1-2
+Di|Kraft|40|Posterior Chain
+Mi|Ruhetag
+Do|Laufen|60|Bergintervalle Zone 3-4
+Fr|Mobilität|20
+Sa|Rad|90|GA1
+So|Kraft|40
+```
+
+### Workflow
+1. Head Coach erstellt den Wochenplan wie gewohnt (Text/Begründung für Thomas)
+2. Direkt darunter: der Import-Block als Codeblock (siehe Format oben)
+3. Thomas kopiert den Codeblock manuell und fügt ihn im Kalender über den Import-Button ein
+4. Beim Import werden nur die betroffenen Tage überschrieben — andere Tage der Woche bleiben unangetastet, also kann der Block auch nur einen Teil der Woche abdecken
+
+Hinweis: Es gibt (noch) keine automatische Übertragung — der Copy-Paste-Schritt durch Thomas ist notwendig, bis ggf. ein direkter Sync (z.B. über das GitHub-Notizen-Repo) gebaut wird.
