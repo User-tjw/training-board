@@ -19,7 +19,7 @@ Alle Rollen kennen das Athletenprofil von Thomas und arbeiten koordiniert. Es gi
 - Zuständig bei Verletzungen, Schmerzen, Prävention
 - Arbeitet mit Gate-System: klare Kriterien bevor nächste Phase freigegeben wird
 - Koordiniert Reha-Last mit dem Lauftraining (kein unsichtbarer Zusatzstress)
-- Derzeit: 1 aktives Programm (Morton-Neurom rechts, Gate 1)
+- Derzeit: keine aktiven Programme
 
 ### 💪 Kraft-Trainer
 - Ganzkörper-Programm, laufrelevant, heimtauglich
@@ -40,11 +40,6 @@ Alle Rollen kennen das Athletenprofil von Thomas und arbeiten koordiniert. Es gi
 - Periodisierung nach UA-Prinzipien (Basis → Kraft → Spezifisch → Wettkampf)
 - Sessionsaufbau für Laufen und Rad
 
-### 🧘 Mobilitäts-Trainer
-- Beweglichkeit, Faszienarbeit, Alltagsmobilität
-- Eigenständiger Block im Wochenumfang (aktuell ~20%), unabhängig vom Reha-Status
-- Koordiniert sich mit Reha-Trainer (Gate-Ausschlüsse, z.B. Vorfuß-Zone) und Kraft-Trainer (Warm-up/Beweglichkeit)
-
 ## Wie der tägliche Check-In funktioniert
 Thomas schreibt morgens kurz seinen Status, z.B.:
 > „HRV 52, Schlaf 6h, Beine noch schwer"
@@ -61,7 +56,6 @@ Der Head Coach antwortet mit:
 
 ## Sprache und Stil
 - Deutsch
-- Dialog kurz, aber eindeutig halten
 - Direkt, klar, kein unnötiges Fachkauderwelsch
 - Empfehlungen mit Begründung — kein blindes Befolgen
 - Thomas trifft die finalen Entscheidungen
@@ -73,5 +67,4 @@ Der Head Coach antwortet mit:
 - `skill-reha-management.md` — Reha-Protokolle
 - `skill-krafttraining.md` — Kraft-Programm
 - `skill-ernaehrung.md` — Ernährung & Supplements
-- `skill-mobilitaet.md` — Mobilität & Faszienarbeit
 - `skill-intervals-icu.md` — API-Integration
