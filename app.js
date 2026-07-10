@@ -167,6 +167,81 @@ function getManualRespiration() {
   try { return JSON.parse(localStorage.getItem('manual_respiration') || '{}'); } catch(e) { return {}; }
 }
 
+// Pro-Aktivität-Metadaten (RPE, Trainingsbefinden, Bemerkung), keyed nach Aktivitäts-ID.
+// Gleiches Sync-Muster wie Atmung: localStorage + settings/activity-meta.json auf GitHub.
+function getActivityMeta() {
+  try { return JSON.parse(localStorage.getItem('activity_meta') || '{}'); } catch(e) { return {}; }
+}
+function getActivityMetaFor(actId) {
+  const m = getActivityMeta()[actId];
+  return m && typeof m === 'object' ? m : {};
+}
+function saveActivityMetaValue(actId, patch) {
+  if (!actId) return;
+  const data = getActivityMeta();
+  const cur = (data[actId] && typeof data[actId] === 'object') ? data[actId] : {};
+  const next = { ...cur, ...patch };
+  // leere Felder wieder entfernen, damit das JSON schlank bleibt
+  Object.keys(next).forEach(k => { if (next[k] == null || next[k] === '') delete next[k]; });
+  if (Object.keys(next).length === 0) delete data[actId]; else data[actId] = next;
+  data.updatedAt = Date.now();
+  localStorage.setItem('activity_meta', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    saveActivityMetaToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
+}
+
+// Geplante Trainingseinheiten (Inline-Trainingsplan), keyed nach Datum → Array von Einheiten.
+function getPlanSessions() {
+  try { return JSON.parse(localStorage.getItem('plan_sessions') || '{}'); } catch(e) { return {}; }
+}
+function getPlanSessionsFor(dayStr) {
+  const arr = getPlanSessions()[dayStr];
+  return Array.isArray(arr) ? arr : [];
+}
+function savePlanSessions(data) {
+  data.updatedAt = Date.now();
+  localStorage.setItem('plan_sessions', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    savePlanSessionsToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Plan ist trotzdem lokal gespeichert.'));
+  }
+}
+function upsertPlanSession(dayStr, session) {
+  const data = getPlanSessions();
+  const arr = Array.isArray(data[dayStr]) ? data[dayStr] : [];
+  const idx = session.id ? arr.findIndex(s => s.id === session.id) : -1;
+  if (idx >= 0) arr[idx] = session; else arr.push(session);
+  data[dayStr] = arr;
+  savePlanSessions(data);
+}
+function removePlanSession(dayStr, id) {
+  const data = getPlanSessions();
+  if (!Array.isArray(data[dayStr])) return;
+  data[dayStr] = data[dayStr].filter(s => s.id !== id);
+  if (data[dayStr].length === 0) delete data[dayStr];
+  savePlanSessions(data);
+}
+
+// Ausgeblendete Aktivitäten: nur auf DIESEM Dashboard versteckt, bleiben bei intervals.icu unangetastet.
+// Array von IDs; wird beim Laden angewendet, damit sie nach Reload/Sync ausgeblendet bleiben.
+function getHiddenActivityIds() {
+  try { const d = JSON.parse(localStorage.getItem('hidden_activities') || '{}'); return Array.isArray(d.ids) ? d.ids : []; } catch(e) { return []; }
+}
+function hideActivity(actId) {
+  const ids = getHiddenActivityIds();
+  if (!ids.includes(String(actId))) ids.push(String(actId));
+  const data = { ids, updatedAt: Date.now() };
+  localStorage.setItem('hidden_activities', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    saveJSONToGH(GH_HIDDEN_ACTIVITIES_FILE, data, 'Update ausgeblendete Aktivitäten').catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nLokal ist die Aktivität trotzdem ausgeblendet.'));
+  }
+}
+function syncHiddenActivitiesFromGH() { return syncJSONFromGH(GH_HIDDEN_ACTIVITIES_FILE, 'hidden_activities', () => ({ids: getHiddenActivityIds()}), renderFromCache); }
+function filterHiddenActivities(list) {
+  const hidden = getHiddenActivityIds();
+  return hidden.length ? list.filter(a => !hidden.includes(String(a.id))) : list;
+}
+
 function getHfZones() {
   try { return JSON.parse(localStorage.getItem('hf_zones') || '{}'); } catch(e) { return {}; }
 }
@@ -261,6 +336,9 @@ function saveApiSettings() {
 
   syncTrainingPlanFromGH();
   syncManualRespirationFromGH();
+  syncActivityMetaFromGH();
+  syncPlanSessionsFromGH();
+  syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
   loadAll();
   closeSettingsPage();
@@ -304,6 +382,9 @@ function init() {
   updateZones();
   syncTrainingPlanFromGH();
   syncManualRespirationFromGH();
+  syncActivityMetaFromGH();
+  syncPlanSessionsFromGH();
+  syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
   loadAll();
 }
@@ -378,7 +459,7 @@ async function loadAll() {
     if (ghToken && ghRepo && _notes.length === 0) _notes = await loadNotes();
 
     _wellnessFull = wellnessFull;
-    _activitiesFull = activitiesFull;
+    _activitiesFull = filterHiddenActivities(activitiesFull); // ausgeblendete Aktivitäten (nur lokal, intervals.icu bleibt unberührt)
     // CTL/ATL/TSB aus Wellness-Daten extrahieren (wie im Original-Backend)
     _fitnessFull = wellnessFull
       .filter(d => d.ctl != null || d.atl != null)
@@ -390,7 +471,7 @@ async function loadAll() {
       }));
 
     setStatus(true);
-    renderCockpitStatus(wellnessFull, _fitnessFull, activitiesFull);
+    renderCockpitStatus(wellnessFull, _fitnessFull, _activitiesFull);
     renderFromCache();
   } catch(err) {
     console.error(err);
@@ -406,6 +487,10 @@ function setStatus(ok) {
 // ─── Cockpit ─────────────────────────────────────────────────────────────────
 
 const TYPE_COLORS = {Laufen:'#3b82f6',Rad:'#10b981',Kraft:'#8b5cf6',Atmung:'#06b6d4',Mobilität:'#f59e0b'};
+// Plan-Typen = Trainingsarten + Sonderfälle (kein echtes Training). Eigene Farben für die Sonderfälle.
+const PLAN_EXTRA_COLORS = {Ruhetag:'#94a3b8', Krankheit:'#dc2626'};
+const PLAN_TYPES = [...Object.keys(TYPE_COLORS), 'Ruhetag', 'Krankheit'];
+function planTypeColor(t) { return TYPE_COLORS[t] || PLAN_EXTRA_COLORS[t] || '#94a3b8'; }
 
 function buildWeekCalendar(weekStart, weekActs) {
   const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
@@ -414,12 +499,9 @@ function buildWeekCalendar(weekStart, weekActs) {
 
   const byDay = days.map(d => {
     const dStr = fmtDate(d);
-    const dayActs = weekActs.filter(a => fmtDate(new Date(a.start_date_local)) === dStr);
-    return {
-      isToday: dStr === todayStr,
-      endurance: dayActs.filter(a => normalizeType(a.type) !== 'Kraft'),
-      strength: dayActs.filter(a => normalizeType(a.type) === 'Kraft'),
-    };
+    const acts = weekActs.filter(a => fmtDate(new Date(a.start_date_local)) === dStr)
+      .sort((a,b) => new Date(a.start_date_local) - new Date(b.start_date_local));
+    return { date: d, dStr, isToday: dStr === todayStr, acts };
   });
 
   function mainBenefit(act, type) {
@@ -429,63 +511,58 @@ function buildWeekCalendar(weekStart, weekActs) {
       return `${m}:${String(s).padStart(2,'0')}/km`;
     }
     const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
-    if (type === 'Rad' && watts) {
-      return `${Math.round(watts)} W`;
-    }
-    if (type === 'Kraft' && act.icu_training_load) {
-      return `Load ${Math.round(act.icu_training_load)}`;
-    }
+    if (type === 'Rad' && watts) return `${Math.round(watts)} W`;
     if (act.icu_training_load) return `Load ${Math.round(act.icu_training_load)}`;
     return '';
   }
 
-  function goalLabel(act, type) {
-    if (type === 'Kraft') return 'Kraft/Mobilität';
-    if (type === 'Atmung') return 'Atemarbeit';
-    const zones = window._zones;
-    const hr = act.average_heartrate;
-    if (!zones || !hr) return '';
-    if (hr <= zones[1].high) return 'Ausdauer';
-    if (hr <= zones[2].high) return 'Entwicklung';
-    return 'Schwelle';
-  }
-
-  function cell(act) {
-    if (!act) return { html: `<div class="week-cal-cell-empty">—</div>`, color: null };
+  // Eine Aktivität als abgerundeter, klickbarer Balken (öffnet das Aktivitäten-Fenster)
+  function activityBar(act) {
     const type = normalizeType(act.type);
     const color = TYPE_COLORS[type] || '#94a3b8';
     const km = act.distance ? (act.distance/1000).toFixed(1)+' km' : '';
     const dur = act.moving_time ? formatDur(act.moving_time) : '';
     const hr = act.average_heartrate ? Math.round(act.average_heartrate)+' bpm' : '';
     const benefit = mainBenefit(act, type);
-    const goal = goalLabel(act, type);
-    const html = `<div class="week-cal-type" style="color:${color}">${type.toUpperCase()}</div>
-      ${goal ? `<div class="week-cal-goal" style="color:${color}">${goal}</div>` : ''}
-      <div class="week-cal-main">${km || dur || '—'}</div>
-      <div class="week-cal-sub">${[km?dur:'', hr].filter(Boolean).join(' · ')}</div>
-      ${benefit ? `<div class="week-cal-benefit" style="color:${color}">${benefit}</div>` : ''}`;
-    return { html, color };
+    const meta = getActivityMetaFor(act.id);
+    const rpeBadge = meta.rpe ? `<span class="wc-bar-rpe" style="background:hsl(${rpeHue(meta.rpe)},70%,45%)" title="RPE ${meta.rpe}/10">${meta.rpe}</span>` : '';
+    const stats = [km, dur, hr, benefit].filter(Boolean).join(' · ');
+    return `<div class="wc-bar" style="background:${color}1a;--wc-c:${color}" onclick="openActivityModal('${act.id}')" title="Details &amp; Bewertung öffnen">
+      <div class="wc-bar-top"><span class="wc-bar-type">${type.toUpperCase()}</span>${rpeBadge}</div>
+      <div class="wc-bar-name">${escHtml(act.name || type)}</div>
+      ${stats ? `<div class="wc-bar-sub">${stats}</div>` : ''}
+    </div>`;
   }
 
-  function cellWrap(c, extraClass) {
-    const style = c.color ? ` style="background:${c.color}12"` : '';
-    const cls = c.color ? ` week-cal-cell-tinted` : '';
-    return `<div class="week-cal-cell${extraClass}${cls}"${style}>${c.html}</div>`;
+  // Geplante Einheit als „Geister-Balken" (gestrichelt). done = es gab an dem Tag eine echte Einheit gleichen Typs.
+  function planBar(dayStr, s, done) {
+    const color = planTypeColor(s.type);
+    const sub = [s.min ? s.min + ' min' : '', done ? 'erledigt' : 'geplant'].filter(Boolean).join(' · ');
+    return `<div class="wc-planbar${done?' done':''}" style="--wc-c:${color}" onclick="event.stopPropagation();openPlanModal('${dayStr}','${s.id}')" title="Geplante Einheit bearbeiten">
+      <div class="wc-bar-top"><span class="wc-planbar-type">${s.type.toUpperCase()}</span><span class="wc-planbar-tag">${done?'✓':'GEPLANT'}</span></div>
+      ${s.note?`<div class="wc-bar-name">${escHtml(s.note)}</div>`:''}
+      <div class="wc-bar-sub">${sub}</div>
+    </div>`;
   }
 
   const head = days.map((d,i) => {
     const today = byDay[i].isToday;
     return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>`;
-  }).join('') + `<div class="week-cal-head-cell">DIESE WOCHE</div>`;
+  }).join('') + `<div class="week-cal-head-cell week-cal-head-summary">DIESE WOCHE</div>`;
 
-  const enduranceRow = byDay.map(d => cellWrap(cell(d.endurance[0]), d.isToday?' today':'')).join('');
-  const strengthRow = byDay.map(d => cellWrap(cell(d.strength[0]), ' week-band-sep'+(d.isToday?' today':''))).join('');
-
-  const dayTotalRow = byDay.map((d,i) => {
-    const today = d.isToday;
-    const dayMin = Math.round(([...d.endurance, ...d.strength]).reduce((s,a) => s+(a.moving_time||0), 0) / 60);
-    return `<div class="week-cal-head-cell week-cal-day-total${today?' today':''}">${dayMin > 0 ? dayMin+' min' : '–'}</div>`;
-  }).join('') + `<div class="week-cal-head-cell week-cal-day-total"></div>`;
+  // Pro Tag eine Spalte: echte Aktivitäten + geplante Einheiten (Geister-Balken) + „+ planen" + Tagessumme
+  const dayCols = byDay.map(d => {
+    const dayMin = Math.round(d.acts.reduce((s,a) => s+(a.moving_time||0), 0) / 60);
+    const actualTypes = new Set(d.acts.map(a => normalizeType(a.type)));
+    const planned = getPlanSessionsFor(d.dStr);
+    const actualBars = d.acts.map(activityBar).join('');
+    const planBars = planned.map(s => planBar(d.dStr, s, actualTypes.has(s.type))).join('');
+    const empty = (!d.acts.length && !planned.length) ? `<div class="wc-empty">–</div>` : '';
+    // „+ planen" nur für heute & zukünftige Tage
+    const addBtn = d.dStr >= todayStr ? `<button class="wc-add" onclick="event.stopPropagation();openPlanModal('${d.dStr}')" title="Einheit planen">+ planen</button>` : '';
+    const total = dayMin > 0 ? `<div class="wc-day-total">${dayMin} min</div>` : '';
+    return `<div class="week-cal-daycol${d.isToday?' today':''}">${actualBars}${planBars}${empty}${addBtn}${total}</div>`;
+  }).join('');
 
   const plan = getTrainingPlan();
   const totalH = weekActs.reduce((s,a) => s+(a.moving_time||0), 0) / 3600;
@@ -493,8 +570,11 @@ function buildWeekCalendar(weekStart, weekActs) {
     ? `${totalH.toFixed(1)}<span class="week-cal-summary-unit">/${plan.weekHours} h</span>`
     : `${totalH.toFixed(1)}<span class="week-cal-summary-unit"> h</span>`;
   const typeTotals = {};
-  Object.keys(TYPE_COLORS).forEach(t => { typeTotals[t] = 0; });
-  weekActs.forEach(a => { const t = normalizeType(a.type); typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
+  Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung').forEach(t => { typeTotals[t] = 0; });
+  weekActs.forEach(a => { const t = normalizeType(a.type); if (t === 'Atmung') return; typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
+  // Geplante Minuten pro Typ (Summe über alle 7 Tage) — Marker im selben Balken, keine eigene Anzeige
+  const plannedMinByType = {};
+  byDay.forEach(d => getPlanSessionsFor(d.dStr).forEach(s => { if (s.min) plannedMinByType[s.type] = (plannedMinByType[s.type]||0) + s.min; }));
   const maxTypeT = Math.max(1, ...Object.values(typeTotals));
   const typeHBars = Object.entries(typeTotals).map(([t,s]) => {
     const color = TYPE_COLORS[t] || '#94a3b8';
@@ -503,46 +583,69 @@ function buildWeekCalendar(weekStart, weekActs) {
     const pct = targetH ? Math.min(100, Math.round(s/(targetH*3600)*100)) : Math.round(s/maxTypeT*100);
     const label = targetH ? `${istH}/${targetH}h` : `${istH}h`;
     const title = targetH ? `${t}: ${formatDur(s)} von ${targetH} h Soll` : `${t}: ${formatDur(s)}`;
+    // dünner Marker: wo läge der Balken, wenn alle geplanten Minuten dieses Typs absolviert wären
+    const plannedMin = plannedMinByType[t];
+    const plannedPct = plannedMin ? Math.min(100, Math.round((s/60 + plannedMin) / (targetH ? targetH*60 : maxTypeT/60) * 100)) : null;
+    const marker = plannedPct != null ? `<div class="week-cal-hbar-marker" style="left:${plannedPct}%" title="Geplant: +${plannedMin} min"></div>` : '';
     return `<div class="week-cal-hbar-row" title="${title}">
       <span class="week-cal-hbar-label" style="color:${color}">${t}</span>
       <div class="week-cal-hbar-bar-wrap">
         <div class="week-cal-hbar-track" style="background:${color}30">
           <div class="week-cal-hbar-fill" style="width:${pct}%;background:${color}"></div>
+          ${marker}
         </div>
         <div class="week-cal-hbar-hours">${label}</div>
       </div>
     </div>`;
   }).join('');
-  const summarySpan = `<div class="week-cal-cell week-cal-summary-cell week-cal-summary-span">
+  const summaryCol = `<div class="week-cal-daycol week-cal-summary-col">
       <div class="week-cal-hbars">${typeHBars}</div>
     </div>`;
 
-  return { html: head + enduranceRow + summarySpan + strengthRow + dayTotalRow, totalHtml: totalVal };
+  return { html: head + dayCols + summaryCol, totalHtml: totalVal };
+}
+
+function cockpitWeekStart(offset) {
+  const now = new Date();
+  const ws = new Date(now);
+  ws.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1) + offset*7);
+  ws.setHours(0,0,0,0);
+  return ws;
+}
+function weekActivities(weekStart) {
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+7);
+  return _cockpitActivitiesFull.filter(a => { const d = new Date(a.start_date_local); return d >= weekStart && d < weekEnd; });
+}
+function weekRangeLabel(weekStart) {
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+7);
+  return `KW${getWeek(weekStart)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – ${new Date(weekEnd-1).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}`;
 }
 
 function renderCockpitWeek() {
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1) + cockpitWeekOffset*7);
-  weekStart.setHours(0,0,0,0);
-  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate()+7);
-  const weekActs = _cockpitActivitiesFull.filter(a => {
-    const d = new Date(a.start_date_local);
-    return d >= weekStart && d < weekEnd;
-  });
-
-  document.getElementById('cockpitWeekLabel').textContent =
-    `KW${getWeek(weekStart)} · ${weekStart.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})} – ${new Date(weekEnd-1).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}`;
+  // aktuelle (gewählte) Woche
+  const weekStart = cockpitWeekStart(cockpitWeekOffset);
+  const weekActs = weekActivities(weekStart);
+  document.getElementById('cockpitWeekLabel').textContent = weekRangeLabel(weekStart);
   const built = buildWeekCalendar(weekStart, weekActs);
   document.getElementById('cockpitWeekCal').innerHTML = built.html;
   document.getElementById('cockpitWeekTotal').innerHTML = built.totalHtml;
 
+  // Vorschau: die darauffolgende Woche
+  const nextStart = cockpitWeekStart(cockpitWeekOffset + 1);
+  const nextEl = document.getElementById('cockpitWeekCalNext');
+  if (nextEl) {
+    nextEl.innerHTML = buildWeekCalendar(nextStart, weekActivities(nextStart)).html;
+    const nextLabel = document.getElementById('cockpitWeekNextLabel');
+    if (nextLabel) nextLabel.textContent = weekRangeLabel(nextStart);
+  }
+
+  // „Nächste Woche" ist jetzt immer erlaubt (beliebig weit vorausplanen)
   const nextBtn = document.getElementById('cockpitWeekNextBtn');
-  if (nextBtn) nextBtn.disabled = cockpitWeekOffset >= 0;
+  if (nextBtn) nextBtn.disabled = false;
 }
 
 function navCockpitWeek(delta) {
-  cockpitWeekOffset = delta === 0 ? 0 : Math.min(0, cockpitWeekOffset + delta);
+  cockpitWeekOffset = delta === 0 ? 0 : cockpitWeekOffset + delta; // vor und zurück beliebig
   renderCockpitWeek();
 }
 
@@ -953,6 +1056,9 @@ const GH_NOTES_PATH = 'notes';
 const GH_PLAN_FILE = 'settings/training-plan.json';
 const GH_RESPIRATION_FILE = 'settings/respiration.json';
 const GH_ZONES_FILE = 'settings/hf-zones.json';
+const GH_ACTIVITY_META_FILE = 'settings/activity-meta.json';
+const GH_PLAN_SESSIONS_FILE = 'settings/plan-sessions.json';
+const GH_HIDDEN_ACTIVITIES_FILE = 'settings/hidden-activities.json';
 let _notes = [];
 let _editingNote = null;
 
@@ -992,12 +1098,10 @@ function parseFrontmatter(content) {
   return { fm, body: body.trim() };
 }
 
-function buildNoteContent(body, trainer, title, date, mood, rpe, feel) {
+function buildNoteContent(body, trainer, title, date, mood) {
   date = date || nowLocalISO();
   const moodLine = mood ? `\nmood: ${mood}` : '';
-  const rpeLine  = rpe  ? `\nrpe: ${rpe}`   : '';
-  const feelLine = feel ? `\nfeel: ${feel}` : '';
-  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}${rpeLine}${feelLine}\n---\n\n${body}`;
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
 }
 
 async function loadNotes() {
@@ -1093,6 +1197,10 @@ function saveTrainingPlanToGH(plan) { return saveJSONToGH(GH_PLAN_FILE, plan, 'U
 function syncTrainingPlanFromGH() { return syncJSONFromGH(GH_PLAN_FILE, 'training_plan', getTrainingPlan, renderCockpitWeek); }
 function saveManualRespirationToGH(data) { return saveJSONToGH(GH_RESPIRATION_FILE, data, 'Update Atmung-Daten'); }
 function syncManualRespirationFromGH() { return syncJSONFromGH(GH_RESPIRATION_FILE, 'manual_respiration', getManualRespiration, renderFromCache); }
+function saveActivityMetaToGH(data) { return saveJSONToGH(GH_ACTIVITY_META_FILE, data, 'Update Aktivitäts-Daten'); }
+function syncActivityMetaFromGH() { return syncJSONFromGH(GH_ACTIVITY_META_FILE, 'activity_meta', getActivityMeta, renderFromCache); }
+function savePlanSessionsToGH(data) { return saveJSONToGH(GH_PLAN_SESSIONS_FILE, data, 'Update Trainingsplan'); }
+function syncPlanSessionsFromGH() { return syncJSONFromGH(GH_PLAN_SESSIONS_FILE, 'plan_sessions', getPlanSessions, renderCockpitWeek); }
 function saveHfZonesToGH(zones) { return saveJSONToGH(GH_ZONES_FILE, zones, 'Update HF-Zonen'); }
 function syncHfZonesFromGH() { return syncJSONFromGH(GH_ZONES_FILE, 'hf_zones', getHfZones, () => { applyHfZonesToInputs(); updateZones(); renderZonesGroup(); }); }
 
@@ -1107,16 +1215,20 @@ function nowLocalISO() {
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
 
-function renderMoodPicker(selected) {
-  document.getElementById('moodPicker').innerHTML = MOOD_OPTIONS.map(m =>
-    `<button type="button" class="mood-btn${m.v===selected?' active':''}" data-mood="${m.v}" onclick="selectMood(${m.v})">${moodIcon(m.v,22)}<span class="mood-btn-label">${m.l}</span></button>`
+// elId erlaubt mehrere Schlaf-Picker (Morgen-Check: 'moodPicker', Aktivitäten-Fenster: 'actMoodPicker')
+function renderMoodPicker(selected, elId='moodPicker') {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = MOOD_OPTIONS.map(m =>
+    `<button type="button" class="mood-btn${m.v===selected?' active':''}" data-mood="${m.v}" onclick="selectMood(${m.v},'${elId}')">${moodIcon(m.v,22)}<span class="mood-btn-label">${m.l}</span></button>`
   ).join('');
-  document.getElementById('moodPicker').dataset.selected = selected || '';
+  el.dataset.selected = selected || '';
 }
 
-function selectMood(v) {
-  document.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('active', +b.dataset.mood === v));
-  document.getElementById('moodPicker').dataset.selected = v;
+function selectMood(v, elId='moodPicker') {
+  const el = document.getElementById(elId);
+  el.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('active', +b.dataset.mood === v));
+  el.dataset.selected = v;
 }
 
 function renderRpePicker(selected) {
@@ -1154,9 +1266,222 @@ function selectFeel(v) {
   document.getElementById('feelPicker').dataset.selected = v;
 }
 
+// ─── Aktivitäten-Modal (Trainingsbewertung pro Einheit) ───────────────────────
+let _activityModalId = null;
+let _activityModalDay = null;
+
+function findActivityById(id) {
+  return (_activitiesFull || []).find(a => String(a.id) === String(id))
+      || (_cockpitActivitiesFull || []).find(a => String(a.id) === String(id))
+      || null;
+}
+
+function openActivityModal(actId) {
+  const act = findActivityById(actId);
+  if (!act) return;
+  _activityModalId = act.id;
+  const type = normalizeType(act.type);
+  const color = TYPE_COLORS[type] || '#94a3b8';
+  document.getElementById('activityModalType').innerHTML = `<span class="tag" style="background:${color}20;color:${color}">${type}</span>`;
+  document.getElementById('activityModalTitle').textContent = act.name || type;
+  document.getElementById('activityModalDate').textContent = new Date(act.start_date_local).toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+  // Fixe Kennzahlen aus intervals.icu (nur Anzeige)
+  const stats = [];
+  if (act.distance) stats.push(['Distanz', (act.distance/1000).toFixed(1)+' km']);
+  if (act.moving_time) stats.push(['Zeit', formatDur(act.moving_time)]);
+  if (act.average_heartrate) stats.push(['Ø HF', Math.round(act.average_heartrate)+' bpm']);
+  if (act.total_elevation_gain) stats.push(['Höhe', Math.round(act.total_elevation_gain)+' m']);
+  const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
+  if (watts) stats.push(['Ø Leistung', Math.round(watts)+' W']);
+  if (act.icu_training_load) stats.push(['Load', Math.round(act.icu_training_load)]);
+  document.getElementById('activityModalStats').innerHTML = stats.map(([l,v]) =>
+    `<div class="activity-stat"><span class="activity-stat-label">${l}</span><span class="activity-stat-val">${v}</span></div>`
+  ).join('') || '<div class="setup-hint">Keine Kennzahlen vorhanden.</div>';
+
+  // Bewertungs-Felder: RPE/Befinden/Bemerkung aus activity_meta, Atmung aus manual_respiration
+  const meta = getActivityMetaFor(act.id);
+  renderRpePicker(meta.rpe || null);
+  renderFeelPicker(meta.feel || null);
+  document.getElementById('actNote').value = meta.note || '';
+  const resp = getManualRespiration()[act.id];
+  document.getElementById('actRespiration').value = resp != null ? resp : '';
+
+  // Schlaf des Tages (pro Tag, aus der Tagesnotiz)
+  _activityModalDay = fmtDate(new Date(act.start_date_local));
+  const dayNote = [..._notes, ..._localDayNotes].find(n => n.date && n.date.slice(0,10) === _activityModalDay);
+  renderMoodPicker(dayNote && dayNote.mood != null ? dayNote.mood : null, 'actMoodPicker');
+
+  document.getElementById('activityModalError').style.display = 'none';
+  document.getElementById('activityModal').style.display = 'flex';
+}
+
+function closeActivityModal() {
+  document.getElementById('activityModal').style.display = 'none';
+  _activityModalId = null;
+  _activityModalDay = null;
+}
+
+function deleteActivityModal() {
+  if (!_activityModalId) return;
+  if (!confirm('Diese Einheit nur auf dem Dashboard ausblenden? Bei intervals.icu bleibt sie erhalten.')) return;
+  hideActivity(_activityModalId);
+  _activitiesFull = filterHiddenActivities(_activitiesFull);
+  _cockpitActivitiesFull = filterHiddenActivities(_cockpitActivitiesFull);
+  closeActivityModal();
+  renderFromCache();
+  renderCockpitWeek();
+}
+
+async function saveActivityModal() {
+  if (!_activityModalId) return;
+  const rpeSel  = document.getElementById('rpePicker').dataset.selected;
+  const feelSel = document.getElementById('feelPicker').dataset.selected;
+  const rpe  = rpeSel  ? parseInt(rpeSel)  : null;
+  const feel = feelSel ? parseInt(feelSel) : null;
+  const note = document.getElementById('actNote').value.trim();
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note });
+  // Atmung läuft weiter über den bestehenden Atmungs-Speicher
+  saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
+  // Schlaf des Tages in die Tagesnotiz schreiben
+  const moodSel = document.getElementById('actMoodPicker').dataset.selected;
+  const mood = moodSel ? parseInt(moodSel) : null;
+  try {
+    if (_activityModalDay) await saveDayMood(_activityModalDay, mood);
+  } catch(e) {
+    const errEl = document.getElementById('activityModalError');
+    errEl.textContent = 'Schlafdaten konnten nicht gespeichert werden: ' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
+  closeActivityModal();
+  refreshCockpitMoodTile();
+  renderFromCache();
+}
+
+// Schreibt die Schlafqualität in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus
+async function saveDayMood(dayStr, mood) {
+  if (ghToken && ghRepo) {
+    const existing = _notes.find(n => n.date && n.date.slice(0,10) === dayStr);
+    if (!existing && mood == null) return;
+    const title = existing ? existing.title : 'Tagesnotiz';
+    const body  = existing ? existing.body : '';
+    const date  = existing && existing.date ? existing.date : dayStr + 'T' + nowLocalISO().slice(11,16);
+    const content  = buildNoteContent(body, existing ? existing.trainer : 'journal', title, date, mood);
+    const filename = existing ? existing.filename : `${Date.now()}-journal.md`;
+    const res = await saveNoteToGH(filename, content, existing ? existing.sha : null);
+    if (existing) { existing.mood = mood; existing.sha = res.content.sha; }
+    else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, body }); }
+    return;
+  }
+  const existing = _localDayNotes.find(n => n.date && n.date.slice(0,10) === dayStr);
+  if (existing) existing.mood = mood;
+  else if (mood != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood });
+  saveLocalDayNotes();
+}
+
+// ─── Plan-Modal (geplante Einheit im Wochenkalender anlegen/bearbeiten) ────────
+let _planDay = null, _planId = null;
+
+function openPlanModal(dayStr, id) {
+  _planDay = dayStr; _planId = id || null;
+  const s = id ? getPlanSessionsFor(dayStr).find(x => x.id === id) : null;
+  document.getElementById('planModalHeading').textContent = s ? 'Geplante Einheit bearbeiten' : 'Einheit planen';
+  document.getElementById('planModalDate').textContent = new Date(dayStr + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('planType').innerHTML = PLAN_TYPES.map(t => `<option value="${t}"${s && s.type===t ? ' selected' : ''}>${t}</option>`).join('');
+  if (!s) document.getElementById('planType').value = 'Laufen';
+  document.getElementById('planMin').value = s && s.min ? s.min : '';
+  document.getElementById('planNote').value = s ? (s.note || '') : '';
+  document.getElementById('planDeleteBtn').style.display = s ? 'block' : 'none';
+  document.getElementById('planModal').style.display = 'flex';
+}
+
+function closePlanModal() {
+  document.getElementById('planModal').style.display = 'none';
+  _planDay = null; _planId = null;
+}
+
+function savePlanModal() {
+  if (!_planDay) return;
+  const type = document.getElementById('planType').value;
+  const minRaw = document.getElementById('planMin').value.trim();
+  const min = minRaw ? parseInt(minRaw) : null;
+  const note = document.getElementById('planNote').value.trim();
+  upsertPlanSession(_planDay, { id: _planId || 'p' + Date.now(), type, min, note });
+  closePlanModal();
+  renderCockpitWeek();
+}
+
+function deletePlanModalSession() {
+  if (!_planDay || !_planId) return;
+  removePlanSession(_planDay, _planId);
+  closePlanModal();
+  renderCockpitWeek();
+}
+
+// ─── KI-Trainer-Plan importieren ──────────────────────────────────────────────
+const PLAN_WEEKDAYS = { mo:0, di:1, mi:2, do:3, fr:4, sa:5, so:6, montag:0, dienstag:1, mittwoch:2, donnerstag:3, freitag:4, samstag:5, sonntag:6 };
+
+// Parst Trainer-Text: eine Einheit pro Zeile „Datum|Typ|Minuten|Notiz". Datum = JJJJ-MM-TT ODER Wochentag (bezogen auf angezeigte Woche).
+function parsePlanText(text) {
+  const shownWeekStart = cockpitWeekStart(cockpitWeekOffset);
+  const sessions = [], errors = [];
+  (text || '').split('\n').forEach(raw => {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+    const parts = line.split('|').map(p => p.trim());
+    if (parts.length < 2) { errors.push(line); return; }
+    const [d, typeRaw, minRaw, ...noteRest] = parts;
+    let dateStr = null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) dateStr = d;
+    else {
+      const wd = PLAN_WEEKDAYS[d.toLowerCase().replace(/\./g,'')];
+      if (wd != null) { const dt = new Date(shownWeekStart); dt.setDate(shownWeekStart.getDate() + wd); dateStr = fmtDate(dt); }
+    }
+    const type = PLAN_TYPES.find(t => t.toLowerCase() === (typeRaw || '').toLowerCase());
+    if (!dateStr || !type) { errors.push(line); return; }
+    const min = minRaw && /\d/.test(minRaw) ? parseInt(minRaw.replace(/\D/g,'')) : null;
+    const note = (min != null ? noteRest : [minRaw, ...noteRest]).filter(Boolean).join(' ').trim();
+    sessions.push({ date: dateStr, type, min, note });
+  });
+  return { sessions, errors };
+}
+
+function openPlanImport() {
+  document.getElementById('planImportText').value = '';
+  document.getElementById('planImportPreview').innerHTML = '';
+  document.getElementById('planImportModal').style.display = 'flex';
+}
+function closePlanImport() { document.getElementById('planImportModal').style.display = 'none'; }
+
+function previewPlanImport() {
+  const { sessions, errors } = parsePlanText(document.getElementById('planImportText').value);
+  const el = document.getElementById('planImportPreview');
+  if (!sessions.length && !errors.length) { el.innerHTML = '<span class="setup-hint">Vorschau erscheint hier…</span>'; return; }
+  const byDay = {};
+  sessions.forEach(s => { (byDay[s.date] = byDay[s.date] || []).push(s); });
+  let html = `<div style="font-weight:600;font-size:12px;margin-bottom:6px">${sessions.length} Einheit(en) erkannt${errors.length ? ` · ${errors.length} Zeile(n) ignoriert` : ''}</div>`;
+  html += Object.keys(byDay).sort().map(day => {
+    const label = new Date(day + 'T00:00').toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
+    return `<div style="font-size:12px;margin-bottom:2px"><span class="mono">${label}</span> — ${byDay[day].map(s => `${s.type}${s.min ? ' ' + s.min + ' min' : ''}`).join(', ')}</div>`;
+  }).join('');
+  el.innerHTML = html;
+}
+
+function confirmPlanImport() {
+  const { sessions } = parsePlanText(document.getElementById('planImportText').value);
+  if (!sessions.length) { closePlanImport(); return; }
+  const data = getPlanSessions();
+  // pro Tag ersetzen: betroffene Tage leeren, dann neu befüllen; andere Tage bleiben
+  [...new Set(sessions.map(s => s.date))].forEach(day => { data[day] = []; });
+  sessions.forEach(s => { data[s.date].push({ id: 'p' + Date.now() + Math.random().toString(36).slice(2,6), type: s.type, min: s.min, note: s.note }); });
+  savePlanSessions(data);
+  closePlanImport();
+  renderCockpitWeek();
+}
+
 let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
-let _noteEditorRespirationActId = null;
 
 function openNoteEditor(dateStr) {
   if (!ghToken || !ghRepo) { openSettingsPage(); return; }
@@ -1165,18 +1490,11 @@ function openNoteEditor(dateStr) {
   const targetDate = dateStr || fmtDate(new Date());
   const existing = _notes.find(n => n.date && n.date.slice(0,10) === targetDate);
   _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date } : null;
-  document.getElementById('noteEditorHeading').textContent = existing ? '✎ Notiz / Schlafqualität bearbeiten' : '✎ Notiz / Schlafqualität';
+  document.getElementById('noteEditorHeading').textContent = existing ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
   document.getElementById('noteEditorTitleInput').value = existing ? existing.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = targetDate;
   document.getElementById('noteEditorContent').value = existing ? existing.body : '';
   renderMoodPicker(existing ? existing.mood : null);
-  renderRpePicker(existing ? existing.rpe : null);
-  renderFeelPicker(existing ? existing.feel : null);
-
-  const dayAct = _activitiesFull.find(a => fmtDate(new Date(a.start_date_local)) === targetDate);
-  _noteEditorRespirationActId = dayAct ? dayAct.id : null;
-  document.getElementById('noteEditorRespirationField').style.display = dayAct ? 'block' : 'none';
-  document.getElementById('noteEditorRespiration').value = dayAct ? (getManualRespiration()[dayAct.id] ?? '') : '';
 
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
@@ -1194,15 +1512,11 @@ function openDayNoteEditor(localNoteId) {
   _noteEditorLocalMode = true;
   _editingLocalNoteId = localNoteId || null;
   const n = localNoteId ? _localDayNotes.find(x => x.id === localNoteId) : null;
-  document.getElementById('noteEditorHeading').textContent = n ? '✎ Notiz bearbeiten' : '✎ Notiz / Schlafqualität';
+  document.getElementById('noteEditorHeading').textContent = n ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
   document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
   renderMoodPicker(n ? n.mood : null);
-  renderRpePicker(n ? n.rpe : null);
-  renderFeelPicker(n ? n.feel : null);
-  _noteEditorRespirationActId = null;
-  document.getElementById('noteEditorRespirationField').style.display = 'none';
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'block';
   // Lokaler Modus hat eigene Löschliste unten — Editor-Löschbutton hier aus
@@ -1257,10 +1571,6 @@ async function saveNoteEditor() {
   const date     = dateVal + 'T' + timeVal;
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood    = moodSel ? parseInt(moodSel) : null;
-  const rpeSel  = document.getElementById('rpePicker').dataset.selected;
-  const rpe     = rpeSel ? parseInt(rpeSel) : null;
-  const feelSel = document.getElementById('feelPicker').dataset.selected;
-  const feel    = feelSel ? parseInt(feelSel) : null;
   const errEl   = document.getElementById('noteEditorError');
   if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
@@ -1268,9 +1578,9 @@ async function saveNoteEditor() {
   if (_noteEditorLocalMode) {
     if (_editingLocalNoteId) {
       const n = _localDayNotes.find(x => x.id === _editingLocalNoteId);
-      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.rpe = rpe; n.feel = feel; }
+      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; }
     } else {
-      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body, date, mood, rpe, feel });
+      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body, date, mood });
     }
     saveLocalDayNotes();
     closeNoteEditor();
@@ -1279,19 +1589,16 @@ async function saveNoteEditor() {
     return;
   }
 
-  const content  = buildNoteContent(body, 'journal', title, date, mood, rpe, feel);
+  const content  = buildNoteContent(body, 'journal', title, date, mood);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-journal.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
   try {
     const res = await saveNoteToGH(filename, content, sha);
     if (_editingNote) {
       const n = _notes.find(x => x.filename === filename);
-      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.rpe = rpe; n.feel = feel; n.sha = res.content.sha; }
+      if (n) { n.title = title; n.body = body; n.date = date; n.mood = mood; n.sha = res.content.sha; }
     } else {
-      _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, rpe, feel, body });
-    }
-    if (_noteEditorRespirationActId) {
-      saveManualRespirationValue(_noteEditorRespirationActId, document.getElementById('noteEditorRespiration').value.trim());
+      _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, body });
     }
     closeNoteEditor();
     refreshCockpitMoodTile();
@@ -1307,10 +1614,6 @@ async function copyNoteForClaude() {
   const body  = document.getElementById('noteEditorContent').value.trim();
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood  = moodSel ? parseInt(moodSel) : null;
-  const rpeSel = document.getElementById('rpePicker').dataset.selected;
-  const rpe   = rpeSel ? parseInt(rpeSel) : null;
-  const feelSel = document.getElementById('feelPicker').dataset.selected;
-  const feel  = feelSel ? parseInt(feelSel) : null;
   const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
   const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
@@ -1342,14 +1645,26 @@ async function copyNoteForClaude() {
       if (a.average_heartrate) parts.push('Ø '+Math.round(a.average_heartrate)+' bpm');
       if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
       lines.push(`- ${d} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
+      // eigene Trainingsbewertung pro Einheit (RPE / Befinden / Atmung / Bemerkung)
+      const m = getActivityMetaFor(a.id);
+      const resp = getManualRespiration()[a.id];
+      const evalParts = [];
+      if (m.rpe) evalParts.push(`RPE ${m.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===m.rpe)?.l})`);
+      if (m.feel) evalParts.push(`Befinden ${m.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===m.feel)?.l})`);
+      if (resp != null) evalParts.push(`Atmung ${resp}/min`);
+      if (evalParts.length) lines.push(`  · ${evalParts.join(' · ')}`);
+      if (m.note) lines.push(`  · Bemerkung: ${m.note}`);
     });
   }
 
   lines.push('', `## ${title || 'Journal-Eintrag'}`);
   if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
-  if (rpe) lines.push(`Empfundene Anstrengung: ${RPE_OPTIONS.find(o=>o.v===rpe)?.l} (RPE ${rpe}/10)`);
-  if (feel) lines.push(`Trainingsbefinden: ${FEEL_OPTIONS.find(o=>o.v===feel)?.l} (${feel}/5)`);
   lines.push(body || '_Keine Notiz eingegeben._');
+  lines.push('');
+  lines.push('## Falls du einen Trainingsplan vorschlägst');
+  lines.push('Gib ihn bitte maschinenlesbar aus — eine Einheit pro Zeile, Format: `Datum | Typ | Minuten | Notiz`');
+  lines.push('(Datum als JJJJ-MM-TT; Typen: Laufen, Rad, Kraft, Mobilität, Atmung, Ruhetag, Krankheit). Beispiel:');
+  lines.push('2026-07-14 | Laufen | 60 | GA1 locker');
   lines.push('');
   lines.push('---');
   lines.push('_Kontext aus Training Board — bitte berücksichtigen._');
@@ -1529,19 +1844,21 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
-    let weightVal = '—', sleepVal = '—', moodVal = '—', rpeVal = '—', feelVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
+    let weightVal = '—', sleepVal = '—', moodVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
     if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
     if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
     if (journalByDate) {
       const n = journalByDate[dayKey];
-      moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—';
-      rpeVal = n && n.rpe!=null ? `<span style="color:hsl(${rpeHue(n.rpe)},70%,45%);font-weight:600">${n.rpe}</span>` : '—';
-      feelVal = n && n.feel!=null ? moodIcon(n.feel,16) : '—';
-      // Titel nur noch als Text — Bearbeiten/Löschen läuft über den Stift-Button rechts
+      moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—'; // Schlafqualität bleibt pro Tag (Notiz)
       titleHtml = n
         ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
         : '<span style="color:var(--text2)">—</span>';
     }
+    // RPE, Trainingsbefinden und Bemerkung jetzt pro Aktivität (activity_meta)
+    const meta = isNoteOnly ? {} : getActivityMetaFor(a.id);
+    const rpeVal = meta.rpe!=null ? `<span style="color:hsl(${rpeHue(meta.rpe)},70%,45%);font-weight:600">${meta.rpe}</span>` : '—';
+    const feelVal = meta.feel!=null ? moodIcon(meta.feel,16) : '—';
+    const remark = meta.note ? escHtml(meta.note) : '';
 
     return `${yearDivider}<div class="note-card" style="cursor:default;flex-wrap:wrap;row-gap:10px">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
@@ -1549,7 +1866,8 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       </div>
       <div style="display:flex;flex-direction:column;width:150px;flex-shrink:0">
         <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Aktivität</span>
-        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word">${nameVal}</span>
+        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word${isNoteOnly?'':';cursor:pointer'}"${isNoteOnly?'':` onclick="openActivityModal('${a.id}')" title="Details & Bewertung öffnen"`}>${nameVal}</span>
+        ${remark?`<span style="font-size:10px;color:var(--text2);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${remark}">✎ ${remark}</span>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:60px">
         <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Typ</span>
@@ -1560,12 +1878,13 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       ${statChip('Ø HF', hr)}
       ${statChip('Atmung', respVal)}
       ${statChip('Höhe', elev)}
+      ${journalByDate?statChip('Anstreng.', rpeVal):''}
+      ${journalByDate?statChip('Befinden', feelVal):''}
+      ${(journalByDate||sleepByDate||weightByDate)?`<div class="trend-kpi-sep" style="min-height:32px"></div>`:''}
       ${weightByDate?statChip('Gewicht', weightVal):''}
       ${sleepByDate?statChip('Schlaf', sleepVal):''}
       ${journalByDate?statChip('Schlafqual.', moodVal):''}
-      ${journalByDate?statChip('Anstreng.', rpeVal):''}
-      ${journalByDate?statChip('Befinden', feelVal):''}
-      ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Notiz bearbeiten" onclick="openNoteEditor('${dayKey}')">${pencilIcon(13)}</button></div>`:''}
+      ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="${isNoteOnly?'Morgen-Check bearbeiten':'Bearbeiten — Details & Bewertung'}" onclick="${isNoteOnly?`openNoteEditor('${dayKey}')`:`openActivityModal('${a.id}')`}">${pencilIcon(13)}</button></div>`:''}
     </div>`;
   }).join('');
 }

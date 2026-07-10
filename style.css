@@ -237,6 +237,11 @@
     .note-editor-divider { display:flex; align-items:center; gap:10px; margin:6px 0 12px; }
     .note-editor-divider::before, .note-editor-divider::after { content:''; flex:1; border-top:1px solid var(--border); }
     .note-editor-divider span { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); }
+    /* Aktivitäten-Modal: fixe Kennzahlen-Kacheln (nur Anzeige) */
+    .activity-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; }
+    .activity-stat { background:var(--bg3); border-radius:8px; padding:8px 10px; text-align:center; }
+    .activity-stat-label { display:block; font-size:9px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text2); }
+    .activity-stat-val { display:block; font-size:14px; font-weight:600; font-family:var(--mono); color:var(--text); margin-top:2px; }
     .note-rendered { font-size:13px; line-height:1.75; color:var(--text); }
     .note-rendered h1,.note-rendered h2,.note-rendered h3 { font-weight:600; margin:12px 0 4px; color:var(--text); }
     .note-rendered p { margin-bottom:8px; }
@@ -255,25 +260,40 @@
     /* Hinweis: Media Queries sind über 3 Stellen im File verstreut (hier, Zeile ~129 und ~167) statt an einer Stelle gebündelt */
     @media (max-width: 1000px) { .grid-2, .grid-3-1, .grid-2x2, .grid-3 { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub { display: none; } }
-    @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-cell { display: none; } }
+    @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-col, .week-cal-head-summary { display: none !important; } }
 
     /* Week-Cal: Trainingswoche-Kalender-Grid (7 Tage + Zusammenfassungs-Spalte) inkl. Soll-Ist-Balken (hbar-Klassen) */
-    .week-cal { display: grid; grid-template-columns: repeat(7, 0.86fr) 210px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .week-cal-summary-span { grid-row: span 2; }
-    .week-cal-head-cell { background: #3f444c; color: #e2e5ea; padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; text-align: center; }
+    /* Aufbau: 8 Spalten, 2 Reihen — Reihe 1 = Datums-Header, Reihe 2 = Tagesspalten mit gestapelten Aktivitäts-Balken */
+    .week-cal { display: grid; grid-template-columns: repeat(7, 1fr) 220px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .week-cal-head-cell { background: var(--bg3); color: var(--text2); padding: 6px 8px; font-size: 10px; font-family: var(--mono); letter-spacing: 0.4px; text-align: center; font-weight: 600; }
     .week-cal-head-cell.today { background: var(--accent); color: #fff; }
-    .week-cal-cell { background: var(--bg2); padding: 7px 8px; min-height: 72px; font-family: var(--mono); text-align: center; }
-    .week-cal-cell.today:not(.week-cal-cell-tinted) { background: var(--accent-light); }
-    .week-cal-cell.week-band-sep { border-top: 2px solid var(--bg3); }
-    .week-cal-cell-empty { color: #cbd5e1; font-size: 11px; }
-    .week-cal-type { font-size: 9px; font-weight: 600; color: var(--text); }
-    .week-cal-goal { font-size: 8px; font-weight: 500; opacity: 0.85; margin-top: 1px; }
-    .week-cal-main { font-size: 11px; margin-top: 2px; color: var(--text); }
-    .week-cal-sub { font-size: 8px; color: var(--text2); margin-top: 1px; }
-    .week-cal-benefit { font-size: 8px; color: var(--text2); margin-top: 1px; font-weight: 600; }
-    .week-cal-summary-cell { background: var(--bg3); padding: 9px 12px; text-align: left; display: flex; align-items: flex-start; }
-    .week-cal-summary-label { font-size: 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.4px; }
-    .week-cal-summary-val { font-size: 14px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
+    /* Tagesspalte: vertikaler Stapel aller Aktivitäten des Tages.
+       Feste Höhe, damit die Kachel beim Durchklicken der Wochen nicht springt; volle Tage scrollen intern. */
+    .week-cal-daycol { background: var(--bg2); padding: 6px; height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+    .week-cal-daycol.today { background: var(--accent-light); }
+    /* Vorschau-Kalender (nächste Woche): kompaktere Spaltenhöhe */
+    .week-cal-preview .week-cal-daycol { height: 200px; }
+    .week-cal-summary-col { background: var(--bg3); padding: 10px 12px; }
+    .wc-empty { color: var(--text2); opacity: 0.5; font-size: 12px; font-family: var(--mono); text-align: center; margin: auto 0; }
+    /* Aktivitäts-Balken: abgerundet, getönt, klickbar */
+    .wc-bar { background: var(--bg3); border-left: 3px solid var(--wc-c, var(--border)); border-radius: 6px; padding: 5px 7px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+    .wc-bar:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .wc-bar-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .wc-bar-type { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; color: var(--wc-c, var(--text)); font-family: var(--mono); }
+    .wc-bar-rpe { font-size: 8px; font-weight: 700; color: #fff; border-radius: 4px; padding: 1px 4px; font-family: var(--mono); flex-shrink: 0; }
+    .wc-bar-name { font-size: 11px; font-weight: 600; color: var(--text); line-height: 1.25; margin-top: 2px; word-break: break-word; }
+    .wc-bar-sub { font-size: 8px; color: var(--text2); font-family: var(--mono); margin-top: 1px; line-height: 1.3; }
+    .wc-day-total { margin-top: auto; padding-top: 4px; font-size: 9px; font-family: var(--mono); color: var(--text2); text-align: center; font-weight: 600; }
+    /* Geplante Einheit: gestrichelter „Geister"-Balken; .done = an dem Tag gab es bereits eine echte Einheit gleichen Typs */
+    .wc-planbar { border: 1px dashed var(--wc-c, var(--border)); border-radius: 6px; padding: 5px 7px; cursor: pointer; background: transparent; opacity: 0.9; transition: transform 0.1s, opacity 0.1s; }
+    .wc-planbar:hover { transform: translateY(-1px); opacity: 1; }
+    .wc-planbar.done { opacity: 0.5; }
+    .wc-planbar-type { font-size: 9px; font-weight: 700; letter-spacing: 0.3px; color: var(--wc-c, var(--text2)); font-family: var(--mono); }
+    .wc-planbar-tag { font-size: 7px; font-weight: 700; letter-spacing: 0.4px; color: var(--text2); font-family: var(--mono); border: 1px solid var(--border); border-radius: 4px; padding: 0 3px; }
+    .wc-planbar.done .wc-planbar-tag { color: var(--green); border-color: var(--green); }
+    /* dezenter „+ planen"-Button unten in jeder Tagesspalte */
+    .wc-add { margin-top: 2px; padding: 3px; border: 1px dashed var(--border); border-radius: 6px; background: transparent; color: var(--text2); font-size: 9px; font-family: var(--mono); cursor: pointer; opacity: 0.5; transition: opacity 0.12s, border-color 0.12s, color 0.12s; }
+    .wc-add:hover { opacity: 1; border-color: var(--accent); color: var(--accent); }
     .week-cal-summary-unit { font-size: 14px; color: var(--text2); font-weight: 400; }
     .week-cal-title-total { font-size: 12px; font-weight: 500; color: var(--text2); font-family: var(--mono); margin-left: 4px; }
     .week-cal-total-big { font-size: 28px; font-weight: 600; color: var(--text); font-family: var(--mono); }
@@ -281,6 +301,8 @@
     .week-cal-hbar-row { display: flex; align-items: flex-start; gap: 7px; }
     .week-cal-hbar-label { font-size: 9px; font-family: var(--mono); font-weight: 600; width: 54px; min-width: 54px; max-width: 54px; flex-shrink: 0; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
     .week-cal-hbar-bar-wrap { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    /* Soll-Ist: dünner Marker auf dem bestehenden Balken zeigt, wo der Stand bei Erfüllung des Plans läge */
+    .week-cal-hbar-marker { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--text); opacity: 0.55; }
     .week-cal-hbar-track { height: 11px; border-radius: 4px; position: relative; overflow: hidden; width: 100%; }
     .week-cal-hbar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px; }
     .week-cal-hbar-hours { font-size: 9px; font-family: var(--mono); color: var(--text2); }

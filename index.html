@@ -133,9 +133,6 @@
         <span class="breadcrumb" id="dateLabel"></span>
       </div>
       <div class="page-subbar-controls">
-        <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
-        <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
-        <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
         <!-- data-keys legt fest, welche Bereiche (Zonen, Wellness, Übersicht, Cockpit-Load) den gewählten Zeitraum übernehmen -->
         <select class="btn range-select" data-keys="zones,wellness,overview,cockpitLoad" data-default="14">
           <option value="7">7 Tage</option>
@@ -144,7 +141,7 @@
           <option value="90">90 Tage</option>
           <option value="365">Alle</option>
         </select>
-        <button class="btn" onclick="openDayNoteEditor()" title="Notiz / Schlafqualität">✎ Notiz</button>
+        <button class="btn" onclick="openDayNoteEditor()" title="Morgen-Check / Schlafqualität">✎ Morgen-Check</button>
       </div>
     </div>
   </header>
@@ -191,8 +188,21 @@
               <div class="trend-kpi-sep"></div>
               <span class="week-cal-total-big" id="cockpitWeekTotal"></span>
             </div>
+            <!-- Wochen-Navigation + Plan-Import (aus der Top-Subbar hierher verschoben) -->
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+              <button class="btn" onclick="openPlanImport()" title="Trainer-Plan importieren">📋 Import</button>
+              <button class="btn" onclick="navCockpitWeek(-1)" title="Vorherige Woche">‹</button>
+              <button class="btn" onclick="navCockpitWeek(0)">Heute</button>
+              <button class="btn" id="cockpitWeekNextBtn" onclick="navCockpitWeek(1)" title="Nächste Woche">›</button>
+            </div>
           </div>
           <div class="week-cal" id="cockpitWeekCal"></div>
+          <!-- Vorschau: nächste Woche (kompakter), v.a. für die Planung -->
+          <div style="margin:18px 0 8px;display:flex;align-items:baseline;gap:10px">
+            <span class="card-title">Vorschau · nächste Woche</span>
+            <span class="card-meta" id="cockpitWeekNextLabel"></span>
+          </div>
+          <div class="week-cal week-cal-preview" id="cockpitWeekCalNext"></div>
         </div>
         <!-- Fitness/Fatigue/Form-Chart und 80/20-Zonen-Check -->
         <div class="group-card">
@@ -372,7 +382,7 @@
 <!-- Note Editor Modal: Anlegen/Bearbeiten einer Tagesnotiz (Titel, Datum, Schlafqualität, Atmung, Markdown-Inhalt) -->
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
   <div class="modal modal-wide">
-    <h3 id="noteEditorHeading">Neue Notiz</h3>
+    <h3 id="noteEditorHeading">Morgen-Check</h3>
     <!-- Titel + Datum nebeneinander (spart Höhe → weniger Scrollen) -->
     <div class="note-editor-grid2" style="margin-top:14px">
       <div class="setup-field">
@@ -384,27 +394,10 @@
         <input class="setup-input" id="noteEditorDate" type="date">
       </div>
     </div>
-    <!-- ── Schlaf/Erholung ── -->
+    <!-- Notiz = nur noch Schlaf/Erholung. Trainingsdaten (RPE, Befinden, Atmung, Bemerkung) laufen über das Aktivitäten-Fenster. -->
     <div class="setup-field">
       <label class="setup-label">Schlafqualität (optional)</label>
       <div class="mood-picker" id="moodPicker"></div>
-    </div>
-    <!-- Trennstrich: Schlafdaten oben / Trainingsdaten unten -->
-    <div class="note-editor-divider"><span>Training</span></div>
-    <!-- Empfundene Anstrengung (RPE 1–10): farbige Zahlen-Buttons, Auswahl-Text in #rpeLabel -->
-    <div class="setup-field">
-      <label class="setup-label">Empfundene Anstrengung <span id="rpeLabel" style="text-transform:none;font-weight:400;color:var(--text2)"></span></label>
-      <div class="rpe-picker" id="rpePicker"></div>
-      <div class="setup-hint">RPE 1–10 · sehr leicht bis Maximum (optional)</div>
-    </div>
-    <!-- Trainingsbefinden (5 Smileys wie Schlaf): wie gut hat sich das Training angefühlt -->
-    <div class="setup-field">
-      <label class="setup-label">Trainingsbefinden (optional)</label>
-      <div class="feel-picker" id="feelPicker"></div>
-    </div>
-    <div class="setup-field" id="noteEditorRespirationField" style="display:none">
-      <label class="setup-label">Ø Atmung/Min (optional)</label>
-      <input class="setup-input" id="noteEditorRespiration" type="number" min="1" step="0.1" placeholder="z.B. 14">
     </div>
     <div class="setup-field">
       <label class="setup-label">Inhalt (Markdown)</label>
@@ -421,6 +414,99 @@
     <div id="localDayNotesSection" style="display:none;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:10px">Bisherige Einträge (nur lokal in diesem Browser)</div>
       <div id="localDayNotesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Aktivitäten-Modal: Details einer Trainingseinheit + Trainingsbewertung (RPE, Befinden, Atmung, Bemerkung) -->
+<div class="modal-overlay" id="activityModal" style="display:none" onclick="if(event.target===this)closeActivityModal()">
+  <div class="modal modal-wide">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div style="flex:1;min-width:0">
+        <div id="activityModalType" style="margin-bottom:6px"></div>
+        <div id="activityModalTitle" style="font-size:17px;font-weight:600;color:var(--text);word-break:break-word"></div>
+        <div id="activityModalDate" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:4px"></div>
+      </div>
+      <button class="btn" onclick="closeActivityModal()">✕</button>
+    </div>
+    <!-- Fixe Kennzahlen aus intervals.icu (nur Anzeige) -->
+    <div id="activityModalStats" class="activity-stats"></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+    <!-- Empfundene Anstrengung (RPE 1–10) -->
+    <div class="setup-field">
+      <label class="setup-label">Empfundene Anstrengung <span id="rpeLabel" style="text-transform:none;font-weight:400;color:var(--text2)"></span></label>
+      <div class="rpe-picker" id="rpePicker"></div>
+      <div class="setup-hint">RPE 1–10 · sehr leicht bis Maximum (optional)</div>
+    </div>
+    <!-- Trainingsbefinden (5 Smileys) -->
+    <div class="setup-field">
+      <label class="setup-label">Trainingsbefinden (optional)</label>
+      <div class="feel-picker" id="feelPicker"></div>
+    </div>
+    <div class="note-editor-grid2">
+      <div class="setup-field">
+        <label class="setup-label">Ø Atmung/Min (optional)</label>
+        <input class="setup-input" id="actRespiration" type="number" min="1" step="0.1" placeholder="z.B. 14">
+      </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Bemerkung zur Einheit (optional)</label>
+      <textarea class="note-textarea" id="actNote" style="min-height:90px" placeholder="z.B. Beine schwer, Wetter, Technik-Fokus…"></textarea>
+    </div>
+    <!-- Schlafdaten ans Ende, per grauem Strich von den Trainingsdaten getrennt (Schlaf = pro Tag) -->
+    <div class="note-editor-divider"><span>Schlaf</span></div>
+    <div class="setup-field">
+      <label class="setup-label">Schlafqualität (Tag der Einheit, optional)</label>
+      <div class="mood-picker" id="actMoodPicker"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityModal()">Speichern</button>
+      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeActivityModal()">Abbrechen</button>
+    </div>
+    <!-- Blendet die Einheit nur auf diesem Dashboard aus — bei intervals.icu bleibt sie unangetastet -->
+    <button class="btn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red)" onclick="deleteActivityModal()">✕ Aus diesem Dashboard ausblenden</button>
+    <div class="setup-error" id="activityModalError">Fehler beim Speichern.</div>
+  </div>
+</div>
+
+<!-- Plan-Modal: geplante Trainingseinheit im Wochenkalender anlegen/bearbeiten -->
+<div class="modal-overlay" id="planModal" style="display:none" onclick="if(event.target===this)closePlanModal()">
+  <div class="modal">
+    <h3 id="planModalHeading">Einheit planen</h3>
+    <div id="planModalDate" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin:-10px 0 16px"></div>
+    <div class="note-editor-grid2">
+      <div class="setup-field">
+        <label class="setup-label">Typ</label>
+        <select class="setup-input" id="planType"></select>
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Dauer (min)</label>
+        <input class="setup-input" id="planMin" type="number" min="1" step="5" placeholder="z.B. 60">
+      </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Ziel / Notiz (optional)</label>
+      <textarea class="note-textarea" id="planNote" style="min-height:70px" placeholder="z.B. GA1 locker · 5×1000 Intervalle · Longrun…"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1;margin-top:0" onclick="savePlanModal()">Speichern</button>
+      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closePlanModal()">Abbrechen</button>
+    </div>
+    <button id="planDeleteBtn" class="btn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red);display:none" onclick="deletePlanModalSession()">✕ Geplante Einheit löschen</button>
+  </div>
+</div>
+
+<!-- Plan-Import-Modal: Trainer-Vorschlag als Text einfügen → wird als geplante Einheiten übernommen -->
+<div class="modal-overlay" id="planImportModal" style="display:none" onclick="if(event.target===this)closePlanImport()">
+  <div class="modal modal-wide">
+    <h3>📋 Trainer-Plan importieren</h3>
+    <div class="setup-hint" style="margin-bottom:10px">Eine Einheit pro Zeile: <span class="mono">Datum | Typ | Minuten | Notiz</span><br>Datum als <span class="mono">JJJJ-MM-TT</span> oder Wochentag (<span class="mono">Mo/Di…</span>, bezogen auf die angezeigte Woche). Typen: Laufen, Rad, Kraft, Mobilität, Atmung, Ruhetag, Krankheit.</div>
+    <textarea class="note-textarea" id="planImportText" style="min-height:150px;font-size:12px" placeholder="2026-07-14 | Laufen | 60 | GA1 locker&#10;Mi | Rad | 90 | Longride&#10;Fr | Ruhetag |  | " oninput="previewPlanImport()"></textarea>
+    <div id="planImportPreview" style="margin:10px 0;padding:10px;background:var(--bg3);border-radius:8px;min-height:22px"><span class="setup-hint">Vorschau erscheint hier…</span></div>
+    <div class="setup-hint">Betroffene Tage werden überschrieben; andere Tage bleiben unverändert.</div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1;margin-top:0" onclick="confirmPlanImport()">Importieren</button>
+      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closePlanImport()">Abbrechen</button>
     </div>
   </div>
 </div>
