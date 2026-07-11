@@ -831,7 +831,7 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
 
   if (todayHRV && cls === 'up' && jobLoad === 'hoch') {
     verdict = '● Moderat · Locker bleiben';
-    desc = `HRV ${Math.round(todayHRV)} ms gut, aber hohe Job-Belastung gestern (${stepsYesterday} Schritte) — Qualität heute nicht empfohlen.`;
+    desc = `HRV ${Math.round(todayHRV)} ms gut, aber hohe Job-Belastung gestern (${fmtNum(stepsYesterday)} Schritte) — Qualität heute nicht empfohlen.`;
     cls = 'neutral';
   } else if (todayHRV && cls === 'up' && jobLoad === 'mittel') {
     desc += ' Job-Belastung moderat — planmäßig.';
@@ -2067,7 +2067,7 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     let weightVal = '—', sleepVal = '—', moodVal = '—', stepsVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
     if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
     if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
-    if (stepsByDate) { const s = stepsByDate[dayKey]; stepsVal = s!=null?s:'—'; } // Schritte automatisch via Garmin-Sync (Intervals.icu Wellness-API)
+    if (stepsByDate) { const s = stepsByDate[dayKey]; stepsVal = s!=null?fmtNum(s):'—'; } // Schritte automatisch via Garmin-Sync (Intervals.icu Wellness-API)
     if (journalByDate) {
       const n = journalByDate[dayKey];
       moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—'; // Schlafqualität bleibt pro Tag (Notiz)
@@ -2128,6 +2128,7 @@ function lineOptions() {
 }
 
 function fmtAxisDate(id) { const [y,m,d] = id.split('-'); return `${d}.${m}.${y.slice(2)}`; }
+function fmtNum(n) { return n == null ? n : n.toLocaleString('de-DE'); }
 function sortedWellness(w) { return [...w].sort((a,b)=>a.id>b.id?1:-1); }
 function avg(arr) { return arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0; }
 function formatDur(secs) { const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
