@@ -817,6 +817,37 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
     desc = `HRV ${Math.round(todayHRV)} ms deutlich unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Erholung empfohlen.`;
     cls = 'down';
   }
+
+  // Job-Belastung (Schritte gestern) als zweites Signal: kann die HRV-Ampel nur abwerten, nie aufwerten.
+  // JOB_LOAD_HIGH = konfigurierbarer Schwellenwert (Einstellungen unter Wellness), JOB_LOAD_LOW = die Hälfte davon.
+  const stepsByDateJob = {};
+  sortedWellness(wellness).forEach(d => { if (wellnessSteps(d) != null) stepsByDateJob[d.id] = wellnessSteps(d); });
+  const JOB_LOAD_HIGH = stepsThreshold();
+  const JOB_LOAD_LOW = Math.round(JOB_LOAD_HIGH / 2);
+  const stepsYesterday = stepsByDateJob[fmtDate(daysAgo(1))];
+  const jobLoad = stepsYesterday == null ? null
+    : stepsYesterday >= JOB_LOAD_HIGH ? 'hoch'
+    : stepsYesterday <= JOB_LOAD_LOW ? 'niedrig' : 'mittel';
+
+  if (todayHRV && cls === 'up' && jobLoad === 'hoch') {
+    verdict = '● Moderat · Locker bleiben';
+    desc = `HRV ${Math.round(todayHRV)} ms gut, aber hohe Job-Belastung gestern (${stepsYesterday} Schritte) — Qualität heute nicht empfohlen.`;
+    cls = 'neutral';
+  } else if (todayHRV && cls === 'up' && jobLoad === 'mittel') {
+    desc += ' Job-Belastung moderat — planmäßig.';
+  }
+
+  // Zusatzhinweis bei mehreren Tagen hoher Job-Belastung in Folge (endend gestern)
+  let highStreak = 0;
+  for (let d = daysAgo(1); ; d.setDate(d.getDate() - 1)) {
+    const s = stepsByDateJob[fmtDate(d)];
+    if (s == null || s < JOB_LOAD_HIGH) break;
+    highStreak++;
+  }
+  if (todayHRV && highStreak >= 3) {
+    desc += ` ${highStreak} Tage hohe Job-Belastung in Folge — Erholung aktiv einplanen.`;
+  }
+
   const vEl = document.getElementById('cockpitVerdict');
   vEl.textContent = verdict; vEl.className = 'trend-verdict ' + cls;
   document.getElementById('cockpitDesc').textContent = desc;
