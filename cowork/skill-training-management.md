@@ -10,7 +10,7 @@ Tagessteuerung, HRV-Auswertung, Load-Monitoring, Saisonplanung, Wettkampfvorbere
 
 ### Eingabe von Thomas
 Mindestens: HRV (RMSSD), Ruhepuls, Schlafqualität (h oder 1–10), kurzes Befinden.
-Optional: Muskelkater, Stress, besondere Ereignisse, **Schritte/Job-Belastung (Garmin, seit Juli 2026)**.
+Optional: Muskelkater, Stress, besondere Ereignisse, Schrittzahl (Job-Belastung).
 
 ### Auswertungslogik
 
@@ -32,12 +32,11 @@ Optional: Muskelkater, Stress, besondere Ereignisse, **Schritte/Job-Belastung (G
 - Hatte die letzte Woche viele intensive Einheiten? → eher Gelb
 - Wettkampf in < 10 Tagen? → Belastung konservativ halten
 - Schlechter Schlaf (< 6h) trotz normaler HRV? → Gelb
-- **Job-Schrittzahl / Schicht-Belastung (seit Juli 2026, Zweischicht-Job):**
-  - Referenzwert wird über die ersten Wochen empirisch ermittelt (noch keine Baseline)
-  - Grobe Orientierung bis Baseline steht: > ca. 12.000–14.000 Schritte an einem Arbeitstag (v.a. bei körperlich schwerer Schicht) → Vorfuß/Beine gelten als vorbelastet, auch ohne Trainingsreiz
-  - Konsequenz: an solchen Tagen KEIN zusätzliches Lauf-Volumen draufsetzen, auch wenn HRV/Ruhepuls grün wären — Job-Schritte zählen wie eine unsichtbare Trainingseinheit und fließen ins Wochenvolumen-Gefühl ein (nicht in die 6h-Zielrechnung selbst, aber in die Belastungssteuerung)
-  - Besonders relevant für Reha-Koordination: hohe Schrittzahl + Morton-Neurom-Ausschlusszone → Reha-Trainer bei Häufung informieren
-  - Sonderschichten mit sehr frühem Start (z.B. 5 Uhr) zusätzlich als Schlaf-Risikofaktor werten, auch wenn die reine Stundenzahl noch ok aussieht
+- **Job-Belastung (Schrittzahl):** Bei Schichtarbeit mit stundenlangem Stehen/Gehen (typisch 17.000–23.000 Schritte an Arbeitstagen vs. 3.000–4.000 an Ruhetagen) fließt die Schrittzahl als zusätzlicher Belastungsfaktor ein — unabhängig von HRV/TSB, da mechanische Vorfuß-Belastung durch Job nicht in Trainingsmetriken erfasst wird.
+  - Hohe Schrittzahl (> 15.000, insbesondere am Vortag) + geplante Lauf-/Qualitätseinheit → Volumen/Intensität vorsichtiger dosieren, auch bei grünem HRV-Signal
+  - Ruhetage mit niedriger Schrittzahl (< 5.000–6.000) sind für Lauf-Wiedereinstieg/Qualität günstiger einzuordnen als Arbeitstage
+  - Job-Belastung wirkt nur abwertend auf die Ampel, nie aufwertend
+  - 3+ Tage hohe Job-Belastung in Folge → gesonderter Hinweis, besonders im Reha-Kontext (Morton-Neurom) relevant
 
 ### Ausgabe
 1. Ampel mit Begründung (1–2 Sätze)
@@ -50,15 +49,15 @@ Optional: Muskelkater, Stress, besondere Ereignisse, **Schritte/Job-Belastung (G
 
 - Behalte CTL (Chronic Training Load), ATL (Acute Training Load) und TSB (Form) im Blick
 - Zielkorridor TSB vor Wettkämpfen: +5 bis +20 (frisch aber nicht enttrained)
-- Wochenvolumen-Ziel: 6 Stunden, verteilt auf Laufen (~50%), Rad (~20%), Kraft (~10%), Mobilität (~20%)
-- Job-bedingte Alltagsbelastung (Schritte, Stehzeit) wird bei der Einordnung von HRV/Ampel mitgedacht, zählt aber nicht als Trainingsvolumen im engeren Sinne
+- Wochenvolumen-Ziel: 6 Stunden, verteilt auf ca. 50% Laufen, 20% Rad, 10% Kraft, 20% Mobilität
+- Job-Schrittzahl als begleitender Belastungsindikator mitführen (siehe Zusatzfaktoren oben), auch wenn sie kein direkter Bestandteil des Trainingsvolumens ist
 
 ### Wochenstruktur (Orientierung)
 - 2× Ausdauer aerob (Zone 1–2): Laufen oder Rad
 - 1× Qualität (Zone 3–4, nur wenn Ampel Grün): nach UA-Methodik
 - 2× Kraft: abgestimmt mit Kraft-Trainer
+- Mobilität: eigenständiger Block, siehe Mobilitäts-Trainer
 - 1–2× freie Tage oder aktive Erholung
-- Sonntag: Ruhetag, non-negotiable (nur locker/Mobilität), unabhängig von Ampel
 
 ---
 
@@ -79,5 +78,5 @@ Jeden Sonntag (oder auf Anfrage):
 - Was lief gut, was nicht
 - Soll vs. Ist Volumen
 - HRV-Trend der Woche
+- Job-Belastungsmuster der Woche (Schrittzahl Arbeitstage vs. Ruhetage)
 - Ausblick nächste Woche
-- Ab Juli 2026: kurzer Blick auf Job-Belastungsmuster (Schrittzahl-Trend), falls Daten vorhanden

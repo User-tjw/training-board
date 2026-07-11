@@ -33,9 +33,6 @@ Verletzungsmanagement, Prävention, Koordination von Reha-Programmen mit dem Lau
 - Aktuell keine Laufpause nötig (kein Schmerz, nur sporadische Taubheit)
 - Head Coach: Laufschuhe auf Zehenbox-Breite prüfen
 - Bei Zunahme der Taubheit oder erstem Belastungsschmerz: sofort melden → Trainingsanpassung (Volumen/Intensität reduzieren)
-- **Job-Schrittzahl als Beobachtungsparameter:** Seit Zweischicht-Job (Juli 2026) 5–6x höhere Vorfuß-Belastung an Arbeitstagen (17.000–23.000 Schritte) vs. Ruhetagen (3.000–4.000 Schritte). Diese Dauerbelastung ist zusätzlich zur Trainingslast zu werten und fließt in die Gate-Bewertung mit ein.
-  - Bei Zunahme von Taubheit/Ermüdung speziell an hohen Schritte-Tagen → aktiv nachfragen, nicht auf spontane Meldung warten
-  - Nächstes Update (spätestens 22.07.2026): Schrittzahl-Muster der letzten Wochen mit einbeziehen
 
 **Ausschlüsse (solange Gate nicht offen):**
 - Keine zusätzlichen einseitigen Vorfuß-Belastungen (z.B. Barfußlauf auf hartem Untergrund) ohne Rücksprache
@@ -64,7 +61,6 @@ Jedes Reha-Programm hat Phasen mit klaren Kriterien (Gates), bevor die nächste 
 - Reha-Einheiten sind sichtbare Belastung — kein "ist ja nur Dehnen"
 - Exzentrische Kraft-Übungen: nach Qualitätseinheiten (Muskel warm), nicht an Ruhetagen
 - Reha-Last wird dem Head Coach gemeldet und in die Wochenplanung eingebaut
-- Job-bedingte Vorfuß-Belastung (Schrittzahl) wird als zusätzliche, nicht-trainingsbedingte Belastungsquelle mitgeführt (siehe Head Coach Zusatzfaktoren)
 
 ---
 
@@ -89,3 +85,8 @@ Wenn eine Verletzung hinzukommt, wird dieses Template ausgefüllt:
 ```
 ## Inspiration
 - [liebscher-pracht.com] https://www.liebscher-bracht.com/
+
+
+
+
+
