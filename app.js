@@ -1797,19 +1797,28 @@ async function copyNoteForClaude() {
     '## Weitere Werte',
     `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
   ];
-  const wellnessDay = (_wellnessFull || []).find(d => d.id === dateVal);
-  const daySteps = wellnessDay ? wellnessSteps(wellnessDay) : null;
-  if (daySteps) lines.push(`Schritte (Job-Belastung): ${daySteps}`);
-
-  // Letzte Trainingseinheiten (7 Tage) als Kontext für die Trainer-Empfehlung
+  // Trainingseinheiten der letzten 7 Tage als Kontext für die Trainer-Empfehlung, inkl. Schritte/Tag
+  // (Aktivitätsstatus) — einmal pro Tag angehängt statt wiederholt bei jeder Einheit, da Schritte ein
+  // Tageswert sind. Tage ohne Training tauchen als eigene Zeile auf, wenn Schritte vorliegen.
   const since = daysAgo(7);
-  const recent = (_activitiesFull || [])
+  const recentByDay = {};
+  (_activitiesFull || [])
     .filter(a => !a._noteOnly && new Date(a.start_date_local) >= since)
-    .sort((a,b) => new Date(b.start_date_local) - new Date(a.start_date_local));
-  if (recent.length) {
-    lines.push('', '## Trainingseinheiten der letzten 7 Tage');
-    recent.forEach(a => {
-      const d = new Date(a.start_date_local).toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
+    .forEach(a => { const k = fmtDate(new Date(a.start_date_local)); (recentByDay[k] = recentByDay[k] || []).push(a); });
+
+  const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(i)));
+  const dayLines = [];
+  days7.forEach(dayKey => {
+    const acts = (recentByDay[dayKey] || []).sort((a,b) => new Date(a.start_date_local) - new Date(b.start_date_local));
+    const dLabel = new Date(dayKey + 'T00:00').toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
+    const wDay = (_wellnessFull || []).find(d => d.id === dayKey);
+    const steps = wDay ? wellnessSteps(wDay) : null;
+
+    if (!acts.length) {
+      if (steps) dayLines.push(`- ${dLabel} · Ruhetag — ${steps} Schritte`);
+      return;
+    }
+    acts.forEach((a, idx) => {
       const watts = a.icu_weighted_avg_watts || a.icu_average_watts || a.average_watts;
       const parts = [];
       if (a.moving_time) parts.push(formatDur(a.moving_time));
@@ -1817,7 +1826,8 @@ async function copyNoteForClaude() {
       if (a.average_heartrate) parts.push('Ø '+Math.round(a.average_heartrate)+' bpm');
       if (watts) parts.push('Ø '+Math.round(watts)+' W');
       if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
-      lines.push(`- ${d} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
+      if (idx === 0 && steps) parts.push(`${steps} Schritte`);
+      dayLines.push(`- ${dLabel} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
       // eigene Trainingsbewertung pro Einheit (RPE / Befinden / Atmung / Bemerkung)
       const m = getActivityMetaFor(a.id);
       const resp = getManualRespiration()[a.id];
@@ -1825,10 +1835,11 @@ async function copyNoteForClaude() {
       if (m.rpe) evalParts.push(`RPE ${m.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===m.rpe)?.l})`);
       if (m.feel) evalParts.push(`Befinden ${m.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===m.feel)?.l})`);
       if (resp != null) evalParts.push(`Atmung ${resp}/min`);
-      if (evalParts.length) lines.push(`  · ${evalParts.join(' · ')}`);
-      if (m.note) lines.push(`  · Bemerkung: ${m.note}`);
+      if (evalParts.length) dayLines.push(`  · ${evalParts.join(' · ')}`);
+      if (m.note) dayLines.push(`  · Bemerkung: ${m.note}`);
     });
-  }
+  });
+  if (dayLines.length) lines.push('', '## Trainingseinheiten & Schritte der letzten 7 Tage', ...dayLines);
 
   lines.push('', `## ${title || 'Journal-Eintrag'}`);
   if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);

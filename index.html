@@ -7,7 +7,10 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
+       Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
+       auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
+  <link rel="stylesheet" href="style.css?v=20260711">
 </head>
 <body>
 
@@ -542,6 +545,6 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20260711"></script>
 </body>
 </html>
