@@ -839,13 +839,16 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
 
   // Zusatzhinweis bei mehreren Tagen hoher Job-Belastung in Folge (endend gestern)
   let highStreak = 0;
+  let streakStartDate = null, streakEndDate = null;
   for (let d = daysAgo(1); ; d.setDate(d.getDate() - 1)) {
     const s = stepsByDateJob[fmtDate(d)];
     if (s == null || s < JOB_LOAD_HIGH) break;
+    if (highStreak === 0) streakEndDate = fmtDate(d);
+    streakStartDate = fmtDate(d);
     highStreak++;
   }
   if (todayHRV && highStreak >= 3) {
-    desc += ` ${highStreak} Tage hohe Job-Belastung in Folge — Erholung aktiv einplanen.`;
+    desc += ` ${highStreak} Tage hohe Job-Belastung in Folge (${streakStartDate}–${streakEndDate}) — Erholung aktiv einplanen.`;
   }
 
   const vEl = document.getElementById('cockpitVerdict');
