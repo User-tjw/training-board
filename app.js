@@ -541,39 +541,63 @@ function setupNav() {
 
 // ─── Data Loading ─────────────────────────────────────────────────────────────
 
+const FAST_LOAD_DAYS = 100; // deckt alle Zeitraum-Optionen bis 90 Tage mit Puffer ab, für schnellen ersten Render
+const FULL_LOAD_DAYS = 400; // deckt die größte wählbare Kachel-Spanne ("Alle" = 365) mit Puffer ab
+
+function applyIcuData(wellnessFull, activitiesFull, eventsFull) {
+  _wellnessFull = wellnessFull;
+  _activitiesFull = filterHiddenActivities(activitiesFull); // ausgeblendete Aktivitäten (nur lokal, intervals.icu bleibt unberührt)
+  if (eventsFull) _icuEventsFull = eventsFull;
+  // CTL/ATL/TSB aus Wellness-Daten extrahieren (wie im Original-Backend)
+  _fitnessFull = wellnessFull
+    .filter(d => d.ctl != null || d.atl != null)
+    .map(d => ({
+      date: d.id,
+      ctl: parseFloat((d.ctl || 0).toFixed(1)),
+      atl: parseFloat((d.atl || 0).toFixed(1)),
+      tsb: parseFloat(((d.ctl || 0) - (d.atl || 0)).toFixed(1)),
+    }));
+}
+
 async function loadAll() {
-  const maxDays = 400; // deckt die größte wählbare Kachel-Spanne ("Alle" = 365) mit Puffer ab
   applyStoredRanges();
 
   try {
     const [wellnessFull, activitiesFull, eventsFull] = await Promise.all([
-      icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(maxDays))}`),
-      icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(daysAgo(maxDays))}`),
+      icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(FAST_LOAD_DAYS))}`),
+      icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(daysAgo(FAST_LOAD_DAYS))}`),
       // geplante Events (WORKOUT) aus Intervals.icu — inkl. dort/via Garmin direkt angelegter, nicht nur der von TrainIQ gepushten
       icuFetch(`/athlete/${athleteId}/events?oldest=${fmtDate(daysAgo(7))}&newest=${fmtDate(daysAgo(-60))}&category=WORKOUT`),
     ]);
 
     if (ghToken && ghRepo && _notes.length === 0) _notes = await loadNotes();
 
-    _wellnessFull = wellnessFull;
-    _activitiesFull = filterHiddenActivities(activitiesFull); // ausgeblendete Aktivitäten (nur lokal, intervals.icu bleibt unberührt)
-    _icuEventsFull = eventsFull;
-    // CTL/ATL/TSB aus Wellness-Daten extrahieren (wie im Original-Backend)
-    _fitnessFull = wellnessFull
-      .filter(d => d.ctl != null || d.atl != null)
-      .map(d => ({
-        date: d.id,
-        ctl: parseFloat((d.ctl || 0).toFixed(1)),
-        atl: parseFloat((d.atl || 0).toFixed(1)),
-        tsb: parseFloat(((d.ctl || 0) - (d.atl || 0)).toFixed(1)),
-      }));
-
+    applyIcuData(wellnessFull, activitiesFull, eventsFull);
     setStatus(true);
     renderCockpitStatus(wellnessFull, _fitnessFull, _activitiesFull);
     renderFromCache();
+
+    loadFullRangeInBackground();
   } catch(err) {
     console.error(err);
     setStatus(false);
+  }
+}
+
+// Lädt nach dem schnellen ersten Render den vollen Zeitraum nach (für "Alle"/365-Ansicht und Jahres-Historie).
+// Blockiert den ersten Render nicht; scheitert lautlos (Konsole), da die App mit den bereits geladenen
+// FAST_LOAD_DAYS-Daten voll funktionsfähig bleibt.
+async function loadFullRangeInBackground() {
+  try {
+    const [wellnessFull, activitiesFull] = await Promise.all([
+      icuFetch(`/athlete/${athleteId}/wellness?oldest=${fmtDate(daysAgo(FULL_LOAD_DAYS))}`),
+      icuFetch(`/athlete/${athleteId}/activities?oldest=${fmtDate(daysAgo(FULL_LOAD_DAYS))}`),
+    ]);
+    applyIcuData(wellnessFull, activitiesFull, null);
+    renderCockpitStatus(wellnessFull, _fitnessFull, _activitiesFull);
+    renderFromCache();
+  } catch(err) {
+    console.error('Hintergrund-Nachladung (voller Zeitraum) fehlgeschlagen:', err);
   }
 }
 
@@ -1097,10 +1121,32 @@ function renderWellnessGroup() {
   renderChart('wellnessChart',{type:'line',data:{labels,datasets:[
     {label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#10b981',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y'},
     {label:'Ruhepuls',data:sorted.map(d=>d.restingHR||null),borderColor:'#3b82f6',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y1'},
-  ]},options:{layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}},y1:{position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#3b82f6'}}}}});
+  ]},options:{maintainAspectRatio:false,layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}},y1:{position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#3b82f6'}}}}});
   renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(59,130,246,0.3)',borderColor:'#3b82f6',borderWidth:1,borderRadius:4}]},options:lineOptions()});
   const weightSorted=sorted.filter(d=>d.weight!=null);
   renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
+  renderStepsChart(days);
+}
+
+// Job-Belastung (Schritte/Tag) — manuell im Aktivitäten-Fenster erfasst, bewusst getrennt von CTL/ATL/TSB.
+// Zeigt nur Tage mit erfasstem Wert; Tage über Schwellenwert werden farblich hervorgehoben.
+function stepsThreshold() {
+  return parseInt(localStorage.getItem('steps_threshold')) || 13000;
+}
+function setStepsThreshold(v) {
+  const n = parseInt(v);
+  if (n > 0) localStorage.setItem('steps_threshold', n);
+  renderWellnessGroup();
+}
+function renderStepsChart(days) {
+  const el = document.getElementById('stepsThresholdInput');
+  const threshold = stepsThreshold();
+  if (el) el.value = threshold;
+  const since = daysAgo(days);
+  const entries = [..._notes, ..._localDayNotes]
+    .filter(n => n.steps && n.date && new Date(n.date) >= since)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  renderChart('stepsChart',{type:'bar',data:{labels:entries.map(n=>fmtAxisDate(n.date.slice(0,10))),datasets:[{label:'Schritte',data:entries.map(n=>n.steps),backgroundColor:entries.map(n=>n.steps>=threshold?'rgba(239,68,68,0.55)':'rgba(59,130,246,0.3)'),borderColor:entries.map(n=>n.steps>=threshold?'#ef4444':'#3b82f6'),borderWidth:1,borderRadius:4}]},options:lineOptions()});
 }
 
 
@@ -1144,11 +1190,14 @@ function saveLocalDayNotes() {
   localStorage.setItem('tb_day_notes', JSON.stringify(_localDayNotes));
 }
 
+// Tagesnotiz (GitHub oder lokal) zu einem Datum (JJJJ-MM-TT) — trägt u.a. Schlafqualität (mood) und Schritte.
+function findDayNote(dateStr) {
+  return [..._notes, ..._localDayNotes].find(n => n.date && n.date.slice(0,10) === dateStr);
+}
+
 function todaysMoodValue() {
-  const todayStr = fmtDate(new Date());
-  const all = [..._notes, ..._localDayNotes];
-  const note = all.find(n => n.date && n.date.slice(0,10) === todayStr && n.mood);
-  return note ? note.mood : null;
+  const note = findDayNote(fmtDate(new Date()));
+  return note && note.mood ? note.mood : null;
 }
 
 function refreshCockpitMoodTile() {
@@ -1206,10 +1255,11 @@ function parseFrontmatter(content) {
   return { fm, body: body.trim() };
 }
 
-function buildNoteContent(body, trainer, title, date, mood) {
+function buildNoteContent(body, trainer, title, date, mood, steps) {
   date = date || nowLocalISO();
   const moodLine = mood ? `\nmood: ${mood}` : '';
-  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
+  const stepsLine = steps ? `\nsteps: ${steps}` : '';
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}${stepsLine}\n---\n\n${body}`;
 }
 
 async function loadNotes() {
@@ -1230,7 +1280,7 @@ async function loadNotes() {
     for (const f of mdFiles) {
       const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
       const { fm, body } = parseFrontmatter(b64dec(file.content));
-      notes.push({ filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body });
+      notes.push({ filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, steps: fm.steps ? parseInt(fm.steps) : null, body });
     }
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
@@ -1418,10 +1468,11 @@ function openActivityModal(actId) {
   const resp = getManualRespiration()[act.id];
   document.getElementById('actRespiration').value = resp != null ? resp : '';
 
-  // Schlaf des Tages (pro Tag, aus der Tagesnotiz)
+  // Schlaf & Schritte des Tages (pro Tag, aus der Tagesnotiz)
   _activityModalDay = fmtDate(new Date(act.start_date_local));
-  const dayNote = [..._notes, ..._localDayNotes].find(n => n.date && n.date.slice(0,10) === _activityModalDay);
+  const dayNote = findDayNote(_activityModalDay);
   renderMoodPicker(dayNote && dayNote.mood != null ? dayNote.mood : null, 'actMoodPicker');
+  document.getElementById('actSteps').value = dayNote && dayNote.steps ? dayNote.steps : '';
 
   document.getElementById('activityModalError').style.display = 'none';
   document.getElementById('activityModal').style.display = 'flex';
@@ -1454,14 +1505,16 @@ async function saveActivityModal() {
   saveActivityMetaValue(_activityModalId, { rpe, feel, note });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
-  // Schlaf des Tages in die Tagesnotiz schreiben
+  // Schlaf & Schritte des Tages in die Tagesnotiz schreiben
   const moodSel = document.getElementById('actMoodPicker').dataset.selected;
   const mood = moodSel ? parseInt(moodSel) : null;
+  const stepsVal = document.getElementById('actSteps').value.trim();
+  const steps = stepsVal ? parseInt(stepsVal) : null;
   try {
-    if (_activityModalDay) await saveDayMood(_activityModalDay, mood);
+    if (_activityModalDay) await saveDayContext(_activityModalDay, mood, steps);
   } catch(e) {
     const errEl = document.getElementById('activityModalError');
-    errEl.textContent = 'Schlafdaten konnten nicht gespeichert werden: ' + e.message;
+    errEl.textContent = 'Tageswerte konnten nicht gespeichert werden: ' + e.message;
     errEl.style.display = 'block';
     return;
   }
@@ -1470,24 +1523,24 @@ async function saveActivityModal() {
   renderFromCache();
 }
 
-// Schreibt die Schlafqualität in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus
-async function saveDayMood(dayStr, mood) {
+// Schreibt Schlafqualität & Schritte in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus
+async function saveDayContext(dayStr, mood, steps) {
   if (ghToken && ghRepo) {
     const existing = _notes.find(n => n.date && n.date.slice(0,10) === dayStr);
-    if (!existing && mood == null) return;
+    if (!existing && mood == null && steps == null) return;
     const title = existing ? existing.title : 'Tagesnotiz';
     const body  = existing ? existing.body : '';
     const date  = existing && existing.date ? existing.date : dayStr + 'T' + nowLocalISO().slice(11,16);
-    const content  = buildNoteContent(body, existing ? existing.trainer : 'journal', title, date, mood);
+    const content  = buildNoteContent(body, existing ? existing.trainer : 'journal', title, date, mood, steps);
     const filename = existing ? existing.filename : `${Date.now()}-journal.md`;
     const res = await saveNoteToGH(filename, content, existing ? existing.sha : null);
-    if (existing) { existing.mood = mood; existing.sha = res.content.sha; }
-    else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, body }); }
+    if (existing) { existing.mood = mood; existing.steps = steps; existing.sha = res.content.sha; }
+    else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, steps, body }); }
     return;
   }
   const existing = _localDayNotes.find(n => n.date && n.date.slice(0,10) === dayStr);
-  if (existing) existing.mood = mood;
-  else if (mood != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood });
+  if (existing) { existing.mood = mood; existing.steps = steps; }
+  else if (mood != null || steps != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood, steps });
   saveLocalDayNotes();
 }
 
@@ -1692,6 +1745,8 @@ async function saveNoteEditor() {
   if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
 
+  // Schritte werden nicht hier, sondern im Aktivitäten-Modal gepflegt (siehe saveActivityModal) —
+  // bestehenden Wert beim Speichern des Morgen-Checks unverändert übernehmen.
   if (_noteEditorLocalMode) {
     if (_editingLocalNoteId) {
       const n = _localDayNotes.find(x => x.id === _editingLocalNoteId);
@@ -1706,7 +1761,8 @@ async function saveNoteEditor() {
     return;
   }
 
-  const content  = buildNoteContent(body, 'journal', title, date, mood);
+  const existingSteps = _editingNote ? _notes.find(x => x.filename === _editingNote.filename)?.steps : null;
+  const content  = buildNoteContent(body, 'journal', title, date, mood, existingSteps);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-journal.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
   try {
@@ -1746,6 +1802,8 @@ async function copyNoteForClaude() {
     '## Weitere Werte',
     `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
   ];
+  const dayNote = findDayNote(dateVal);
+  if (dayNote && dayNote.steps) lines.push(`Schritte (Job-Belastung): ${dayNote.steps}`);
 
   // Letzte Trainingseinheiten (7 Tage) als Kontext für die Trainer-Empfehlung
   const since = daysAgo(7);
@@ -1756,10 +1814,12 @@ async function copyNoteForClaude() {
     lines.push('', '## Trainingseinheiten der letzten 7 Tage');
     recent.forEach(a => {
       const d = new Date(a.start_date_local).toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
+      const watts = a.icu_weighted_avg_watts || a.icu_average_watts || a.average_watts;
       const parts = [];
       if (a.moving_time) parts.push(formatDur(a.moving_time));
       if (a.distance) parts.push((a.distance/1000).toFixed(1)+' km');
       if (a.average_heartrate) parts.push('Ø '+Math.round(a.average_heartrate)+' bpm');
+      if (watts) parts.push('Ø '+Math.round(watts)+' W');
       if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
       lines.push(`- ${d} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
       // eigene Trainingsbewertung pro Einheit (RPE / Befinden / Atmung / Bemerkung)
@@ -1952,6 +2012,8 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const km=a.distance?(a.distance/1000).toFixed(1)+' km':'—';
     const dur=a.moving_time?formatDur(a.moving_time):'—';
     const hr=a.average_heartrate?Math.round(a.average_heartrate)+' bpm':'—';
+    const watts=isNoteOnly?null:(a.icu_weighted_avg_watts||a.icu_average_watts||a.average_watts);
+    const wattVal=watts?Math.round(watts)+' W':'—';
     const resp=respirationRate(a);
     const respVal=isNoteOnly?'—':(resp!=null?Math.round(resp)+'/min':'—');
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
@@ -1961,12 +2023,13 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
-    let weightVal = '—', sleepVal = '—', moodVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
+    let weightVal = '—', sleepVal = '—', moodVal = '—', stepsVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
     if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
     if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
     if (journalByDate) {
       const n = journalByDate[dayKey];
       moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—'; // Schlafqualität bleibt pro Tag (Notiz)
+      stepsVal = n && n.steps ? n.steps : '—'; // Schritte ebenfalls pro Tag (Notiz), im Aktivitäten-Modal erfasst
       titleHtml = n
         ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
         : '<span style="color:var(--text2)">—</span>';
@@ -1993,6 +2056,8 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       ${statChip('Distanz', km)}
       ${statChip('Zeit', dur)}
       ${statChip('Ø HF', hr)}
+      ${statChip('Ø Watt', wattVal)}
+      ${journalByDate?statChip('Schritte', stepsVal):''}
       ${statChip('Atmung', respVal)}
       ${statChip('Höhe', elev)}
       ${journalByDate?statChip('Anstreng.', rpeVal):''}
@@ -2018,7 +2083,7 @@ function renderChart(id, config) {
 }
 
 function lineOptions() {
-  return {layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}}}};
+  return {maintainAspectRatio:false,layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}}}};
 }
 
 function fmtAxisDate(id) { const [y,m,d] = id.split('-'); return `${d}.${m}.${y.slice(2)}`; }

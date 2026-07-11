@@ -359,17 +359,34 @@
       </div>
     </section>
 
-    <!-- Wellness: Charts für HRV/Ruhepuls, Schlaf und Gewicht im Zeitverlauf -->
+    <!-- Wellness: HRV/Ruhepuls, Schlaf, Gewicht und Job-Belastung als gleichwertige Kacheln in einem
+         responsiven Grid (auto-fit) — Spaltenzahl passt sich automatisch an die Fensterbreite an. -->
     <section id="section-wellness" class="section">
       <div class="content">
-        <div class="group-card">
-          <div class="group-card-header">
-            <span class="group-card-title">Wellness</span>
+        <div class="wellness-grid">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:12px">HRV & Ruhepuls</div>
+            <div class="chart-box" style="height:220px"><canvas id="wellnessChart"></canvas></div>
           </div>
-          <div class="group-card-body" style="--cols:1">
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">HRV & Ruhepuls</div><canvas id="wellnessChart" height="65"></canvas></div>
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Schlaf</div><canvas id="sleepChart" height="65"></canvas></div>
-            <div class="group-card-section"><div class="card-title" style="margin-bottom:12px">Gewicht</div><canvas id="weightChart" height="65"></canvas></div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:12px">Schlaf</div>
+            <div class="chart-box" style="height:220px"><canvas id="sleepChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:12px">Gewicht</div>
+            <div class="chart-box" style="height:220px"><canvas id="weightChart"></canvas></div>
+          </div>
+          <!-- Job-Belastung (Schritte): eigene Kachel, bewusst getrennt von CTL/ATL/TSB — reine Kontext-Anzeige, keine Ampel-Logik -->
+          <div class="card">
+            <div style="margin-bottom:12px">
+              <div class="card-title">Schritte</div>
+              <div class="card-meta" style="margin-top:2px">Job-Belastung</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <label class="setup-label" style="margin:0" for="stepsThresholdInput">Schwellenwert</label>
+              <input class="setup-input setup-input-sm" id="stepsThresholdInput" type="number" min="0" step="500" style="width:90px" onchange="setStepsThreshold(this.value)">
+            </div>
+            <div class="chart-box" style="height:220px"><canvas id="stepsChart"></canvas></div>
           </div>
         </div>
       </div>
@@ -453,11 +470,15 @@
       <label class="setup-label">Bemerkung zur Einheit (optional)</label>
       <textarea class="note-textarea" id="actNote" style="min-height:90px" placeholder="z.B. Beine schwer, Wetter, Technik-Fokus…"></textarea>
     </div>
-    <!-- Schlafdaten ans Ende, per grauem Strich von den Trainingsdaten getrennt (Schlaf = pro Tag) -->
-    <div class="note-editor-divider"><span>Schlaf</span></div>
+    <!-- Schlaf & Schritte ans Ende, per grauem Strich von den Trainingsdaten getrennt (beide = pro Tag, nicht pro Einheit) -->
+    <div class="note-editor-divider"><span>Tageswerte</span></div>
     <div class="setup-field">
       <label class="setup-label">Schlafqualität (Tag der Einheit, optional)</label>
       <div class="mood-picker" id="actMoodPicker"></div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Schritte (Tag der Einheit, optional)</label>
+      <input class="setup-input" id="actSteps" type="number" min="0" step="1" placeholder="z.B. 14500">
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityModal()">Speichern</button>
