@@ -957,9 +957,11 @@ function renderOverviewGroup() {
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
   const weightByDate = {};
   const sleepByDate = {};
+  const stepsByDate = {};
   _wellnessFull.forEach(d => {
     if (d.weight != null) weightByDate[d.id] = d.weight;
     if (d.sleepSecs) sleepByDate[d.id] = d.sleepSecs;
+    if (wellnessSteps(d) != null) stepsByDate[d.id] = wellnessSteps(d);
   });
   const journalByDate = journalByDateMap();
 
@@ -973,7 +975,7 @@ function renderOverviewGroup() {
 
   // Angezeigte (im Zeitraum) / Gesamtzahl aller geladenen Aktivitäten
   document.getElementById('journalCount').textContent = `${activities.length} / ${_activitiesFull.length} Aktivitäten`;
-  renderActivityTable(merged,'allActivities',null,weightByDate,sleepByDate,journalByDate);
+  renderActivityTable(merged,'allActivities',null,weightByDate,sleepByDate,journalByDate,stepsByDate);
 
   const mix = {};
   Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung').forEach(t => { mix[t] = 0; });
@@ -1125,11 +1127,14 @@ function renderWellnessGroup() {
   renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(59,130,246,0.3)',borderColor:'#3b82f6',borderWidth:1,borderRadius:4}]},options:lineOptions()});
   const weightSorted=sorted.filter(d=>d.weight!=null);
   renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
-  renderStepsChart(days);
+  renderStepsChart(sorted);
 }
 
-// Job-Belastung (Schritte/Tag) — manuell im Aktivitäten-Fenster erfasst, bewusst getrennt von CTL/ATL/TSB.
-// Zeigt nur Tage mit erfasstem Wert; Tage über Schwellenwert werden farblich hervorgehoben.
+function wellnessSteps(d) { return d.steps ?? d.totalSteps ?? null; }
+
+// Job-Belastung (Schritte/Tag) — automatisch via Garmin-Sync aus Intervals.icu (Wellness-API), analog zu
+// Gewicht/Schlaf. Bewusst als eigene Kachel getrennt von CTL/ATL/TSB. Tage über Schwellenwert werden
+// farblich hervorgehoben.
 function stepsThreshold() {
   return parseInt(localStorage.getItem('steps_threshold')) || 13000;
 }
@@ -1138,15 +1143,12 @@ function setStepsThreshold(v) {
   if (n > 0) localStorage.setItem('steps_threshold', n);
   renderWellnessGroup();
 }
-function renderStepsChart(days) {
+function renderStepsChart(sorted) {
   const el = document.getElementById('stepsThresholdInput');
   const threshold = stepsThreshold();
   if (el) el.value = threshold;
-  const since = daysAgo(days);
-  const entries = [..._notes, ..._localDayNotes]
-    .filter(n => n.steps && n.date && new Date(n.date) >= since)
-    .sort((a,b) => a.date.localeCompare(b.date));
-  renderChart('stepsChart',{type:'bar',data:{labels:entries.map(n=>fmtAxisDate(n.date.slice(0,10))),datasets:[{label:'Schritte',data:entries.map(n=>n.steps),backgroundColor:entries.map(n=>n.steps>=threshold?'rgba(239,68,68,0.55)':'rgba(59,130,246,0.3)'),borderColor:entries.map(n=>n.steps>=threshold?'#ef4444':'#3b82f6'),borderWidth:1,borderRadius:4}]},options:lineOptions()});
+  const entries = sorted.filter(d => wellnessSteps(d) != null);
+  renderChart('stepsChart',{type:'bar',data:{labels:entries.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Schritte',data:entries.map(wellnessSteps),backgroundColor:entries.map(d=>wellnessSteps(d)>=threshold?'rgba(239,68,68,0.55)':'rgba(59,130,246,0.3)'),borderColor:entries.map(d=>wellnessSteps(d)>=threshold?'#ef4444':'#3b82f6'),borderWidth:1,borderRadius:4}]},options:lineOptions()});
 }
 
 
@@ -1255,11 +1257,10 @@ function parseFrontmatter(content) {
   return { fm, body: body.trim() };
 }
 
-function buildNoteContent(body, trainer, title, date, mood, steps) {
+function buildNoteContent(body, trainer, title, date, mood) {
   date = date || nowLocalISO();
   const moodLine = mood ? `\nmood: ${mood}` : '';
-  const stepsLine = steps ? `\nsteps: ${steps}` : '';
-  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}${stepsLine}\n---\n\n${body}`;
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
 }
 
 async function loadNotes() {
@@ -1280,7 +1281,7 @@ async function loadNotes() {
     for (const f of mdFiles) {
       const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
       const { fm, body } = parseFrontmatter(b64dec(file.content));
-      notes.push({ filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, steps: fm.steps ? parseInt(fm.steps) : null, body });
+      notes.push({ filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body });
     }
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
@@ -1468,11 +1469,10 @@ function openActivityModal(actId) {
   const resp = getManualRespiration()[act.id];
   document.getElementById('actRespiration').value = resp != null ? resp : '';
 
-  // Schlaf & Schritte des Tages (pro Tag, aus der Tagesnotiz)
+  // Schlaf des Tages (pro Tag, aus der Tagesnotiz)
   _activityModalDay = fmtDate(new Date(act.start_date_local));
   const dayNote = findDayNote(_activityModalDay);
   renderMoodPicker(dayNote && dayNote.mood != null ? dayNote.mood : null, 'actMoodPicker');
-  document.getElementById('actSteps').value = dayNote && dayNote.steps ? dayNote.steps : '';
 
   document.getElementById('activityModalError').style.display = 'none';
   document.getElementById('activityModal').style.display = 'flex';
@@ -1505,16 +1505,14 @@ async function saveActivityModal() {
   saveActivityMetaValue(_activityModalId, { rpe, feel, note });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
-  // Schlaf & Schritte des Tages in die Tagesnotiz schreiben
+  // Schlaf des Tages in die Tagesnotiz schreiben
   const moodSel = document.getElementById('actMoodPicker').dataset.selected;
   const mood = moodSel ? parseInt(moodSel) : null;
-  const stepsVal = document.getElementById('actSteps').value.trim();
-  const steps = stepsVal ? parseInt(stepsVal) : null;
   try {
-    if (_activityModalDay) await saveDayContext(_activityModalDay, mood, steps);
+    if (_activityModalDay) await saveDayMood(_activityModalDay, mood);
   } catch(e) {
     const errEl = document.getElementById('activityModalError');
-    errEl.textContent = 'Tageswerte konnten nicht gespeichert werden: ' + e.message;
+    errEl.textContent = 'Schlafdaten konnten nicht gespeichert werden: ' + e.message;
     errEl.style.display = 'block';
     return;
   }
@@ -1523,24 +1521,24 @@ async function saveActivityModal() {
   renderFromCache();
 }
 
-// Schreibt Schlafqualität & Schritte in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus
-async function saveDayContext(dayStr, mood, steps) {
+// Schreibt die Schlafqualität in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus
+async function saveDayMood(dayStr, mood) {
   if (ghToken && ghRepo) {
     const existing = _notes.find(n => n.date && n.date.slice(0,10) === dayStr);
-    if (!existing && mood == null && steps == null) return;
+    if (!existing && mood == null) return;
     const title = existing ? existing.title : 'Tagesnotiz';
     const body  = existing ? existing.body : '';
     const date  = existing && existing.date ? existing.date : dayStr + 'T' + nowLocalISO().slice(11,16);
-    const content  = buildNoteContent(body, existing ? existing.trainer : 'journal', title, date, mood, steps);
+    const content  = buildNoteContent(body, existing ? existing.trainer : 'journal', title, date, mood);
     const filename = existing ? existing.filename : `${Date.now()}-journal.md`;
     const res = await saveNoteToGH(filename, content, existing ? existing.sha : null);
-    if (existing) { existing.mood = mood; existing.steps = steps; existing.sha = res.content.sha; }
-    else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, steps, body }); }
+    if (existing) { existing.mood = mood; existing.sha = res.content.sha; }
+    else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, body }); }
     return;
   }
   const existing = _localDayNotes.find(n => n.date && n.date.slice(0,10) === dayStr);
-  if (existing) { existing.mood = mood; existing.steps = steps; }
-  else if (mood != null || steps != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood, steps });
+  if (existing) existing.mood = mood;
+  else if (mood != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood });
   saveLocalDayNotes();
 }
 
@@ -1745,8 +1743,6 @@ async function saveNoteEditor() {
   if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
 
-  // Schritte werden nicht hier, sondern im Aktivitäten-Modal gepflegt (siehe saveActivityModal) —
-  // bestehenden Wert beim Speichern des Morgen-Checks unverändert übernehmen.
   if (_noteEditorLocalMode) {
     if (_editingLocalNoteId) {
       const n = _localDayNotes.find(x => x.id === _editingLocalNoteId);
@@ -1761,8 +1757,7 @@ async function saveNoteEditor() {
     return;
   }
 
-  const existingSteps = _editingNote ? _notes.find(x => x.filename === _editingNote.filename)?.steps : null;
-  const content  = buildNoteContent(body, 'journal', title, date, mood, existingSteps);
+  const content  = buildNoteContent(body, 'journal', title, date, mood);
   const filename = _editingNote ? _editingNote.filename : `${Date.now()}-journal.md`;
   const sha      = _editingNote ? _editingNote.sha : null;
   try {
@@ -1802,8 +1797,9 @@ async function copyNoteForClaude() {
     '## Weitere Werte',
     `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
   ];
-  const dayNote = findDayNote(dateVal);
-  if (dayNote && dayNote.steps) lines.push(`Schritte (Job-Belastung): ${dayNote.steps}`);
+  const wellnessDay = (_wellnessFull || []).find(d => d.id === dateVal);
+  const daySteps = wellnessDay ? wellnessSteps(wellnessDay) : null;
+  if (daySteps) lines.push(`Schritte (Job-Belastung): ${daySteps}`);
 
   // Letzte Trainingseinheiten (7 Tage) als Kontext für die Trainer-Empfehlung
   const since = daysAgo(7);
@@ -1994,7 +1990,7 @@ function statChip(label, valueHtml) {
   </div>`;
 }
 
-function renderActivityTable(activities, containerId, limit=null, weightByDate=null, sleepByDate=null, journalByDate=null) {
+function renderActivityTable(activities, containerId, limit=null, weightByDate=null, sleepByDate=null, journalByDate=null, stepsByDate=null) {
   const el=document.getElementById(containerId); if(!el) return;
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
@@ -2026,10 +2022,10 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     let weightVal = '—', sleepVal = '—', moodVal = '—', stepsVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
     if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
     if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
+    if (stepsByDate) { const s = stepsByDate[dayKey]; stepsVal = s!=null?s:'—'; } // Schritte automatisch via Garmin-Sync (Intervals.icu Wellness-API)
     if (journalByDate) {
       const n = journalByDate[dayKey];
       moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—'; // Schlafqualität bleibt pro Tag (Notiz)
-      stepsVal = n && n.steps ? n.steps : '—'; // Schritte ebenfalls pro Tag (Notiz), im Aktivitäten-Modal erfasst
       titleHtml = n
         ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
         : '<span style="color:var(--text2)">—</span>';
@@ -2057,7 +2053,7 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       ${statChip('Zeit', dur)}
       ${statChip('Ø HF', hr)}
       ${statChip('Ø Watt', wattVal)}
-      ${journalByDate?statChip('Schritte', stepsVal):''}
+      ${stepsByDate?statChip('Schritte', stepsVal):''}
       ${statChip('Atmung', respVal)}
       ${statChip('Höhe', elev)}
       ${journalByDate?statChip('Anstreng.', rpeVal):''}

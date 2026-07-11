@@ -376,11 +376,12 @@
             <div class="card-title" style="margin-bottom:12px">Gewicht</div>
             <div class="chart-box" style="height:220px"><canvas id="weightChart"></canvas></div>
           </div>
-          <!-- Job-Belastung (Schritte): eigene Kachel, bewusst getrennt von CTL/ATL/TSB — reine Kontext-Anzeige, keine Ampel-Logik -->
+          <!-- Job-Belastung (Schritte): eigene Kachel, bewusst getrennt von CTL/ATL/TSB — reine Kontext-Anzeige, keine Ampel-Logik.
+               Datenquelle automatisch via Garmin-Sync aus Intervals.icu (Wellness-API), analog zu Gewicht/Schlaf. -->
           <div class="card">
             <div style="margin-bottom:12px">
               <div class="card-title">Schritte</div>
-              <div class="card-meta" style="margin-top:2px">Job-Belastung</div>
+              <div class="card-meta" style="margin-top:2px">Job-Belastung · automatisch via Garmin-Sync</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
               <label class="setup-label" style="margin:0" for="stepsThresholdInput">Schwellenwert</label>
@@ -470,15 +471,12 @@
       <label class="setup-label">Bemerkung zur Einheit (optional)</label>
       <textarea class="note-textarea" id="actNote" style="min-height:90px" placeholder="z.B. Beine schwer, Wetter, Technik-Fokus…"></textarea>
     </div>
-    <!-- Schlaf & Schritte ans Ende, per grauem Strich von den Trainingsdaten getrennt (beide = pro Tag, nicht pro Einheit) -->
-    <div class="note-editor-divider"><span>Tageswerte</span></div>
+    <!-- Schlaf ans Ende, per grauem Strich von den Trainingsdaten getrennt (Schlaf = pro Tag, nicht pro Einheit).
+         Schritte sind kein manuelles Feld mehr — kommen automatisch via Garmin-Sync aus Intervals.icu. -->
+    <div class="note-editor-divider"><span>Schlaf</span></div>
     <div class="setup-field">
       <label class="setup-label">Schlafqualität (Tag der Einheit, optional)</label>
       <div class="mood-picker" id="actMoodPicker"></div>
-    </div>
-    <div class="setup-field">
-      <label class="setup-label">Schritte (Tag der Einheit, optional)</label>
-      <input class="setup-input" id="actSteps" type="number" min="0" step="1" placeholder="z.B. 14500">
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityModal()">Speichern</button>
