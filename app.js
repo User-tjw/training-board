@@ -1006,14 +1006,6 @@ function renderOverviewGroup() {
   const days = getRangeDays('overview', 14);
 
   const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
-  const weightByDate = {};
-  const sleepByDate = {};
-  const stepsByDate = {};
-  _wellnessFull.forEach(d => {
-    if (d.weight != null) weightByDate[d.id] = d.weight;
-    if (d.sleepSecs) sleepByDate[d.id] = d.sleepSecs;
-    if (wellnessSteps(d) != null) stepsByDate[d.id] = wellnessSteps(d);
-  });
   const journalByDate = journalByDateMap();
 
   const activityDays = new Set(activities.map(a => fmtDate(new Date(a.start_date_local))));
@@ -1026,7 +1018,7 @@ function renderOverviewGroup() {
 
   // Angezeigte (im Zeitraum) / Gesamtzahl aller geladenen Aktivitäten
   document.getElementById('journalCount').textContent = `${activities.length} / ${_activitiesFull.length} Aktivitäten`;
-  renderActivityTable(merged,'allActivities',null,weightByDate,sleepByDate,journalByDate,stepsByDate);
+  renderActivityTable(merged,'allActivities',null,journalByDate);
 
   const mix = {};
   Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung').forEach(t => { mix[t] = 0; });
@@ -1179,6 +1171,90 @@ function renderWellnessGroup() {
   const weightSorted=sorted.filter(d=>d.weight!=null);
   renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
   renderStepsChart(sorted);
+  renderWellnessDayList(sorted);
+}
+
+// Tagesübersicht der Gesundheitsdaten (Gewicht, Schlaf, Ruhepuls, HRV, Schritte, Schlafqualität) —
+// analog zum Journal, aber als eigene Liste, seit Aktivitäts- und Gesundheitsdaten getrennt wurden.
+// Klick auf einen Tag öffnet den Editor zum nachträglichen Korrigieren (siehe openWellnessEditModal).
+function renderWellnessDayList(sorted) {
+  const el = document.getElementById('wellnessDayList');
+  if (!el) return;
+  if (!sorted.length) { el.innerHTML = '<div class="loading">Keine Daten</div>'; return; }
+  const journalByDate = journalByDateMap();
+  const days = [...sorted].reverse(); // neueste zuerst
+
+  let lastYear = null;
+  el.innerHTML = days.map(d => {
+    const year = parseInt(d.id.slice(0,4));
+    const yearDivider = year !== lastYear
+      ? `<div style="display:flex;align-items:center;gap:14px;margin:${lastYear!==null?'26px':'4px'} 0 12px;color:var(--text);font-size:20px;font-weight:700;letter-spacing:0.02em">${lastYear!==null?'<div style="flex:1;height:2px;background:var(--border)"></div>':''}<span class="mono">${year}</span><div style="flex:1;height:2px;background:var(--border)"></div></div>`
+      : '';
+    lastYear = year;
+    const dateLabel = new Date(d.id + 'T00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+    const weightVal = d.weight != null ? d.weight.toFixed(1)+' kg' : '—';
+    const sleepVal = d.sleepSecs ? (d.sleepSecs/3600).toFixed(1)+' h' : '—';
+    const rhrVal = d.restingHR != null ? Math.round(d.restingHR)+' bpm' : '—';
+    const hrvVal = d.hrv != null ? Math.round(d.hrv)+' ms' : '—';
+    const steps = wellnessSteps(d);
+    const stepsVal = steps != null ? fmtNum(steps) : '—';
+    const n = journalByDate[d.id];
+    const moodVal = n && n.mood != null ? moodIcon(n.mood,16) : '—';
+
+    return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openWellnessEditModal('${d.id}')" title="Werte nachträglich ändern">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
+        <span class="mono" style="font-size:12px">${dateLabel}</span>
+      </div>
+      ${statChip('Gewicht', weightVal)}
+      ${statChip('Schlaf', sleepVal)}
+      ${statChip('Ruhepuls', rhrVal)}
+      ${statChip('HRV', hrvVal)}
+      ${statChip('Schritte', stepsVal)}
+      ${statChip('Schlafqual.', moodVal)}
+      <div style="display:flex;align-items:center;margin-left:auto">
+        <button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Werte nachträglich ändern" onclick="event.stopPropagation();openWellnessEditModal('${d.id}')">${pencilIcon(13)}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let _wellnessEditDay = null;
+
+function openWellnessEditModal(dayStr) {
+  _wellnessEditDay = dayStr;
+  const d = _wellnessFull.find(x => x.id === dayStr) || {};
+  document.getElementById('wellnessEditModalDate').textContent = new Date(dayStr + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('wellnessEditWeight').value = d.weight != null ? d.weight : '';
+  document.getElementById('wellnessEditRestingHR').value = d.restingHR != null ? Math.round(d.restingHR) : '';
+  document.getElementById('wellnessEditHrv').value = d.hrv != null ? d.hrv : '';
+  document.getElementById('wellnessEditError').style.display = 'none';
+  document.getElementById('wellnessEditModal').style.display = 'flex';
+}
+
+function closeWellnessEditModal() {
+  document.getElementById('wellnessEditModal').style.display = 'none';
+  _wellnessEditDay = null;
+}
+
+async function saveWellnessEdit() {
+  if (!_wellnessEditDay) return;
+  const num = id => { const v = document.getElementById(id).value.trim(); return v === '' ? null : parseFloat(v); };
+  const body = {};
+  const weight = num('wellnessEditWeight'); if (weight != null) body.weight = weight;
+  const restingHR = num('wellnessEditRestingHR'); if (restingHR != null) body.restingHR = Math.round(restingHR);
+  const hrv = num('wellnessEditHrv'); if (hrv != null) body.hrv = hrv;
+  const errEl = document.getElementById('wellnessEditError');
+  try {
+    const updated = await icuWrite(`/athlete/${athleteId}/wellness/${_wellnessEditDay}`, 'PUT', body);
+    let entry = _wellnessFull.find(x => x.id === _wellnessEditDay);
+    if (!entry) { entry = { id: _wellnessEditDay }; _wellnessFull.push(entry); }
+    Object.assign(entry, updated || body);
+    closeWellnessEditModal();
+    renderFromCache();
+  } catch(e) {
+    errEl.textContent = 'Fehler beim Speichern: ' + e.message;
+    errEl.style.display = 'block';
+  }
 }
 
 function wellnessSteps(d) { return d.steps ?? d.totalSteps ?? null; }
@@ -2110,7 +2186,7 @@ function statChip(label, valueHtml) {
   </div>`;
 }
 
-function renderActivityTable(activities, containerId, limit=null, weightByDate=null, sleepByDate=null, journalByDate=null, stepsByDate=null) {
+function renderActivityTable(activities, containerId, limit=null, journalByDate=null) {
   const el=document.getElementById(containerId); if(!el) return;
   const list=limit?activities.slice(0,limit):activities;
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
@@ -2139,13 +2215,9 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
     const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
-    let weightVal = '—', sleepVal = '—', moodVal = '—', stepsVal = '—', titleHtml = '<span style="color:var(--text2)">—</span>';
-    if (weightByDate) { const w = weightByDate[dayKey]; weightVal = w!=null?w.toFixed(1)+' kg':'—'; }
-    if (sleepByDate) { const s = sleepByDate[dayKey]; sleepVal = s!=null?(s/3600).toFixed(1)+' h':'—'; }
-    if (stepsByDate) { const s = stepsByDate[dayKey]; stepsVal = s!=null?fmtNum(s):'—'; } // Schritte automatisch via Garmin-Sync (Intervals.icu Wellness-API)
+    let titleHtml = '<span style="color:var(--text2)">—</span>';
     if (journalByDate) {
       const n = journalByDate[dayKey];
-      moodVal = n && n.mood!=null ? moodIcon(n.mood,16) : '—'; // Schlafqualität bleibt pro Tag (Notiz)
       titleHtml = n
         ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
         : '<span style="color:var(--text2)">—</span>';
@@ -2173,16 +2245,11 @@ function renderActivityTable(activities, containerId, limit=null, weightByDate=n
       ${statChip('Zeit', dur)}
       ${statChip('Ø HF', hr)}
       ${statChip('Ø Watt', wattVal)}
-      ${stepsByDate?statChip('Schritte', stepsVal):''}
       ${statChip('Atmung', respVal)}
       ${statChip('Höhe', elev)}
       ${journalByDate?statChip('Anstreng.', rpeVal):''}
       ${journalByDate?statChip('Befinden', feelVal):''}
-      ${(journalByDate||sleepByDate||weightByDate)?`<div class="trend-kpi-sep" style="min-height:32px"></div>`:''}
-      ${weightByDate?statChip('Gewicht', weightVal):''}
-      ${sleepByDate?statChip('Schlaf', sleepVal):''}
-      ${journalByDate?statChip('Schlafqual.', moodVal):''}
-      ${journalByDate?`<div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="${isNoteOnly?'Morgen-Check bearbeiten':'Bearbeiten — Details & Bewertung'}" onclick="${isNoteOnly?`openNoteEditor('${dayKey}')`:`openActivityModal('${a.id}')`}">${pencilIcon(13)}</button></div>`:''}
+      ${journalByDate?`<div class="trend-kpi-sep" style="min-height:32px"></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="${isNoteOnly?'Morgen-Check bearbeiten':'Bearbeiten — Details & Bewertung'}" onclick="${isNoteOnly?`openNoteEditor('${dayKey}')`:`openActivityModal('${a.id}')`}">${pencilIcon(13)}</button></div>`:''}
     </div>`;
   }).join('');
 }
