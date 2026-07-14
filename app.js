@@ -576,7 +576,10 @@ async function loadAll() {
     renderFromCache();
 
     loadFullRangeInBackground();
-    if (ghToken && ghRepo && _notes.length === 0) loadNotesInBackground();
+    if (ghToken && ghRepo) {
+      if (_notes.length === 0) loadNotesInBackground();
+      else loadOlderNotesInBackground();
+    }
   } catch(err) {
     console.error(err);
     setStatus(false);
@@ -592,6 +595,7 @@ async function loadNotesInBackground() {
     _notes = await loadNotes();
     refreshCockpitMoodTile();
     renderFromCache();
+    loadOlderNotesInBackground();
   } catch(err) {
     console.error('Notizen-Hintergrund-Nachladung fehlgeschlagen:', err);
   }
@@ -1310,6 +1314,18 @@ function buildNoteContent(body, trainer, title, date, mood) {
   return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
 }
 
+// Notiz-Dateinamen beginnen mit dem Erstellungs-Zeitstempel (ms seit Epoch), siehe saveNoteEditor().
+// Damit lässt sich vor dem Laden filtern, ohne den Dateiinhalt abzurufen.
+const NOTES_FAST_LOAD_DAYS = 14; // deckt den Standard-Zeitraum der Journal-Übersicht ab
+let _notesOlderPending = null; // Dateiliste älterer Notizen, die noch nachgeladen werden müssen
+let _notesOlderLoading = false;
+
+async function fetchNoteFile(f) {
+  const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
+  const { fm, body } = parseFrontmatter(b64dec(file.content));
+  return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body };
+}
+
 async function loadNotes() {
   if (!ghToken || !ghRepo) return [];
   try {
@@ -1322,19 +1338,39 @@ async function loadNotes() {
     }
     if (!Array.isArray(files)) return [];
     const mdFiles = files.filter(f => f.name.endsWith('.md'));
+    const cutoff = daysAgo(NOTES_FAST_LOAD_DAYS).getTime();
+    const recent = mdFiles.filter(f => (parseInt(f.name) || 0) >= cutoff);
+    const older = mdFiles.filter(f => (parseInt(f.name) || 0) < cutoff);
+
     // Nacheinander statt Promise.all: viele parallele Requests an die GitHub-API können deren
     // Missbrauchserkennung (Secondary Rate Limit) auslösen und dann wie ein CORS-Fehler aussehen.
     const notes = [];
-    for (const f of mdFiles) {
-      const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
-      const { fm, body } = parseFrontmatter(b64dec(file.content));
-      notes.push({ filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body });
-    }
+    for (const f of recent) notes.push(await fetchNoteFile(f));
+    _notesOlderPending = older.length ? older : null;
     return notes.sort((a,b) => b.date.localeCompare(a.date));
   } catch(e) {
     console.error('GitHub notes:', e);
     showGhSyncError(e.message);
     return [];
+  }
+}
+
+// Notizen älter als NOTES_FAST_LOAD_DAYS werden erst nachgeladen, nachdem die aktuellen schon
+// angezeigt werden — nötig z.B. für die 30/90/365-Tage-Ansicht der Journal-Übersicht.
+async function loadOlderNotesInBackground() {
+  if (!_notesOlderPending || !_notesOlderPending.length || _notesOlderLoading) return;
+  _notesOlderLoading = true;
+  const pending = _notesOlderPending;
+  _notesOlderPending = null;
+  try {
+    for (const f of pending) _notes.push(await fetchNoteFile(f));
+    _notes.sort((a,b) => b.date.localeCompare(a.date));
+    refreshCockpitMoodTile();
+    renderFromCache();
+  } catch(err) {
+    console.error('Ältere Notizen nachladen fehlgeschlagen:', err);
+  } finally {
+    _notesOlderLoading = false;
   }
 }
 
