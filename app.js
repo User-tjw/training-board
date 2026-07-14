@@ -570,17 +570,30 @@ async function loadAll() {
       icuFetch(`/athlete/${athleteId}/events?oldest=${fmtDate(daysAgo(7))}&newest=${fmtDate(daysAgo(-60))}&category=WORKOUT`),
     ]);
 
-    if (ghToken && ghRepo && _notes.length === 0) _notes = await loadNotes();
-
     applyIcuData(wellnessFull, activitiesFull, eventsFull);
     setStatus(true);
     renderCockpitStatus(wellnessFull, _fitnessFull, _activitiesFull);
     renderFromCache();
 
     loadFullRangeInBackground();
+    if (ghToken && ghRepo && _notes.length === 0) loadNotesInBackground();
   } catch(err) {
     console.error(err);
     setStatus(false);
+  }
+}
+
+// Notizen werden einzeln nacheinander von GitHub geladen (siehe loadNotes) — bei vielen
+// gespeicherten Notizen kann das mehrere Sekunden dauern. Blockiert deshalb nicht mehr den
+// ersten Render, sondern lädt im Hintergrund nach und aktualisiert danach nur die
+// notizabhängigen Teile (Mood-Kachel, Journal-Einträge in der Aktivitäten-Tabelle).
+async function loadNotesInBackground() {
+  try {
+    _notes = await loadNotes();
+    refreshCockpitMoodTile();
+    renderFromCache();
+  } catch(err) {
+    console.error('Notizen-Hintergrund-Nachladung fehlgeschlagen:', err);
   }
 }
 
@@ -1840,6 +1853,16 @@ async function copyNoteForClaude() {
     .filter(a => !a._noteOnly && new Date(a.start_date_local) >= since)
     .forEach(a => { const k = fmtDate(new Date(a.start_date_local)); (recentByDay[k] = recentByDay[k] || []).push(a); });
 
+  // Pendel-/Kurzfahrten (Rad, "Fahrt zur Arbeit" oder <15min ohne Leistungsdaten) werden pro Tag
+  // zu einer Zeile zusammengefasst, um den Bericht zu verdichten — Einheiten mit Trainingswert
+  // bleiben unverändert als eigene Zeile.
+  const isCommuteRide = a => {
+    if (normalizeType(a.type) !== 'Rad') return false;
+    if (/Fahrt zur Arbeit/i.test(a.name || '')) return true;
+    const watts = a.icu_weighted_avg_watts || a.icu_average_watts || a.average_watts;
+    return (a.moving_time || 0) < 15*60 && !a.average_heartrate && !watts;
+  };
+
   const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(i)));
   const dayLines = [];
   days7.forEach(dayKey => {
@@ -1852,7 +1875,23 @@ async function copyNoteForClaude() {
       if (steps) dayLines.push(`- ${dLabel} · Ruhetag — ${steps} Schritte`);
       return;
     }
-    acts.forEach((a, idx) => {
+
+    const commuteActs = acts.filter(isCommuteRide);
+    const trainActs = acts.filter(a => !isCommuteRide(a));
+    let stepsUsed = false;
+
+    if (commuteActs.length) {
+      const sumTime = commuteActs.reduce((s,a) => s + (a.moving_time||0), 0);
+      const sumDist = commuteActs.reduce((s,a) => s + (a.distance||0), 0);
+      const sumElev = commuteActs.reduce((s,a) => s + (a.total_elevation_gain||0), 0);
+      const parts = [`${Math.round(sumTime/60)}m`];
+      if (sumDist) parts.push((sumDist/1000).toFixed(1)+' km');
+      if (sumElev) parts.push(Math.round(sumElev)+' hm');
+      if (steps) { parts.push(`${steps} Schritte`); stepsUsed = true; }
+      dayLines.push(`- ${dLabel} · Rad: Pendeln — ${parts.join(' · ')}`);
+    }
+
+    trainActs.forEach(a => {
       const watts = a.icu_weighted_avg_watts || a.icu_average_watts || a.average_watts;
       const parts = [];
       if (a.moving_time) parts.push(formatDur(a.moving_time));
@@ -1860,7 +1899,7 @@ async function copyNoteForClaude() {
       if (a.average_heartrate) parts.push('Ø '+Math.round(a.average_heartrate)+' bpm');
       if (watts) parts.push('Ø '+Math.round(watts)+' W');
       if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
-      if (idx === 0 && steps) parts.push(`${steps} Schritte`);
+      if (!stepsUsed && steps) { parts.push(`${steps} Schritte`); stepsUsed = true; }
       dayLines.push(`- ${dLabel} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
       // eigene Trainingsbewertung pro Einheit (RPE / Befinden / Atmung / Bemerkung)
       const m = getActivityMetaFor(a.id);
