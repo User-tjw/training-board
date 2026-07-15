@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260711">
+  <link rel="stylesheet" href="style.css?v=20260715">
 </head>
 <body>
 
@@ -458,6 +458,12 @@
     </div>
     <!-- Fixe Kennzahlen aus intervals.icu (nur Anzeige) -->
     <div id="activityModalStats" class="activity-stats"></div>
+    <!-- Training Effect: automatisch vorbefüllt (Pace/Watt/Load), nachträglich frei editierbar -->
+    <div class="setup-field" style="margin-top:10px">
+      <label class="setup-label">Training Effect</label>
+      <input class="setup-input" id="actTrainingEffect" type="text" placeholder="z.B. 6:25/km">
+      <div class="setup-hint">Automatisch vorbefüllt (Pace/Watt/Load) · nachträglich änderbar</div>
+    </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <!-- Empfundene Anstrengung (RPE 1–10) -->
     <div class="setup-field">
@@ -580,6 +586,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260714c"></script>
+<script src="app.js?v=20260715"></script>
 </body>
 </html>

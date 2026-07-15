@@ -633,6 +633,20 @@ const PLAN_EXTRA_COLORS = {Ruhetag:'#94a3b8', Krankheit:'#dc2626'};
 const PLAN_TYPES = [...Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung'), 'Ruhetag', 'Krankheit'];
 function planTypeColor(t) { return TYPE_COLORS[t] || PLAN_EXTRA_COLORS[t] || '#94a3b8'; }
 
+// Automatisch berechneter Trainingsreiz (Pace bei Laufen, Watt bei Rad, sonst Load) —
+// Standardwert für das editierbare "Training Effect"-Feld, solange keine manuelle Eingabe vorliegt.
+function computeDefaultTrainingEffect(act, type) {
+  if (type === 'Laufen' && act.average_speed) {
+    const secPerKm = 1000 / act.average_speed;
+    const m = Math.floor(secPerKm/60), s = Math.round(secPerKm%60);
+    return `${m}:${String(s).padStart(2,'0')}/km`;
+  }
+  const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
+  if (type === 'Rad' && watts) return `${Math.round(watts)} W`;
+  if (act.icu_training_load) return `Load ${Math.round(act.icu_training_load)}`;
+  return '';
+}
+
 function buildWeekCalendar(weekStart, weekActs) {
   const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
   const todayStr = fmtDate(new Date());
@@ -645,32 +659,20 @@ function buildWeekCalendar(weekStart, weekActs) {
     return { date: d, dStr, isToday: dStr === todayStr, acts };
   });
 
-  function mainBenefit(act, type) {
-    if (type === 'Laufen' && act.average_speed) {
-      const secPerKm = 1000 / act.average_speed;
-      const m = Math.floor(secPerKm/60), s = Math.round(secPerKm%60);
-      return `${m}:${String(s).padStart(2,'0')}/km`;
-    }
-    const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
-    if (type === 'Rad' && watts) return `${Math.round(watts)} W`;
-    if (act.icu_training_load) return `Load ${Math.round(act.icu_training_load)}`;
-    return '';
-  }
-
   // Eine Aktivität als abgerundeter, klickbarer Balken (öffnet das Aktivitäten-Fenster)
+  // Zeigt bewusst nur Aktivität, Training Effect, Distanz, Dauer und Ø HF — Beschreibung/Name
+  // und RPE stehen stattdessen im Detail-Fenster (openActivityModal).
   function activityBar(act) {
     const type = normalizeType(act.type);
     const color = TYPE_COLORS[type] || '#94a3b8';
     const km = act.distance ? (act.distance/1000).toFixed(1)+' km' : '';
     const dur = act.moving_time ? formatDur(act.moving_time) : '';
     const hr = act.average_heartrate ? Math.round(act.average_heartrate)+' bpm' : '';
-    const benefit = mainBenefit(act, type);
     const meta = getActivityMetaFor(act.id);
-    const rpeBadge = meta.rpe ? `<span class="wc-bar-rpe" style="background:hsl(${rpeHue(meta.rpe)},70%,45%)" title="RPE ${meta.rpe}/10">${meta.rpe}</span>` : '';
-    const stats = [km, dur, hr, benefit].filter(Boolean).join(' · ');
+    const trainingEffect = meta.trainingEffect || computeDefaultTrainingEffect(act, type);
+    const stats = [km, dur, hr].filter(Boolean).join(' · ');
     return `<div class="wc-bar" style="background:${color}1a;--wc-c:${color}" onclick="openActivityModal('${act.id}')" title="Details &amp; Bewertung öffnen">
-      <div class="wc-bar-top"><span class="wc-bar-type">${type.toUpperCase()}</span>${rpeBadge}</div>
-      <div class="wc-bar-name">${escHtml(act.name || type)}</div>
+      <div class="wc-bar-top"><span class="wc-bar-type">${type.toUpperCase()}</span>${trainingEffect ? `<span class="wc-bar-te">${escHtml(trainingEffect)}</span>` : ''}</div>
       ${stats ? `<div class="wc-bar-sub">${stats}</div>` : ''}
     </div>`;
   }
@@ -1625,6 +1627,7 @@ function openActivityModal(actId) {
   renderRpePicker(meta.rpe || null);
   renderFeelPicker(meta.feel || null);
   document.getElementById('actNote').value = meta.note || '';
+  document.getElementById('actTrainingEffect').value = meta.trainingEffect || computeDefaultTrainingEffect(act, type);
   const resp = getManualRespiration()[act.id];
   document.getElementById('actRespiration').value = resp != null ? resp : '';
 
@@ -1661,7 +1664,8 @@ async function saveActivityModal() {
   const rpe  = rpeSel  ? parseInt(rpeSel)  : null;
   const feel = feelSel ? parseInt(feelSel) : null;
   const note = document.getElementById('actNote').value.trim();
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note });
+  const trainingEffect = document.getElementById('actTrainingEffect').value.trim();
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, trainingEffect });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   // Schlaf des Tages in die Tagesnotiz schreiben
