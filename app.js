@@ -691,7 +691,6 @@ function buildWeekCalendar(weekStart, weekActs) {
     const title = readOnly ? 'Aus Intervals.icu — klicken zum Löschen' : 'Geplante Einheit bearbeiten';
     return `<div class="wc-planbar${done?' done':''}" style="--wc-c:${color}" ${click} title="${title}">
       <div class="wc-bar-top"><span class="wc-planbar-type">${s.type.toUpperCase()}</span><span class="wc-planbar-tag">${tag}</span></div>
-      ${s.note?`<div class="wc-bar-name">${escHtml(s.note)}</div>`:''}
       <div class="wc-bar-sub">${sub}</div>
     </div>`;
   }
