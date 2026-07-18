@@ -241,7 +241,7 @@
           </div>
         </div>
         <!-- Hinweis: diese Zeile ist als sehr langer Einzeiler geschrieben (Card mit Header, Historie/Reload-Buttons, Aktivitäten-Mix und Liste) — schwer manuell zu editieren, ggf. Suche nach eindeutigen IDs statt Lesen im Fließtext -->
-        <div class="card"><div class="card-header"><span class="card-title">Aktivitäten <span id="journalCount" class="mono" style="font-size:11px;font-weight:500;color:var(--text2)"></span></span><div style="display:flex;gap:8px"><button class="btn icon-btn" title="Historie" onclick="openHistoryModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="8"/><line x1="16" y1="20" x2="16" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></button><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
+        <div class="card"><div class="card-header"><span class="card-title">Aktivitäten <span id="journalCount" class="mono" style="font-size:11px;font-weight:500;color:var(--text2)"></span></span><div style="display:flex;gap:8px"><button class="btn icon-btn" title="Trainer-Zusammenfassung speichern" onclick="openTrainerNoteModal()">💬</button><button class="btn icon-btn" title="Historie" onclick="openHistoryModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="8"/><line x1="16" y1="20" x2="16" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></button><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
       </div>
     </section>
 
@@ -406,7 +406,8 @@
 </div>
 
 
-<!-- Note Editor Modal: Anlegen/Bearbeiten einer Tagesnotiz (Titel, Datum, Schlafqualität, Atmung, Markdown-Inhalt) -->
+<!-- Note Editor Modal: Anlegen/Bearbeiten einer Tagesnotiz (Titel, Datum, Markdown-Inhalt).
+     Schlafqualität wird hier nicht mehr bearbeitet — exklusiv über die Wellness-Seite (wellnessEditModal). -->
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
   <div class="modal modal-wide">
     <h3 id="noteEditorHeading">Morgen-Check</h3>
@@ -420,11 +421,6 @@
         <label class="setup-label">Datum</label>
         <input class="setup-input" id="noteEditorDate" type="date">
       </div>
-    </div>
-    <!-- Notiz = nur noch Schlaf/Erholung. Trainingsdaten (RPE, Befinden, Atmung, Bemerkung) laufen über das Aktivitäten-Fenster. -->
-    <div class="setup-field">
-      <label class="setup-label">Schlafqualität (optional)</label>
-      <div class="mood-picker" id="moodPicker"></div>
     </div>
     <div class="setup-field">
       <label class="setup-label">Inhalt (Markdown)</label>
@@ -486,13 +482,6 @@
       <label class="setup-label">Bemerkung zur Einheit (optional)</label>
       <textarea class="note-textarea" id="actNote" style="min-height:90px" placeholder="z.B. Beine schwer, Wetter, Technik-Fokus…"></textarea>
     </div>
-    <!-- Schlaf ans Ende, per grauem Strich von den Trainingsdaten getrennt (Schlaf = pro Tag, nicht pro Einheit).
-         Schritte sind kein manuelles Feld mehr — kommen automatisch via Garmin-Sync aus Intervals.icu. -->
-    <div class="note-editor-divider"><span>Schlaf</span></div>
-    <div class="setup-field">
-      <label class="setup-label">Schlafqualität (Tag der Einheit, optional)</label>
-      <div class="mood-picker" id="actMoodPicker"></div>
-    </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityModal()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeActivityModal()">Abbrechen</button>
@@ -550,12 +539,18 @@
       <label class="setup-label">HRV (ms)</label>
       <input class="setup-input" id="wellnessEditHrv" type="number" step="0.1" min="0" placeholder="z.B. 35">
     </div>
+    <!-- Schlafqualität lebt in der Tagesnotiz (GitHub), nicht in Intervals.icu — eigener Schreibpfad
+         (saveDayMood), aber zusammen mit den übrigen Tageswerten hier editierbar. -->
+    <div class="setup-field">
+      <label class="setup-label">Schlafqualität (optional)</label>
+      <div class="mood-picker" id="wellnessEditMoodPicker"></div>
+    </div>
     <div class="setup-error" id="wellnessEditError">Fehler beim Speichern.</div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveWellnessEdit()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeWellnessEditModal()">Abbrechen</button>
     </div>
-    <div style="font-size:10px;color:var(--text2);margin-top:10px">Änderungen werden direkt zu Intervals.icu übertragen.</div>
+    <div style="font-size:10px;color:var(--text2);margin-top:10px">Gewicht/Ruhepuls/HRV werden direkt zu Intervals.icu übertragen, Schlafqualität in die Tagesnotiz.</div>
   </div>
 </div>
 
@@ -586,6 +581,45 @@
   </div>
 </div>
 
-<script src="app.js?v=20260715b"></script>
+<!-- Trainer-Notiz-Modal: Kurzzusammenfassung einer Trainer-Rückmeldung aus dem Claude.ai-Chat
+     manuell zurück ins training-notes-Repo schreiben (eigene Notiz, ergänzt die Tagesnotiz). -->
+<div class="modal-overlay" id="trainerNoteModal" style="display:none" onclick="if(event.target===this)closeTrainerNoteModal()">
+  <div class="modal modal-wide">
+    <h3>💬 Trainer-Zusammenfassung speichern</h3>
+    <div class="note-editor-grid2" style="margin-top:14px">
+      <div class="setup-field">
+        <label class="setup-label">Trainer</label>
+        <select class="setup-input" id="trainerNoteTrainer"></select>
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Datum</label>
+        <input class="setup-input" id="trainerNoteDate" type="date">
+      </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Zusammenfassung</label>
+      <textarea class="note-textarea" id="trainerNoteContent" style="min-height:120px" placeholder="Kurze Zusammenfassung der Trainer-Rückmeldung…"></textarea>
+    </div>
+    <div class="setup-error" id="trainerNoteError">Fehler beim Speichern.</div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveTrainerNoteModal()">Speichern</button>
+      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeTrainerNoteModal()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Trainer-Notizen-Viewer: read-only Anzeige aller Trainer-Zusammenfassungen eines Tages -->
+<div class="modal-overlay" id="trainerNotesViewerModal" style="display:none" onclick="if(event.target===this)closeTrainerNotesViewer()">
+  <div class="modal modal-wide">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <h3 style="margin:0">💬 Trainer-Zusammenfassungen</h3>
+      <button class="btn" onclick="closeTrainerNotesViewer()">✕</button>
+    </div>
+    <div id="trainerNotesViewerDate" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:14px"></div>
+    <div id="trainerNotesViewerList"></div>
+  </div>
+</div>
+
+<script src="app.js?v=20260715c"></script>
 </body>
 </html>

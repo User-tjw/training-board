@@ -4,7 +4,7 @@
     {
       "name": "training-board",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8765"],
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", "D:\\Daten\\Claude\\Projekte\\TrainIQ"],
       "port": 8765
     }
   ]

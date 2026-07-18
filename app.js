@@ -695,6 +695,13 @@ function buildWeekCalendar(weekStart, weekActs) {
     </div>`;
   }
 
+  // Geplante Einheit vergangener Tage, die nicht ausgeführt wurde, verschwindet ab dem Folgetag
+  // aus dem Kalender (nur Anzeige — ICU-Events/plan_sessions bleiben in den Rohdaten erhalten).
+  function visiblePlanSessionsFor(d) {
+    const actualTypes = new Set(d.acts.map(a => normalizeType(a.type)));
+    return getPlanSessionsFor(d.dStr).filter(s => d.dStr >= todayStr || actualTypes.has(s.type));
+  }
+
   const head = days.map((d,i) => {
     const today = byDay[i].isToday;
     return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>`;
@@ -704,7 +711,7 @@ function buildWeekCalendar(weekStart, weekActs) {
   const dayCols = byDay.map(d => {
     const dayMin = Math.round(d.acts.reduce((s,a) => s+(a.moving_time||0), 0) / 60);
     const actualTypes = new Set(d.acts.map(a => normalizeType(a.type)));
-    const planned = getPlanSessionsFor(d.dStr);
+    const planned = visiblePlanSessionsFor(d);
     const actualBars = d.acts.map(activityBar).join('');
     const planBars = planned.map(s => planBar(d.dStr, s, actualTypes.has(s.type))).join('');
     const empty = (!d.acts.length && !planned.length) ? `<div class="wc-empty">–</div>` : '';
@@ -724,7 +731,7 @@ function buildWeekCalendar(weekStart, weekActs) {
   weekActs.forEach(a => { const t = normalizeType(a.type); if (t === 'Atmung') return; typeTotals[t] = (typeTotals[t]||0) + (a.moving_time||0); });
   // Geplante Minuten pro Typ (Summe über alle 7 Tage) — Marker im selben Balken, keine eigene Anzeige
   const plannedMinByType = {};
-  byDay.forEach(d => getPlanSessionsFor(d.dStr).forEach(s => { if (s.min) plannedMinByType[s.type] = (plannedMinByType[s.type]||0) + s.min; }));
+  byDay.forEach(d => visiblePlanSessionsFor(d).forEach(s => { if (s.min) plannedMinByType[s.type] = (plannedMinByType[s.type]||0) + s.min; }));
   const maxTypeT = Math.max(1, ...Object.values(typeTotals));
   const typeHBars = Object.entries(typeTotals).map(([t,s]) => {
     const color = TYPE_COLORS[t] || '#94a3b8';
@@ -1228,6 +1235,8 @@ function openWellnessEditModal(dayStr) {
   document.getElementById('wellnessEditWeight').value = d.weight != null ? d.weight : '';
   document.getElementById('wellnessEditRestingHR').value = d.restingHR != null ? Math.round(d.restingHR) : '';
   document.getElementById('wellnessEditHrv').value = d.hrv != null ? d.hrv : '';
+  const dayNote = findDayNote(dayStr);
+  renderMoodPicker(dayNote && dayNote.mood != null ? dayNote.mood : null, 'wellnessEditMoodPicker');
   document.getElementById('wellnessEditError').style.display = 'none';
   document.getElementById('wellnessEditModal').style.display = 'flex';
 }
@@ -1244,13 +1253,18 @@ async function saveWellnessEdit() {
   const weight = num('wellnessEditWeight'); if (weight != null) body.weight = weight;
   const restingHR = num('wellnessEditRestingHR'); if (restingHR != null) body.restingHR = Math.round(restingHR);
   const hrv = num('wellnessEditHrv'); if (hrv != null) body.hrv = hrv;
+  const moodSel = document.getElementById('wellnessEditMoodPicker').dataset.selected;
+  const mood = moodSel ? parseInt(moodSel) : null;
   const errEl = document.getElementById('wellnessEditError');
   try {
     const updated = await icuWrite(`/athlete/${athleteId}/wellness/${_wellnessEditDay}`, 'PUT', body);
     let entry = _wellnessFull.find(x => x.id === _wellnessEditDay);
     if (!entry) { entry = { id: _wellnessEditDay }; _wellnessFull.push(entry); }
     Object.assign(entry, updated || body);
+    // Schlafqualität (mood) lebt in der Tagesnotiz, nicht in Intervals.icu — separater Schreibpfad.
+    await saveDayMood(_wellnessEditDay, mood);
     closeWellnessEditModal();
+    refreshCockpitMoodTile();
     renderFromCache();
   } catch(e) {
     errEl.textContent = 'Fehler beim Speichern: ' + e.message;
@@ -1312,6 +1326,15 @@ const FEEL_OPTIONS = [
   {v:1, l:'Schwach'}, {v:2, l:'Zäh'}, {v:3, l:'Normal'}, {v:4, l:'Gut'}, {v:5, l:'Stark'},
 ];
 
+// Trainer-Personas für Zusammenfassungen aus dem Claude.ai-Coaching-Chat (siehe openTrainerNoteModal).
+const TRAINER_OPTIONS = [
+  {v:'head-coach', l:'Head Coach'},
+  {v:'reha', l:'Reha'},
+  {v:'kraft', l:'Kraft'},
+  {v:'ernaehrung', l:'Ernährung'},
+  {v:'methodik', l:'UA-Methodik'},
+];
+
 // ─── Tagesnotizen lokal (Fallback ohne GitHub) ────────────────────────────────
 
 let _localDayNotes = JSON.parse(localStorage.getItem('tb_day_notes') || '[]');
@@ -1320,9 +1343,13 @@ function saveLocalDayNotes() {
   localStorage.setItem('tb_day_notes', JSON.stringify(_localDayNotes));
 }
 
-// Tagesnotiz (GitHub oder lokal) zu einem Datum (JJJJ-MM-TT) — trägt u.a. Schlafqualität (mood) und Schritte.
+// Tagesnotiz (GitHub oder lokal) zu einem Datum (JJJJ-MM-TT) — trägt u.a. Schlafqualität (mood).
+// Trainer-Zusammenfassungen (type:'trainer-summary') zählen bewusst nicht als "die" Tagesnotiz,
+// da an einem Tag zusätzlich zur eigenen Notiz auch eine oder mehrere Trainer-Zusammenfassungen
+// existieren können (siehe openTrainerNoteModal) — die eigene Notiz bleibt die für Schlafqualität/
+// Titel maßgebliche.
 function findDayNote(dateStr) {
-  return [..._notes, ..._localDayNotes].find(n => n.date && n.date.slice(0,10) === dateStr);
+  return [..._notes, ..._localDayNotes].find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dateStr);
 }
 
 function todaysMoodValue() {
@@ -1385,10 +1412,15 @@ function parseFrontmatter(content) {
   return { fm, body: body.trim() };
 }
 
-function buildNoteContent(body, trainer, title, date, mood) {
+// isTrainerSummary markiert eine vom Nutzer aus dem Claude.ai-Coaching-Chat zurückgeschriebene
+// Kurzzusammenfassung (siehe openTrainerNoteModal). Eigenes `type`-Feld statt nur `trainer`, damit
+// ältere Notizen aus dem alten 5-Trainer-System (vor der Journal-Zusammenführung, trainer z.B.
+// 'reha'/'kraft') nicht versehentlich als Trainer-Zusammenfassung fehlinterpretiert werden.
+function buildNoteContent(body, trainer, title, date, mood, isTrainerSummary) {
   date = date || nowLocalISO();
   const moodLine = mood ? `\nmood: ${mood}` : '';
-  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}\n---\n\n${body}`;
+  const typeLine = isTrainerSummary ? `\ntype: trainer-summary` : '';
+  return `---\ntrainer: ${trainer}\ntitle: ${title}\ndate: ${date}${moodLine}${typeLine}\n---\n\n${body}`;
 }
 
 // Notiz-Dateinamen beginnen mit dem Erstellungs-Zeitstempel (ms seit Epoch), siehe saveNoteEditor().
@@ -1400,7 +1432,7 @@ let _notesOlderLoading = false;
 async function fetchNoteFile(f) {
   const file = await ghFetch(`/repos/${ghRepo}/contents/${GH_NOTES_PATH}/${f.name}`);
   const { fm, body } = parseFrontmatter(b64dec(file.content));
-  return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, body };
+  return { filename: f.name, sha: file.sha, trainer: fm.trainer || 'head-coach', title: fm.title || f.name.replace('.md',''), date: fm.date || '', mood: fm.mood ? parseInt(fm.mood) : null, rpe: fm.rpe ? parseInt(fm.rpe) : null, feel: fm.feel ? parseInt(fm.feel) : null, type: fm.type || null, body };
 }
 
 async function loadNotes() {
@@ -1537,8 +1569,9 @@ function nowLocalISO() {
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
 
-// elId erlaubt mehrere Schlaf-Picker (Morgen-Check: 'moodPicker', Aktivitäten-Fenster: 'actMoodPicker')
-function renderMoodPicker(selected, elId='moodPicker') {
+// Schlaf-Picker (aktuell nur 'wellnessEditMoodPicker' auf der Wellness-Seite — Schlafqualität wird
+// exklusiv dort bearbeitet, nicht mehr im Morgen-Check- oder Aktivitäten-Fenster).
+function renderMoodPicker(selected, elId) {
   const el = document.getElementById(elId);
   if (!el) return;
   el.innerHTML = MOOD_OPTIONS.map(m =>
@@ -1547,7 +1580,7 @@ function renderMoodPicker(selected, elId='moodPicker') {
   el.dataset.selected = selected || '';
 }
 
-function selectMood(v, elId='moodPicker') {
+function selectMood(v, elId) {
   const el = document.getElementById(elId);
   el.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('active', +b.dataset.mood === v));
   el.dataset.selected = v;
@@ -1590,7 +1623,6 @@ function selectFeel(v) {
 
 // ─── Aktivitäten-Modal (Trainingsbewertung pro Einheit) ───────────────────────
 let _activityModalId = null;
-let _activityModalDay = null;
 
 function findActivityById(id) {
   return (_activitiesFull || []).find(a => String(a.id) === String(id))
@@ -1630,11 +1662,6 @@ function openActivityModal(actId) {
   const resp = getManualRespiration()[act.id];
   document.getElementById('actRespiration').value = resp != null ? resp : '';
 
-  // Schlaf des Tages (pro Tag, aus der Tagesnotiz)
-  _activityModalDay = fmtDate(new Date(act.start_date_local));
-  const dayNote = findDayNote(_activityModalDay);
-  renderMoodPicker(dayNote && dayNote.mood != null ? dayNote.mood : null, 'actMoodPicker');
-
   document.getElementById('activityModalError').style.display = 'none';
   document.getElementById('activityModal').style.display = 'flex';
 }
@@ -1642,7 +1669,6 @@ function openActivityModal(actId) {
 function closeActivityModal() {
   document.getElementById('activityModal').style.display = 'none';
   _activityModalId = null;
-  _activityModalDay = null;
 }
 
 function deleteActivityModal() {
@@ -1667,26 +1693,17 @@ async function saveActivityModal() {
   saveActivityMetaValue(_activityModalId, { rpe, feel, note, trainingEffect });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
-  // Schlaf des Tages in die Tagesnotiz schreiben
-  const moodSel = document.getElementById('actMoodPicker').dataset.selected;
-  const mood = moodSel ? parseInt(moodSel) : null;
-  try {
-    if (_activityModalDay) await saveDayMood(_activityModalDay, mood);
-  } catch(e) {
-    const errEl = document.getElementById('activityModalError');
-    errEl.textContent = 'Schlafdaten konnten nicht gespeichert werden: ' + e.message;
-    errEl.style.display = 'block';
-    return;
-  }
   closeActivityModal();
   refreshCockpitMoodTile();
   renderFromCache();
 }
 
-// Schreibt die Schlafqualität in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus
+// Schreibt die Schlafqualität in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus.
+// Editierbar exklusiv über die Wellness-Seite (openWellnessEditModal) — nicht mehr über den
+// Journal-Notiz-Dialog oder das Aktivitäten-Fenster.
 async function saveDayMood(dayStr, mood) {
   if (ghToken && ghRepo) {
-    const existing = _notes.find(n => n.date && n.date.slice(0,10) === dayStr);
+    const existing = _notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr);
     if (!existing && mood == null) return;
     const title = existing ? existing.title : 'Tagesnotiz';
     const body  = existing ? existing.body : '';
@@ -1698,7 +1715,7 @@ async function saveDayMood(dayStr, mood) {
     else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, body }); }
     return;
   }
-  const existing = _localDayNotes.find(n => n.date && n.date.slice(0,10) === dayStr);
+  const existing = _localDayNotes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr);
   if (existing) existing.mood = mood;
   else if (mood != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood });
   saveLocalDayNotes();
@@ -1818,13 +1835,12 @@ function openNoteEditor(dateStr) {
   _noteEditorLocalMode = false;
   _editingLocalNoteId = null;
   const targetDate = dateStr || fmtDate(new Date());
-  const existing = _notes.find(n => n.date && n.date.slice(0,10) === targetDate);
-  _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date } : null;
+  const existing = _notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === targetDate);
+  _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date, mood: existing.mood } : null;
   document.getElementById('noteEditorHeading').textContent = existing ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
   document.getElementById('noteEditorTitleInput').value = existing ? existing.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = targetDate;
   document.getElementById('noteEditorContent').value = existing ? existing.body : '';
-  renderMoodPicker(existing ? existing.mood : null);
 
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
@@ -1846,7 +1862,6 @@ function openDayNoteEditor(localNoteId) {
   document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
-  renderMoodPicker(n ? n.mood : null);
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'block';
   // Lokaler Modus hat eigene Löschliste unten — Editor-Löschbutton hier aus
@@ -1899,8 +1914,9 @@ async function saveNoteEditor() {
   const existing = _editingNote || (_editingLocalNoteId ? _localDayNotes.find(x => x.id === _editingLocalNoteId) : null);
   const timeVal  = existing && existing.date ? existing.date.slice(11, 16) : nowLocalISO().slice(11, 16);
   const date     = dateVal + 'T' + timeVal;
-  const moodSel = document.getElementById('moodPicker').dataset.selected;
-  const mood    = moodSel ? parseInt(moodSel) : null;
+  // Schlafqualität wird hier nur unverändert durchgereicht — Bearbeitung läuft exklusiv über die
+  // Wellness-Seite (openWellnessEditModal/saveDayMood).
+  const mood = existing ? existing.mood : null;
   const errEl   = document.getElementById('noteEditorError');
   if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
@@ -1942,9 +1958,8 @@ async function saveNoteEditor() {
 async function copyNoteForClaude() {
   const title = document.getElementById('noteEditorTitleInput').value.trim();
   const body  = document.getElementById('noteEditorContent').value.trim();
-  const moodSel = document.getElementById('moodPicker').dataset.selected;
-  const mood  = moodSel ? parseInt(moodSel) : null;
   const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
+  const mood = findDayNote(dateVal)?.mood || null;
   const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
   const text = id => document.getElementById(id)?.textContent.trim() || '—';
@@ -2069,6 +2084,76 @@ async function deleteEditingNote() {
   }
 }
 
+// ─── Trainer-Zusammenfassungen ─────────────────────────────────────────────────
+// Kurzfassung der Trainer-Rückmeldung aus dem Claude.ai-Coaching-Chat, manuell zurück ins
+// training-notes-Repo geschrieben (eigene Datei pro Zusammenfassung, type:'trainer-summary').
+// Ergänzt die Journal-Notizen, ersetzt sie nicht — ein Tag kann eine eigene Tagesnotiz UND eine
+// oder mehrere Trainer-Zusammenfassungen haben.
+
+function trainerNotesFor(dayStr) {
+  return [..._notes].filter(n => n.type === 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr);
+}
+
+function trainerLabel(slug) { return TRAINER_OPTIONS.find(t => t.v === slug)?.l || slug; }
+
+let _trainerNoteDay = null;
+
+function openTrainerNoteModal(dateStr) {
+  if (!ghToken || !ghRepo) { openSettingsPage(); return; }
+  _trainerNoteDay = dateStr || fmtDate(new Date());
+  document.getElementById('trainerNoteDate').value = _trainerNoteDay;
+  document.getElementById('trainerNoteTrainer').innerHTML = TRAINER_OPTIONS.map(t => `<option value="${t.v}">${t.l}</option>`).join('');
+  document.getElementById('trainerNoteContent').value = '';
+  document.getElementById('trainerNoteError').style.display = 'none';
+  document.getElementById('trainerNoteModal').style.display = 'flex';
+}
+
+function closeTrainerNoteModal() {
+  document.getElementById('trainerNoteModal').style.display = 'none';
+  _trainerNoteDay = null;
+}
+
+async function saveTrainerNoteModal() {
+  const trainer = document.getElementById('trainerNoteTrainer').value;
+  const dateVal = document.getElementById('trainerNoteDate').value || _trainerNoteDay;
+  const body = document.getElementById('trainerNoteContent').value.trim();
+  const errEl = document.getElementById('trainerNoteError');
+  if (!body) { errEl.textContent = 'Zusammenfassung darf nicht leer sein.'; errEl.style.display = 'block'; return; }
+  const title = `${trainerLabel(trainer)}-Zusammenfassung`;
+  const date = dateVal + 'T' + nowLocalISO().slice(11,16);
+  const content = buildNoteContent(body, trainer, title, date, null, true);
+  const filename = `${Date.now()}-trainer.md`;
+  try {
+    const res = await saveNoteToGH(filename, content, null);
+    _notes.unshift({ filename, sha: res.content.sha, trainer, title, date, mood: null, type: 'trainer-summary', body });
+    closeTrainerNoteModal();
+    renderFromCache();
+  } catch(e) {
+    errEl.textContent = 'Fehler beim Speichern: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+let _trainerNotesViewerDay = null;
+
+function openTrainerNotesViewer(dateStr) {
+  _trainerNotesViewerDay = dateStr;
+  const notes = trainerNotesFor(dateStr).sort((a,b) => a.date.localeCompare(b.date));
+  document.getElementById('trainerNotesViewerDate').textContent = new Date(dateStr + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  document.getElementById('trainerNotesViewerList').innerHTML = notes.map(n => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+      <div style="font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">${trainerLabel(n.trainer)}</div>
+      <div style="font-size:13px;white-space:pre-wrap;margin-top:4px">${escHtml(n.body)}</div>
+    </div>`
+  ).join('') || '<div class="setup-hint">Keine Trainer-Zusammenfassungen für diesen Tag.</div>';
+  document.getElementById('trainerNotesViewerModal').style.display = 'flex';
+}
+
+function closeTrainerNotesViewer() {
+  document.getElementById('trainerNotesViewerModal').style.display = 'none';
+  _trainerNotesViewerDay = null;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate) {
@@ -2170,7 +2255,7 @@ function respirationRate(act) {
 function journalByDateMap() {
   const map = {};
   [..._notes, ..._localDayNotes].forEach(n => {
-    if (!n.date) return;
+    if (!n.date || n.type === 'trainer-summary') return;
     const day = n.date.slice(0,10);
     if (!(day in map)) map[day] = n;
   });
@@ -2224,6 +2309,12 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
       titleHtml = n
         ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
         : '<span style="color:var(--text2)">—</span>';
+      // Trainer-Zusammenfassungen sind separate Notizen (nicht im Titel oben enthalten) — eigener
+      // klickbarer Chip, falls für den Tag mindestens eine vorliegt.
+      const trainerCount = trainerNotesFor(dayKey).length;
+      if (trainerCount) {
+        titleHtml += `<span style="cursor:pointer;font-size:10px;color:var(--text2);margin-top:2px;display:inline-block" onclick="event.stopPropagation();openTrainerNotesViewer('${dayKey}')" title="Trainer-Zusammenfassungen anzeigen">💬 ${trainerCount}</span>`;
+      }
     }
     // RPE, Trainingsbefinden und Bemerkung jetzt pro Aktivität (activity_meta)
     const meta = isNoteOnly ? {} : getActivityMetaFor(a.id);
