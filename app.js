@@ -1235,8 +1235,6 @@ function openWellnessEditModal(dayStr) {
   document.getElementById('wellnessEditWeight').value = d.weight != null ? d.weight : '';
   document.getElementById('wellnessEditRestingHR').value = d.restingHR != null ? Math.round(d.restingHR) : '';
   document.getElementById('wellnessEditHrv').value = d.hrv != null ? d.hrv : '';
-  const dayNote = findDayNote(dayStr);
-  renderMoodPicker(dayNote && dayNote.mood != null ? dayNote.mood : null, 'wellnessEditMoodPicker');
   document.getElementById('wellnessEditError').style.display = 'none';
   document.getElementById('wellnessEditModal').style.display = 'flex';
 }
@@ -1253,18 +1251,13 @@ async function saveWellnessEdit() {
   const weight = num('wellnessEditWeight'); if (weight != null) body.weight = weight;
   const restingHR = num('wellnessEditRestingHR'); if (restingHR != null) body.restingHR = Math.round(restingHR);
   const hrv = num('wellnessEditHrv'); if (hrv != null) body.hrv = hrv;
-  const moodSel = document.getElementById('wellnessEditMoodPicker').dataset.selected;
-  const mood = moodSel ? parseInt(moodSel) : null;
   const errEl = document.getElementById('wellnessEditError');
   try {
     const updated = await icuWrite(`/athlete/${athleteId}/wellness/${_wellnessEditDay}`, 'PUT', body);
     let entry = _wellnessFull.find(x => x.id === _wellnessEditDay);
     if (!entry) { entry = { id: _wellnessEditDay }; _wellnessFull.push(entry); }
     Object.assign(entry, updated || body);
-    // Schlafqualität (mood) lebt in der Tagesnotiz, nicht in Intervals.icu — separater Schreibpfad.
-    await saveDayMood(_wellnessEditDay, mood);
     closeWellnessEditModal();
-    refreshCockpitMoodTile();
     renderFromCache();
   } catch(e) {
     errEl.textContent = 'Fehler beim Speichern: ' + e.message;
@@ -1569,9 +1562,10 @@ function nowLocalISO() {
 
 // ─── Note Editor ──────────────────────────────────────────────────────────────
 
-// Schlaf-Picker (aktuell nur 'wellnessEditMoodPicker' auf der Wellness-Seite — Schlafqualität wird
-// exklusiv dort bearbeitet, nicht mehr im Morgen-Check- oder Aktivitäten-Fenster).
-function renderMoodPicker(selected, elId) {
+// Schlaf-Picker im Morgen-Check ('moodPicker') — Schlafqualität gehört zum Tagesgesamtbild
+// (Training + Planung), das der Morgen-Check erfasst, nicht zur Wellness-Seite (Wellness/
+// Aktivitäten werden separat geführt).
+function renderMoodPicker(selected, elId='moodPicker') {
   const el = document.getElementById(elId);
   if (!el) return;
   el.innerHTML = MOOD_OPTIONS.map(m =>
@@ -1580,7 +1574,7 @@ function renderMoodPicker(selected, elId) {
   el.dataset.selected = selected || '';
 }
 
-function selectMood(v, elId) {
+function selectMood(v, elId='moodPicker') {
   const el = document.getElementById(elId);
   el.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('active', +b.dataset.mood === v));
   el.dataset.selected = v;
@@ -1698,29 +1692,6 @@ async function saveActivityModal() {
   renderFromCache();
 }
 
-// Schreibt die Schlafqualität in die Tagesnotiz (legt sie bei Bedarf an); GitHub- oder lokaler Modus.
-// Editierbar exklusiv über die Wellness-Seite (openWellnessEditModal) — nicht mehr über den
-// Journal-Notiz-Dialog oder das Aktivitäten-Fenster.
-async function saveDayMood(dayStr, mood) {
-  if (ghToken && ghRepo) {
-    const existing = _notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr);
-    if (!existing && mood == null) return;
-    const title = existing ? existing.title : 'Tagesnotiz';
-    const body  = existing ? existing.body : '';
-    const date  = existing && existing.date ? existing.date : dayStr + 'T' + nowLocalISO().slice(11,16);
-    const content  = buildNoteContent(body, existing ? existing.trainer : 'journal', title, date, mood);
-    const filename = existing ? existing.filename : `${Date.now()}-journal.md`;
-    const res = await saveNoteToGH(filename, content, existing ? existing.sha : null);
-    if (existing) { existing.mood = mood; existing.sha = res.content.sha; }
-    else { _notes.unshift({ filename, sha: res.content.sha, trainer:'journal', title, date, mood, body }); }
-    return;
-  }
-  const existing = _localDayNotes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr);
-  if (existing) existing.mood = mood;
-  else if (mood != null) _localDayNotes.unshift({ id: Date.now(), trainer:'head-coach', title:'Tagesnotiz', body:'', date: dayStr + 'T' + nowLocalISO().slice(11,16), mood });
-  saveLocalDayNotes();
-}
-
 // ─── Plan-Modal (geplante Einheit im Wochenkalender anlegen/bearbeiten) ────────
 let _planDay = null, _planId = null;
 
@@ -1836,11 +1807,12 @@ function openNoteEditor(dateStr) {
   _editingLocalNoteId = null;
   const targetDate = dateStr || fmtDate(new Date());
   const existing = _notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === targetDate);
-  _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date, mood: existing.mood } : null;
+  _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date } : null;
   document.getElementById('noteEditorHeading').textContent = existing ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
   document.getElementById('noteEditorTitleInput').value = existing ? existing.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = targetDate;
   document.getElementById('noteEditorContent').value = existing ? existing.body : '';
+  renderMoodPicker(existing ? existing.mood : null, 'moodPicker');
 
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
@@ -1862,6 +1834,7 @@ function openDayNoteEditor(localNoteId) {
   document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
   document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
   document.getElementById('noteEditorContent').value = n ? n.body : '';
+  renderMoodPicker(n ? n.mood : null, 'moodPicker');
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'block';
   // Lokaler Modus hat eigene Löschliste unten — Editor-Löschbutton hier aus
@@ -1914,9 +1887,8 @@ async function saveNoteEditor() {
   const existing = _editingNote || (_editingLocalNoteId ? _localDayNotes.find(x => x.id === _editingLocalNoteId) : null);
   const timeVal  = existing && existing.date ? existing.date.slice(11, 16) : nowLocalISO().slice(11, 16);
   const date     = dateVal + 'T' + timeVal;
-  // Schlafqualität wird hier nur unverändert durchgereicht — Bearbeitung läuft exklusiv über die
-  // Wellness-Seite (openWellnessEditModal/saveDayMood).
-  const mood = existing ? existing.mood : null;
+  const moodSel = document.getElementById('moodPicker').dataset.selected;
+  const mood    = moodSel ? parseInt(moodSel) : null;
   const errEl   = document.getElementById('noteEditorError');
   if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
@@ -1959,7 +1931,8 @@ async function copyNoteForClaude() {
   const title = document.getElementById('noteEditorTitleInput').value.trim();
   const body  = document.getElementById('noteEditorContent').value.trim();
   const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
-  const mood = findDayNote(dateVal)?.mood || null;
+  const moodSel = document.getElementById('moodPicker').dataset.selected;
+  const mood  = moodSel ? parseInt(moodSel) : null;
   const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
   const text = id => document.getElementById(id)?.textContent.trim() || '—';

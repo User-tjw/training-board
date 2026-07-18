@@ -406,8 +406,8 @@
 </div>
 
 
-<!-- Note Editor Modal: Anlegen/Bearbeiten einer Tagesnotiz (Titel, Datum, Markdown-Inhalt).
-     Schlafqualität wird hier nicht mehr bearbeitet — exklusiv über die Wellness-Seite (wellnessEditModal). -->
+<!-- Note Editor Modal: Anlegen/Bearbeiten einer Tagesnotiz (Titel, Datum, Schlafqualität, Markdown-Inhalt).
+     Morgen-Check erfasst das Tagesgesamtbild (Training + Planung) — Wellness/Aktivitäten laufen separat. -->
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
   <div class="modal modal-wide">
     <h3 id="noteEditorHeading">Morgen-Check</h3>
@@ -421,6 +421,10 @@
         <label class="setup-label">Datum</label>
         <input class="setup-input" id="noteEditorDate" type="date">
       </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Schlafqualität (optional)</label>
+      <div class="mood-picker" id="moodPicker"></div>
     </div>
     <div class="setup-field">
       <label class="setup-label">Inhalt (Markdown)</label>
@@ -539,18 +543,12 @@
       <label class="setup-label">HRV (ms)</label>
       <input class="setup-input" id="wellnessEditHrv" type="number" step="0.1" min="0" placeholder="z.B. 35">
     </div>
-    <!-- Schlafqualität lebt in der Tagesnotiz (GitHub), nicht in Intervals.icu — eigener Schreibpfad
-         (saveDayMood), aber zusammen mit den übrigen Tageswerten hier editierbar. -->
-    <div class="setup-field">
-      <label class="setup-label">Schlafqualität (optional)</label>
-      <div class="mood-picker" id="wellnessEditMoodPicker"></div>
-    </div>
     <div class="setup-error" id="wellnessEditError">Fehler beim Speichern.</div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveWellnessEdit()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeWellnessEditModal()">Abbrechen</button>
     </div>
-    <div style="font-size:10px;color:var(--text2);margin-top:10px">Gewicht/Ruhepuls/HRV werden direkt zu Intervals.icu übertragen, Schlafqualität in die Tagesnotiz.</div>
+    <div style="font-size:10px;color:var(--text2);margin-top:10px">Änderungen werden direkt zu Intervals.icu übertragen.</div>
   </div>
 </div>
 
@@ -620,6 +618,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260715c"></script>
+<script src="app.js?v=20260715d"></script>
 </body>
 </html>
