@@ -314,10 +314,8 @@
     .week-cal-head-cell.today { background: var(--accent); color: #fff; }
     /* Tagesspalte: vertikaler Stapel aller Aktivitäten des Tages.
        Feste Höhe, damit die Kachel beim Durchklicken der Wochen nicht springt; volle Tage scrollen intern. */
-    .week-cal-daycol { background: var(--bg2); padding: 6px; height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
+    .week-cal-daycol { background: var(--bg2); padding: 6px; height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
     .week-cal-daycol.today { background: var(--accent-light); }
-    /* Vorschau-Kalender (nächste Woche): kompaktere Spaltenhöhe */
-    .week-cal-preview .week-cal-daycol { height: 200px; }
     .week-cal-summary-col { background: var(--bg3); padding: 10px 12px; }
     .wc-empty { color: var(--text2); opacity: 0.5; font-size: 12px; font-family: var(--mono); text-align: center; margin: auto 0; }
     /* Fest eingestellter trainingsfreier Wochentag ohne Eintrag (reine Anzeige, siehe getRestDays/isFixedRestDay) —
