@@ -365,3 +365,12 @@
     .phase-label { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .phase-daterange { font-size: 9.5px; font-family: var(--mono); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
     .phase-marker { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); opacity: 0.6; }
+    /* B/C-Rennen: schraffierte Taper-Zone + Markierungslinie, siehe renderSubRaceMarkers() */
+    .phase-subrace-taper { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--text2) 0, var(--text2) 1px, transparent 1px, transparent 6px); opacity: 0.25; pointer-events: none; }
+    .phase-subrace-marker { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 1px dashed var(--text2); }
+    .phase-subrace-tag { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); font-size: 8px; font-family: var(--mono); font-weight: 700; color: var(--text2); background: var(--bg); padding: 0 3px; border-radius: 3px; white-space: nowrap; }
+    /* Übergang zwischen zwei A-Zyklen (Basis-Reset nach einem Rennen), siehe renderPhaseTimeline() */
+    .phase-segment.phase-gap { border-style: dashed; border-color: var(--border); color: var(--text2); background: transparent; opacity: 0.7; }
+    /* A-Rennen-Marker: kleine Flagge über der Zeitleiste am jeweiligen Zyklusende */
+    .phase-race-marker { position: absolute; top: -12px; width: 0; }
+    .phase-race-flag { position: absolute; left: -5px; font-size: 10px; color: var(--text); line-height: 1; }

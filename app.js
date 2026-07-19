@@ -420,7 +420,7 @@ function populatePlanForm() {
   renderPhaseTimeline();
 }
 
-// Wettkämpfe: Liste mit Name/Datum/Priorität (A/B/C), siehe UA-Rennsystem in cowork/skill-uphill-athlete.md.
+// Wettkämpfe: Liste mit Name/Datum/Priorität (A/B/C), siehe UA-Rennsystem in cowork/skill-training-management.md.
 // A treibt die Phasen-Zeitleiste, B/C sind reine Kalendermarkierungen im Wochenkalender (siehe buildWeekCalendar).
 let _raceRowSeq = 0;
 function renderRacesList(races) {
@@ -453,7 +453,7 @@ function readRacesFromForm() {
   })).filter(r => r.name && r.date);
 }
 
-// Uphill-Athlete-Periodisierung (siehe cowork/skill-uphill-athlete.md): 4 Phasen rückwärts vom
+// Uphill-Athlete-Periodisierung (siehe cowork/skill-training-management.md): 4 Phasen rückwärts vom
 // Wettkampfdatum des A-Rennens, Dauer als Mittelwert der dort angegebenen Spannen.
 const UA_PHASES = [
   { name: 'Basis',      days: 105, focus: 'AeT aufbauen, Volumen',        color: '#3b82f6' },
@@ -461,59 +461,147 @@ const UA_PHASES = [
   { name: 'Spezifisch', days: 35,  focus: 'Wettkampf-Intensitäten',       color: '#f59e0b' },
   { name: 'Taper',      days: 18,  focus: 'Frische aufbauen',             color: '#10b981' },
 ];
-// Nächstes bevorstehendes A-Rennen; ohne Zukunfts-Treffer das zeitlich letzte vergangene A-Rennen als Kontext.
-function findPrimaryRace(races) {
+// Jedes A-Rennen ab heute treibt einen eigenen Basis→Taper-Zyklus (7 Monate Abstand = zwei
+// eigenständige Saisonziele, kein durchgehender Bogen — UA-Doku kennt nur den Einzelzyklus,
+// methodisch braucht aber jedes A-Rennen seinen eigenen Reset). Ohne kommendes A-Rennen wird das
+// letzte vergangene als Kontext genutzt (pastOnly). Liegt ein A-Rennen näher am vorherigen als eine
+// volle Zyklusdauer, wird sein Zyklus proportional gestaucht statt sich zu überlappen.
+function computeMultiCyclePhases(races, today) {
   const aRaces = (races || []).filter(r => r.priority === 'A' && r.date).sort((a,b) => a.date.localeCompare(b.date));
   if (!aRaces.length) return null;
-  const todayStr = fmtDate(new Date());
-  return aRaces.find(r => r.date >= todayStr) || aRaces[aRaces.length - 1];
-}
-function computeTrainingPhases(raceDateStr) {
-  if (!raceDateStr) return null;
-  const raceDate = new Date(raceDateStr + 'T00:00:00');
-  if (isNaN(raceDate)) return null;
-  let end = raceDate;
-  const phases = [];
-  for (let i = UA_PHASES.length - 1; i >= 0; i--) {
-    const start = new Date(end); start.setDate(start.getDate() - UA_PHASES[i].days);
-    phases.unshift({ ...UA_PHASES[i], start, end: new Date(end) });
-    end = start;
+  const todayStr = fmtDate(today);
+  let relevant = aRaces.filter(r => r.date >= todayStr);
+  let pastOnly = false;
+  if (!relevant.length) { relevant = [aRaces[aRaces.length - 1]]; pastOnly = true; }
+
+  const totalRawDays = UA_PHASES.reduce((s,p) => s + p.days, 0);
+  const cycles = [];
+  // Erster Zyklus wird gegen "heute" gestaucht (Vorbereitung läuft ab heute, nicht rückwirkend),
+  // Folgezyklen gegen das jeweils vorherige A-Rennen. Beim reinen Vergangenheits-Kontext (pastOnly)
+  // entfällt der heute-Anker, da der Zyklus dann ohnehin nur zur Einordnung dient.
+  let prevRaceDate = pastOnly ? null : today;
+  for (const race of relevant) {
+    const raceDate = new Date(race.date + 'T00:00:00');
+    if (isNaN(raceDate)) continue;
+    let availableDays = totalRawDays;
+    if (prevRaceDate) {
+      const gapDays = (raceDate - prevRaceDate) / 86400000;
+      if (gapDays < totalRawDays) availableDays = Math.max(gapDays, UA_PHASES.length);
+    }
+    const factor = availableDays / totalRawDays;
+    let end = raceDate;
+    const phases = [];
+    for (let i = UA_PHASES.length - 1; i >= 0; i--) {
+      const days = Math.max(1, Math.round(UA_PHASES[i].days * factor));
+      const start = new Date(end); start.setDate(start.getDate() - days);
+      phases.unshift({ ...UA_PHASES[i], days, start, end: new Date(end) });
+      end = start;
+    }
+    cycles.push({ race, raceDate, phases });
+    prevRaceDate = raceDate;
   }
-  return { phases, raceDate };
+  return { cycles, pastOnly };
 }
 function renderPhaseTimeline() {
   const el = document.getElementById('phaseTimeline');
   if (!el) return;
-  const primary = findPrimaryRace(readRacesFromForm());
-  const result = primary ? computeTrainingPhases(primary.date) : null;
-  if (!result) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const result = computeMultiCyclePhases(readRacesFromForm(), today);
+  if (!result || !result.cycles.length) {
     el.innerHTML = `<div class="setup-hint">Kein A-Wettkampf eingetragen — Basisphase.</div>`;
     return;
   }
-  const { phases } = result;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const totalDays = phases.reduce((s,p) => s + p.days, 0);
+  const { cycles, pastOnly } = result;
   const fmtShort = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+  const first = cycles[0], last = cycles[cycles.length - 1];
 
-  if (today < phases[0].start) {
-    el.innerHTML = `<div class="setup-hint">"${escHtml(primary.name)}" noch weit voraus — Basisphase beginnt ${fmtShort(phases[0].start)}.</div>`;
+  if (pastOnly && today > last.raceDate) {
+    el.innerHTML = `<div class="setup-hint">"${escHtml(last.race.name)}" liegt in der Vergangenheit.</div>`;
     return;
   }
-  if (today > result.raceDate) {
-    el.innerHTML = `<div class="setup-hint">"${escHtml(primary.name)}" liegt in der Vergangenheit.</div>`;
+  if (today < first.phases[0].start) {
+    el.innerHTML = `<div class="setup-hint">"${escHtml(first.race.name)}" noch weit voraus — Basisphase beginnt ${fmtShort(first.phases[0].start)}.</div>`;
     return;
   }
 
-  const segments = phases.map(p => {
-    const isCurrent = today >= p.start && today < p.end;
-    const width = (p.days / totalDays * 100).toFixed(2);
-    return `<div class="phase-segment${isCurrent ? ' current' : ''}" style="width:${width}%;background:${p.color}1a;border-color:${p.color};color:${p.color}">
-      <div class="phase-label">${p.name}</div>
-      <div class="phase-daterange">${fmtShort(p.start)}–${fmtShort(p.end)}</div>
-    </div>`;
+  const overallStart = first.phases[0].start;
+  const overallEnd = last.raceDate;
+  const totalDays = (overallEnd - overallStart) / 86400000;
+
+  let segments = '';
+  let prevEnd = overallStart;
+  cycles.forEach(cycle => {
+    const gapDays = (cycle.phases[0].start - prevEnd) / 86400000;
+    if (gapDays > 0.5) {
+      const gapWidth = (gapDays / totalDays * 100).toFixed(2);
+      segments += `<div class="phase-segment phase-gap" style="width:${gapWidth}%">
+        <div class="phase-label">Übergang</div>
+        <div class="phase-daterange">${fmtShort(prevEnd)}–${fmtShort(cycle.phases[0].start)}</div>
+      </div>`;
+    }
+    cycle.phases.forEach(p => {
+      const isCurrent = today >= p.start && today < p.end;
+      const width = (p.days / totalDays * 100).toFixed(2);
+      segments += `<div class="phase-segment${isCurrent ? ' current' : ''}" style="width:${width}%;background:${p.color}1a;border-color:${p.color};color:${p.color}">
+        <div class="phase-label">${p.name}</div>
+        <div class="phase-daterange">${fmtShort(p.start)}–${fmtShort(p.end)}</div>
+      </div>`;
+    });
+    prevEnd = cycle.raceDate;
+  });
+
+  const todayPct = Math.min(100, Math.max(0, (today - overallStart) / (86400000 * totalDays) * 100));
+  const subMarkers = renderSubRaceMarkers(overallStart, overallEnd, totalDays, fmtShort);
+  const raceMarkers = cycles.map(cycle => {
+    const pct = Math.min(100, Math.max(0, (cycle.raceDate - overallStart) / (86400000 * totalDays) * 100));
+    return `<div class="phase-race-marker" style="left:${pct.toFixed(2)}%" title="A: ${escHtml(cycle.race.name)} (${fmtShort(cycle.raceDate)})"><span class="phase-race-flag">▲</span></div>`;
   }).join('');
-  const todayPct = Math.min(100, Math.max(0, (today - phases[0].start) / (86400000 * totalDays) * 100));
-  el.innerHTML = `<div class="phase-timeline">${segments}<div class="phase-marker" style="left:${todayPct}%" title="Heute"></div></div>`;
+  el.innerHTML = `<div class="phase-timeline">${segments}<div class="phase-marker" style="left:${todayPct}%" title="Heute"></div>${subMarkers}${raceMarkers}</div>`;
+}
+
+// B/C-Rennen im laufenden A-Zyklus als Mini-Taper-Marker: schraffierte Zone (Volumen-Reduktion)
+// kurz vor dem Rennen + dezente Markierungslinie mit Prioritäts-Tag. Unterbricht die
+// Basis/Kraft/Spezifisch/Taper-Phasen nicht, überlagert sie nur.
+const SUB_RACE_TAPER_DAYS = { B: 4, C: 2 };
+function renderSubRaceMarkers(rangeStart, rangeEnd, totalDays, fmtShort) {
+  const totalMs = 86400000 * totalDays;
+  const subRaces = readRacesFromForm()
+    .filter(r => (r.priority === 'B' || r.priority === 'C') && r.date)
+    .map(r => ({ ...r, dateObj: new Date(r.date + 'T00:00:00') }))
+    .filter(r => !isNaN(r.dateObj) && r.dateObj >= rangeStart && r.dateObj <= rangeEnd);
+  return subRaces.map(r => {
+    const pct = Math.min(100, Math.max(0, (r.dateObj - rangeStart) / totalMs * 100));
+    const taperDays = SUB_RACE_TAPER_DAYS[r.priority];
+    const taperStartPct = Math.max(0, ((r.dateObj - taperDays * 86400000) - rangeStart) / totalMs * 100);
+    return `<div class="phase-subrace-taper" style="left:${taperStartPct.toFixed(2)}%;width:${(pct - taperStartPct).toFixed(2)}%"></div>
+      <div class="phase-subrace-marker" style="left:${pct.toFixed(2)}%" title="${r.priority}: ${escHtml(r.name)} (${fmtShort(r.dateObj)})">
+        <span class="phase-subrace-tag">${r.priority}</span>
+      </div>`;
+  }).join('');
+}
+
+// UA-Phasen-Kontext als Textzeile für den Coach-Export (copyNoteForClaude) — gleiche
+// Berechnung wie renderPhaseTimeline(), aber liest aus dem gespeicherten Plan statt aus
+// dem DOM-Formular, damit es unabhängig davon funktioniert, ob die Plan-Seite gerade offen ist.
+function currentUaPhaseText() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const result = computeMultiCyclePhases(getTrainingPlan().races || [], today);
+  if (!result || !result.cycles.length) return 'Kein A-Wettkampf eingetragen — Basisphase.';
+  const { cycles, pastOnly } = result;
+  const fmtShort = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const first = cycles[0], last = cycles[cycles.length - 1];
+
+  if (pastOnly && today > last.raceDate) {
+    return `"${last.race.name}" (${fmtShort(last.raceDate)}) liegt in der Vergangenheit — keine aktive Phase.`;
+  }
+  if (today < first.phases[0].start) {
+    return `Basisphase (noch nicht begonnen) — "${first.race.name}" am ${fmtShort(first.raceDate)}, Basisphase startet ${fmtShort(first.phases[0].start)}.`;
+  }
+  const activeCycle = cycles.find(c => today >= c.phases[0].start && today <= c.raceDate) || last;
+  const current = activeCycle.phases.find(p => today >= p.start && today < p.end) || activeCycle.phases[activeCycle.phases.length - 1];
+  const daysToRace = Math.round((activeCycle.raceDate - today) / 86400000);
+  const nextInfo = cycles.length > 1 && activeCycle !== last ? ` · danach "${last.race.name}" (${fmtShort(last.raceDate)})` : '';
+  return `${current.name}-Phase (${current.focus}) · noch ${daysToRace} Tage bis "${activeCycle.race.name}" (${fmtShort(activeCycle.raceDate)})${nextInfo}.`;
 }
 
 // Trainingsfreie Wochentage: 0=Montag…6=Sonntag, wie Trainings-Soll/HF-Zonen per GitHub synchronisiert
@@ -2101,6 +2189,10 @@ async function copyNoteForClaude() {
   const lines = [
     `# Tagesbericht — ${dateLong}`,
     `Athlet: Thomas Wagner | 50J | 74.6kg | FTP 250W | Max-HF 183`,
+    '',
+    '## Trainingsplan-Kontext',
+    currentUaPhaseText(),
+    'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.',
     '',
     '## Automatische Einschätzung (TrainIQ)',
     text('cockpitVerdict'),

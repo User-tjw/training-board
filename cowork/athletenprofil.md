@@ -2,6 +2,8 @@
 
 ## Basisdaten
 - **Name:** Thomas
+- **Geburtstag:** 16.07.1975
+- **Größe:** 1,72m
 - **Sportler-Typ:** Freizeitathlet, ambitioniert
 - **Sportarten:** Laufen, Radfahren, Krafttraining
 - **Trainingsphilosophie:** Uphill Athlete (UA) — polarisiertes Training, 80% aerob / 20% intensiv
@@ -24,11 +26,18 @@
 
 > **UA-Kernregel:** 80% des Trainings in Zone 1–2 (unterhalb AeT), max. 20% in Zone 3–5.
 
-## Trainingsziele
-- **Primär:** Fitnesserhalt und -aufbau — Training soll nachhaltig in den Alltag passen
-- **Sekundär:** Wettkampfvorbereitung (Termine folgen, werden ergänzt)
-- **Stil:** Abwechslungsreiches Training über alle drei Sportarten
+## Trainingsziele (aktualisiert 2026-07-16)
+- **Primär:** Lebenslange Fitness und Funktionsfähigkeit — Training als nachhaltiger Baustein, nicht Wettkampf-Peak als Selbstzweck
+- **Motivations-Rahmen:** Rennen dienen als Zielanker, um "am Ball zu bleiben" — nicht Selbstzweck
+- **Stil-Präferenz:** Funktionelles Training mit Alltags-/Lastentrage-Fokus ("Military-Fitness-inspiriert" im Sinne von Tragen/Heben/Treppen, NICHT Bootcamp-/CrossFit-Hochintensität)
+- **Konkrete Rennen/Termine:** siehe `events.md`
 
+## Wochenvolumen-Verteilung (aktualisiert 2026-07-16)
+Ziel: ~6h/Woche
+- Laufen: 35%
+- Rad: 15%
+- Kraft: 25%
+- Mobilität: 25%
 ## Verletzungen / Reha
 - Aktuell: keine aktiven Verletzungen
 - Reha-Programme: werden bei Bedarf ergänzt
@@ -39,8 +48,7 @@
 - **Leistungsmessung:** Watt (Rad: FTP-basiert)
 
 ## Wettkämpfe
-- Aktuell: keine eingetragen
-- Werden ergänzt sobald Termine feststehen
+- Siehe `events.md` (Termine, Priorität, Streckendetails)
 
 ---
 *Zuletzt aktualisiert: 2026-06-02*

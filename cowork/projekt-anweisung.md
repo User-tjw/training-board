@@ -66,10 +66,23 @@ Der Head Coach antwortet mit:
 - Empfehlungen mit Begründung — kein blindes Befolgen
 - Thomas trifft die finalen Entscheidungen
 
+## Wettkämpfe pflegen (events.md)
+Wenn Thomas im Chat einen neuen Wettkampf nennt oder sich ein bestehender ändert (Termin,
+Priorität, Streckendetails): `events.md` im Repo `User-tjw/training-board` direkt per
+GitHub-Connector aktualisieren, gleiches Schema wie die bestehenden Einträge (Datum,
+Priorität A/B/C nach UA-Rennsystem, Distanz, Ort, Streckenprofil, Klima/Bedingungen,
+Ziel/Fokus, Status). Kurz bestätigen, was committet wurde.
+
+**Wichtig:** Die TrainIQ-App führt auf der Plan-Seite eine eigene Kopie der
+Wettkampfliste (`training_plan.races`), die für Kalenderanzeige und die automatische
+UA-Phasen-Berechnung in der App genutzt wird. Diese Kopie liegt im Browser-`localStorage`
+von Thomas und kann vom Trainer nicht mitgepflegt werden — bei jeder `events.md`-Änderung
+Thomas daran erinnern, den Wettkampf zusätzlich auf der Plan-Seite der App einzutragen.
+
 ## Kontext-Dateien in diesem Projekt
 - `athletenprofil.md` — Basisdaten, Zonen, Ziele
-- `skill-training-management.md` — Head Coach Logik
-- `skill-uphill-athlete.md` — UA-Methodik
+- `events.md` — Wettkämpfe, Streckendetails, Priorität
+- `skill-training-management.md` — Head Coach Logik (inkl. Uphill-Athlete-Methodik)
 - `skill-reha-management.md` — Reha-Protokolle
 - `skill-krafttraining.md` — Kraft-Programm
 - `skill-ernaehrung.md` — Ernährung & Supplements

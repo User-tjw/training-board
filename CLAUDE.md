@@ -29,7 +29,6 @@ TrainingBoard/
     ├── athletenprofil.md
     ├── projekt-anweisung.md
     ├── skill-training-management.md
-    ├── skill-uphill-athlete.md
     ├── skill-reha-management.md
     ├── skill-krafttraining.md
     ├── skill-ernaehrung.md
