@@ -8,6 +8,7 @@
 - **Sportarten:** Laufen, Radfahren, Krafttraining
 - **Trainingsphilosophie:** Uphill Athlete (UA) — polarisiertes Training, 80% aerob / 20% intensiv
 - **Wochenvolumen:** 4–6 Stunden (Ziel: in den Alltag passen)
+- **Beruf/Belastungskontext:** Zweischicht-Job seit Juli 2026, ~5km von zuhause. Hoher Anteil an Stehen/Gehen/beengten Positionen. Schrittzahl Arbeitstage ca. 14.000–22.000 vs. Ruhetage ca. 3.000–4.000 — wird als dauerhafter Belastungsfaktor im Head-Coach-Ampelsystem berücksichtigt (siehe `skill-training-management.md`).
 
 ## Leistungsdaten
 - **Maximale Herzfrequenz (HF max):** 183 bpm
@@ -31,6 +32,7 @@
 - **Motivations-Rahmen:** Rennen dienen als Zielanker, um "am Ball zu bleiben" — nicht Selbstzweck
 - **Stil-Präferenz:** Funktionelles Training mit Alltags-/Lastentrage-Fokus ("Military-Fitness-inspiriert" im Sinne von Tragen/Heben/Treppen, NICHT Bootcamp-/CrossFit-Hochintensität)
 - **Konkrete Rennen/Termine:** siehe `events.md`
+- **Zielgewicht:** 68–70kg (Mitte des Bereichs als Referenzwert), Stand 19.07.2026
 
 ## Wochenvolumen-Verteilung (aktualisiert 2026-07-16)
 Ziel: ~6h/Woche
@@ -38,17 +40,18 @@ Ziel: ~6h/Woche
 - Rad: 15%
 - Kraft: 25%
 - Mobilität: 25%
+
 ## Verletzungen / Reha
-- Aktuell: keine aktiven Verletzungen
-- Reha-Programme: werden bei Bedarf ergänzt
+- **Aktuell aktiv:** Morton-Neurom rechts (3./4. Zehe), Gate 1. Details, Gate-Kriterien und Übungen siehe `skill-reha-management.md` — dort ist die einzige verbindliche Quelle für den Reha-Status.
 
 ## Ausrüstung / Tools
 - **Trainingsplattform:** intervals.icu
 - **HRV-Messung:** wird täglich morgens gemessen (RMSSD)
 - **Leistungsmessung:** Watt (Rad: FTP-basiert)
+- **Weiteres Equipment:** Garmin Forerunner 965, Blackroll-Set (Twin, Standard-Rolle, Loop Band rot, Mini Flow, Igel-Ball)
 
 ## Wettkämpfe
 - Siehe `events.md` (Termine, Priorität, Streckendetails)
 
 ---
-*Zuletzt aktualisiert: 2026-06-02*
+*Zuletzt aktualisiert: 2026-07-20*
