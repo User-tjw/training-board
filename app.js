@@ -516,9 +516,12 @@ function renderPhaseTimeline() {
   el.innerHTML = `<div class="phase-timeline">${segments}<div class="phase-marker" style="left:${todayPct}%" title="Heute"></div></div>`;
 }
 
-// Trainingsfreie Wochentage: reine lokale Anzeige-Einstellung (kein GitHub-Sync), 0=Montag…6=Sonntag
+// Trainingsfreie Wochentage: 0=Montag…6=Sonntag, wie Trainings-Soll/HF-Zonen per GitHub synchronisiert
 function getRestDays() {
-  try { return JSON.parse(localStorage.getItem('rest_days')) || []; } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('rest_days')).days || []; } catch { return []; }
+}
+function getRestDaysData() {
+  try { return JSON.parse(localStorage.getItem('rest_days')) || {}; } catch { return {}; }
 }
 function updateGoalPctHint() {
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; };
@@ -544,6 +547,7 @@ function saveApiSettings() {
   syncPlanSessionsFromGH();
   syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
+  syncRestDaysFromGH();
   loadAll();
   closeSettingsModal();
 }
@@ -583,7 +587,11 @@ function saveTrainingGoals() {
 function saveRestDays() {
   const days = [];
   for (let i = 0; i < 7; i++) if (document.getElementById('restDay'+i).checked) days.push(i);
-  localStorage.setItem('rest_days', JSON.stringify(days));
+  const data = { days, updatedAt: Date.now() };
+  localStorage.setItem('rest_days', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    saveRestDaysToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
   renderCockpitWeek();
   closeSettingsModal();
 }
@@ -608,6 +616,7 @@ function init() {
   syncPlanSessionsFromGH();
   syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
+  syncRestDaysFromGH();
   loadAll();
 }
 
@@ -1516,6 +1525,7 @@ const GH_ZONES_FILE = 'settings/hf-zones.json';
 const GH_ACTIVITY_META_FILE = 'settings/activity-meta.json';
 const GH_PLAN_SESSIONS_FILE = 'settings/plan-sessions.json';
 const GH_HIDDEN_ACTIVITIES_FILE = 'settings/hidden-activities.json';
+const GH_REST_DAYS_FILE = 'settings/rest-days.json';
 let _notes = [];
 let _editingNote = null;
 
@@ -1700,6 +1710,8 @@ function savePlanSessionsToGH(data) { return saveJSONToGH(GH_PLAN_SESSIONS_FILE,
 function syncPlanSessionsFromGH() { return syncJSONFromGH(GH_PLAN_SESSIONS_FILE, 'plan_sessions', getPlanSessions, renderCockpitWeek); }
 function saveHfZonesToGH(zones) { return saveJSONToGH(GH_ZONES_FILE, zones, 'Update HF-Zonen'); }
 function syncHfZonesFromGH() { return syncJSONFromGH(GH_ZONES_FILE, 'hf_zones', getHfZones, () => { applyHfZonesToInputs(); updateZones(); renderZonesGroup(); }); }
+function saveRestDaysToGH(data) { return saveJSONToGH(GH_REST_DAYS_FILE, data, 'Update trainingsfreie Tage'); }
+function syncRestDaysFromGH() { return syncJSONFromGH(GH_REST_DAYS_FILE, 'rest_days', getRestDaysData, () => { populateSettingsForm(); renderCockpitWeek(); }); }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
