@@ -116,7 +116,7 @@ Jedes A-Rennen (siehe `events.md`) treibt einen eigenen Zyklus, rückwärts vom 
 | T | Tapering | 1–2 Wochen | Frische aufbauen | Volumen↓, Intensität kurz | Letzter Block vor dem Rennen, direkt nach dem letzten Spezifisch-Block |
 | G | Goal/Ziel | 1 Woche | Wettkampf selbst | — | Letzte Woche des Zyklus, eigenständig nach dem Taper |
 
-Aktuell (kein Wettkampf eingetragen): **Basisphase (B)**. Bei mehreren A-Rennen im Jahr: eigener Zyklus pro Rennen, kein durchgehender Bogen (siehe TrainIQ-App, Plan-Seite — dort technisch weiterhin als vier Phasen Basis/Kraft/Spezifisch/Taper berechnet: B→Basis, I→Kraft, S→Spezifisch, T+G→Taper).
+Aktuell (kein Wettkampf eingetragen): **Basisphase (B)**. Bei mehreren A-Rennen im Jahr: eigener Zyklus pro Rennen, kein durchgehender Bogen (siehe TrainIQ-App, Plan-Seite — dort technisch weiterhin als vier Phasen Basis/Intensität/Spezifisch/Taper berechnet: B→Basis, I→Intensität, S→Spezifisch, T+G→Taper). Regenerationswochen (R) werden dort direkt als schraffierte Zonen in den Basis-/Intensitäts-/Spezifisch-Segmenten angezeigt, alle 3–4 Wochen.
 
 ### Anwendung: Trainingsvorschlag ableiten
 Bevor der Head Coach eine Wochen- oder Session-Empfehlung ausspricht:

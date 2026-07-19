@@ -369,6 +369,8 @@
     .phase-subrace-taper { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--text2) 0, var(--text2) 1px, transparent 1px, transparent 6px); opacity: 0.25; pointer-events: none; }
     .phase-subrace-marker { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 1px dashed var(--text2); }
     .phase-subrace-tag { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); font-size: 8px; font-family: var(--mono); font-weight: 700; color: var(--text2); background: var(--bg); padding: 0 3px; border-radius: 3px; white-space: nowrap; }
+    /* Regenerationswochen innerhalb der Phasen-Segmente, siehe renderRegenZones() */
+    .phase-regen-zone { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, var(--text2) 0, var(--text2) 1px, transparent 1px, transparent 5px); opacity: 0.22; pointer-events: none; }
     /* Übergang zwischen zwei A-Zyklen (Basis-Reset nach einem Rennen), siehe renderPhaseTimeline() */
     .phase-segment.phase-gap { border-style: dashed; border-color: var(--border); color: var(--text2); background: transparent; opacity: 0.7; }
     /* A-Rennen-Marker: kleine Flagge über der Zeitleiste am jeweiligen Zyklusende */

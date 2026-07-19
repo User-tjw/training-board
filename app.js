@@ -456,10 +456,10 @@ function readRacesFromForm() {
 // Uphill-Athlete-Periodisierung (siehe cowork/skill-training-management.md): 4 Phasen rückwärts vom
 // Wettkampfdatum des A-Rennens, Dauer als Mittelwert der dort angegebenen Spannen.
 const UA_PHASES = [
-  { name: 'Basis',      days: 105, focus: 'AeT aufbauen, Volumen',        color: '#3b82f6' },
-  { name: 'Kraft',      days: 49,  focus: 'Kraft + Bergläufe',            color: '#8b5cf6' },
-  { name: 'Spezifisch', days: 35,  focus: 'Wettkampf-Intensitäten',       color: '#f59e0b' },
-  { name: 'Taper',      days: 18,  focus: 'Frische aufbauen',             color: '#10b981' },
+  { name: 'Basis',       days: 105, focus: 'AeT aufbauen, Volumen',              color: '#3b82f6' },
+  { name: 'Intensität',  days: 49,  focus: 'Kraft + Bergläufe als Reiz',         color: '#8b5cf6' },
+  { name: 'Spezifisch',  days: 35,  focus: 'Wettkampf-Intensitäten',             color: '#f59e0b' },
+  { name: 'Taper',       days: 18,  focus: 'Frische aufbauen',                   color: '#10b981' },
 ];
 // Jedes A-Rennen ab heute treibt einen eigenen Basis→Taper-Zyklus (7 Monate Abstand = zwei
 // eigenständige Saisonziele, kein durchgehender Bogen — UA-Doku kennt nur den Einzelzyklus,
@@ -491,8 +491,15 @@ function computeMultiCyclePhases(races, today) {
     const factor = availableDays / totalRawDays;
     let end = raceDate;
     const phases = [];
+    let daysUsed = 0;
     for (let i = UA_PHASES.length - 1; i >= 0; i--) {
-      const days = Math.max(1, Math.round(UA_PHASES[i].days * factor));
+      // Basis (i=0, letzte Iteration) fängt den Rundungsrest exakt auf, statt selbst unabhängig
+      // gerundet zu werden — sonst driftet der Zyklusstart leicht von "heute"/dem Vorgänger-Rennen
+      // weg (einzelne Tage Differenz je nach Rundung der anderen drei Phasen).
+      const days = i === 0
+        ? Math.max(1, Math.round(availableDays) - daysUsed)
+        : Math.max(1, Math.round(UA_PHASES[i].days * factor));
+      if (i !== 0) daysUsed += days;
       const start = new Date(end); start.setDate(start.getDate() - days);
       phases.unshift({ ...UA_PHASES[i], days, start, end: new Date(end) });
       end = start;
@@ -556,12 +563,43 @@ function renderPhaseTimeline() {
     const pct = Math.min(100, Math.max(0, (cycle.raceDate - overallStart) / (86400000 * totalDays) * 100));
     return `<div class="phase-race-marker" style="left:${pct.toFixed(2)}%" title="A: ${escHtml(cycle.race.name)} (${fmtShort(cycle.raceDate)})"><span class="phase-race-flag">▲</span></div>`;
   }).join('');
-  el.innerHTML = `<div class="phase-timeline">${segments}<div class="phase-marker" style="left:${todayPct}%" title="Heute"></div>${subMarkers}${raceMarkers}</div>`;
+  const regenZones = renderRegenZones(cycles, overallStart, totalDays);
+  el.innerHTML = `<div class="phase-timeline">${segments}${regenZones}<div class="phase-marker" style="left:${todayPct}%" title="Heute"></div>${subMarkers}${raceMarkers}</div>`;
+}
+
+// Regenerationswochen als schraffierte Zonen direkt in der Phasen-Zeitleiste (statt eigener
+// Wochen-Detailansicht — siehe skill-training-management.md „Makrozyklus-Wochentypen"): Basis,
+// Intensität und Spezifisch bekommen alle 3–4 Wochen eine R-Woche (letzte Woche jedes Blocks),
+// Taper nicht (siehe Wochenfolge-Muster: T T, kein R davor).
+const PHASE_REGEN_BLOCK_DAYS = { Basis: 28, 'Intensität': 21, Spezifisch: 21 };
+function renderRegenZones(cycles, overallStart, totalDays) {
+  const totalMs = 86400000 * totalDays;
+  let zones = '';
+  cycles.forEach(cycle => {
+    cycle.phases.forEach(phase => {
+      const blockDays = PHASE_REGEN_BLOCK_DAYS[phase.name];
+      if (!blockDays) return;
+      let blockStart = new Date(phase.start);
+      while (blockStart < phase.end) {
+        let blockEnd = new Date(blockStart); blockEnd.setDate(blockEnd.getDate() + blockDays);
+        if (blockEnd > phase.end) blockEnd = new Date(phase.end);
+        const regenStart = new Date(blockEnd); regenStart.setDate(regenStart.getDate() - 7);
+        const zoneStart = regenStart < blockStart ? blockStart : regenStart;
+        const startPct = Math.max(0, (zoneStart - overallStart) / totalMs * 100);
+        const endPct = Math.min(100, (blockEnd - overallStart) / totalMs * 100);
+        if (endPct > startPct) {
+          zones += `<div class="phase-regen-zone" style="left:${startPct.toFixed(2)}%;width:${(endPct - startPct).toFixed(2)}%" title="Regeneration"></div>`;
+        }
+        blockStart = blockEnd;
+      }
+    });
+  });
+  return zones;
 }
 
 // B/C-Rennen im laufenden A-Zyklus als Mini-Taper-Marker: schraffierte Zone (Volumen-Reduktion)
 // kurz vor dem Rennen + dezente Markierungslinie mit Prioritäts-Tag. Unterbricht die
-// Basis/Kraft/Spezifisch/Taper-Phasen nicht, überlagert sie nur.
+// Basis/Intensität/Spezifisch/Taper-Phasen nicht, überlagert sie nur.
 const SUB_RACE_TAPER_DAYS = { B: 4, C: 2 };
 function renderSubRaceMarkers(rangeStart, rangeEnd, totalDays, fmtShort) {
   const totalMs = 86400000 * totalDays;
