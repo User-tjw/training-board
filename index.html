@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260715b">
+  <link rel="stylesheet" href="style.css?v=20260719i">
 </head>
 <body>
 
@@ -113,6 +113,7 @@
     <!-- Hauptnavigation: data-section legt fest, welche <section id="section-*"> per JS eingeblendet wird -->
     <nav class="topnav-items">
       <a class="nav-item active" data-section="cockpit">Dashboard</a>
+      <a class="nav-item" data-section="plan">Plan</a>
       <a class="nav-item" data-section="zones">HF-Zonen</a>
       <a class="nav-item" data-section="wellness">Wellness</a>
       <a class="nav-item" data-section="activities">Aktivitäten</a>
@@ -125,7 +126,7 @@
         <span id="statusText">Verbinde...</span>
       </div>
       <button class="btn icon-btn" id="themeToggleBtn" onclick="toggleTheme()"></button>
-      <button class="btn icon-btn" onclick="openSettingsPage()" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.4 7.4 0 0 0 0-3l1.9-1.5-2-3.4-2.3.6a7.5 7.5 0 0 0-2.6-1.5L14 2h-4l-.4 2.7a7.5 7.5 0 0 0-2.6 1.5l-2.3-.6-2 3.4L4.6 10.5a7.4 7.4 0 0 0 0 3L2.7 15l2 3.4 2.3-.6a7.5 7.5 0 0 0 2.6 1.5L10 22h4l.4-2.7a7.5 7.5 0 0 0 2.6-1.5l2.3.6 2-3.4Z"/></svg></button>
+      <button class="btn icon-btn" onclick="openSettingsModal()" title="Einstellungen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.4 7.4 0 0 0 0-3l1.9-1.5-2-3.4-2.3.6a7.5 7.5 0 0 0-2.6-1.5L14 2h-4l-.4 2.7a7.5 7.5 0 0 0-2.6 1.5l-2.3-.6-2 3.4L4.6 10.5a7.4 7.4 0 0 0 0 3L2.7 15l2 3.4 2.3-.6a7.5 7.5 0 0 0 2.6 1.5L10 22h4l.4-2.7a7.5 7.5 0 0 0 2.6-1.5l2.3.6 2-3.4Z"/></svg></button>
       <button class="btn icon-btn" onclick="logout()" title="Abmelden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"/><path d="M18.4 6.6a8.5 8.5 0 1 1-12.8 0"/></svg></button>
     </div>
    </div>
@@ -227,6 +228,76 @@
       </div>
     </section>
 
+    <!-- Plan: Trainingsziel (Freitext für KI-Trainer) + Trainings-Soll (Wochenstunden/Prozent-Aufteilung je Sportart) -->
+    <section id="section-plan" class="section">
+      <div class="content">
+        <div class="group-card">
+          <div class="group-card-header">
+            <span class="group-card-title">Trainingsziel</span>
+          </div>
+          <div class="group-card-body" style="--cols:1">
+            <div class="group-card-section">
+              <div class="setup-field">
+                <textarea class="note-textarea" id="settingsTrainingGoal" style="min-height:80px" placeholder="z.B. Halbmarathon am 12.09., Zielzeit 1:45..."></textarea>
+              </div>
+              <div class="setup-hint">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="group-card">
+          <div class="group-card-header">
+            <span class="group-card-title">Trainings-Soll</span>
+          </div>
+          <div class="group-card-body" style="--cols:1">
+          <div class="group-card-section">
+            <div class="setup-field setup-field-inline">
+              <label class="setup-label">Wochenstunden</label>
+              <input class="setup-input setup-input-compact" id="settingsGoalWeekHours" type="number" step="0.5" min="0" placeholder="8">
+            </div>
+            <div class="setup-field-row" style="max-width:420px">
+              <div class="setup-field-row-item">
+                <label class="setup-label">Laufen %</label>
+                <input class="setup-input setup-input-compact" id="settingsGoalLaufenPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+              </div>
+              <div class="setup-field-row-item">
+                <label class="setup-label">Rad %</label>
+                <input class="setup-input setup-input-compact" id="settingsGoalRadPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+              </div>
+              <div class="setup-field-row-item">
+                <label class="setup-label">Kraft %</label>
+                <input class="setup-input setup-input-compact" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+              </div>
+              <div class="setup-field-row-item">
+                <label class="setup-label">Mobil. %</label>
+                <input class="setup-input setup-input-compact" id="settingsGoalMobilitaetPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
+              </div>
+            </div>
+            <div class="setup-hint" id="settingsGoalPctHint">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
+          </div>
+          </div>
+        </div>
+
+        <div class="group-card">
+          <div class="group-card-header">
+            <span class="group-card-title">Wettkampf &amp; Periodisierung</span>
+          </div>
+          <div class="group-card-body" style="--cols:1">
+            <div class="group-card-section">
+              <div class="race-list" id="raceList"></div>
+              <button class="btn" style="margin-top:8px;padding:6px 14px;font-size:12px" onclick="addRaceRow()">+ Wettkampf hinzufügen</button>
+              <div class="setup-hint" style="margin-top:10px">A = Hauptziel, treibt die Trainingsphasen unten. B/C = sekundäre Rennen, erscheinen nur als Markierung im Wochenkalender.</div>
+              <div id="phaseTimeline" style="margin-top:14px"></div>
+              <div class="settings-btn-row" style="margin-top:14px">
+                <button class="setup-btn setup-btn-sm" onclick="saveTrainingGoals()">Speichern</button>
+                <span id="trainingGoalSaved" style="display:none;font-size:12px;color:var(--green);align-self:center">✓ Gespeichert</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Journal: Tagesnotizen + Aktivitäten-Übersicht/-Mix, GitHub-Sync-Hinweis wenn nicht konfiguriert -->
     <section id="section-activities" class="section">
       <div class="content">
@@ -236,96 +307,12 @@
             <div>
               <div style="font-size:13px;font-weight:600;margin-bottom:4px">GitHub Notizen konfigurieren</div>
               <div style="font-size:12px;color:#1e40af;line-height:1.5">Verbinde ein privates GitHub-Repo um Notizen zu speichern. Token + Repo in den Einstellungen eintragen.</div>
-              <button class="trainer-link" onclick="openSettingsPage()">⚙ Einstellungen öffnen →</button>
+              <button class="trainer-link" onclick="openSettingsModal()">⚙ Einstellungen öffnen →</button>
             </div>
           </div>
         </div>
         <!-- Hinweis: diese Zeile ist als sehr langer Einzeiler geschrieben (Card mit Header, Historie/Reload-Buttons, Aktivitäten-Mix und Liste) — schwer manuell zu editieren, ggf. Suche nach eindeutigen IDs statt Lesen im Fließtext -->
         <div class="card"><div class="card-header"><span class="card-title">Aktivitäten <span id="journalCount" class="mono" style="font-size:11px;font-weight:500;color:var(--text2)"></span></span><div style="display:flex;gap:8px"><button class="btn icon-btn" title="Trainer-Zusammenfassung speichern" onclick="openTrainerNoteModal()">💬</button><button class="btn icon-btn" title="Historie" onclick="openHistoryModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="10" y1="20" x2="10" y2="8"/><line x1="16" y1="20" x2="16" y2="4"/><line x1="2" y1="20" x2="22" y2="20"/></svg></button><button class="btn icon-btn" title="Neu laden" onclick="refreshTagesjournal()">↻</button></div></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
-      </div>
-    </section>
-
-    <!-- Einstellungen -->
-    <section id="section-settings" class="section">
-      <div class="content">
-        <div class="settings-content">
-          <!-- Gruppe 1: Intervals.icu Zugangsdaten + Gruppe 2: GitHub Notizen Zugangsdaten -->
-          <div class="group-card">
-            <div class="group-card-section">
-              <div class="settings-group-title">Intervals.icu</div>
-              <div class="settings-field-grid settings-field-grid-golden">
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Athlete ID</label>
-                  <input class="setup-input setup-input-sm" id="settingsAthleteId" type="text">
-                </div>
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">API Key</label>
-                  <input class="setup-input setup-input-sm" id="settingsApiKey" type="password">
-                </div>
-              </div>
-              <div class="setup-hint setup-hint-sm">intervals.icu → Einstellungen → API → API Key</div>
-            </div>
-            <div class="group-card-section">
-              <div class="settings-group-title">GitHub Notizen</div>
-              <div class="settings-field-grid">
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Personal Access Token</label>
-                  <input class="setup-input setup-input-sm" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
-                </div>
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Repository (Owner/Repo)</label>
-                  <input class="setup-input setup-input-sm" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
-                </div>
-              </div>
-              <div class="setup-hint setup-hint-sm">github.com → Settings → Developer settings → Personal access tokens → Scopes: <strong>repo</strong>. Muss ein privates Repo sein.</div>
-            </div>
-          </div>
-          <div class="settings-btn-row">
-            <button class="setup-btn setup-btn-sm" onclick="saveApiSettings()">Speichern</button>
-            <button class="setup-btn setup-btn-sm setup-btn-outline" onclick="closeSettingsPage()">Abbrechen</button>
-          </div>
-
-          <!-- Gruppe 3: Trainingsziel (Freitext für KI-Trainer) + Trainings-Soll (Wochenstunden/Prozent-Aufteilung je Sportart) -->
-          <div class="group-card">
-            <div class="group-card-section">
-              <div class="settings-group-title">Trainingsziel</div>
-              <div class="setup-field setup-field-sm">
-                <textarea class="note-textarea" id="settingsTrainingGoal" style="min-height:54px;font-size:12px;padding:6px 10px" placeholder="z.B. Halbmarathon am 12.09., Zielzeit 1:45..."></textarea>
-              </div>
-              <div class="setup-hint setup-hint-sm">Freitext — wird vom KI-Trainer als Kontext gelesen.</div>
-            </div>
-            <div class="group-card-section">
-              <div class="settings-group-title">Trainings-Soll</div>
-              <div class="settings-field-grid settings-field-grid-soll">
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Wochenstunden</label>
-                  <input class="setup-input setup-input-sm" id="settingsGoalWeekHours" type="number" step="0.5" min="0" placeholder="z.B. 8">
-                </div>
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Laufen %</label>
-                  <input class="setup-input setup-input-sm" id="settingsGoalLaufenPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-                </div>
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Rad %</label>
-                  <input class="setup-input setup-input-sm" id="settingsGoalRadPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-                </div>
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Kraft %</label>
-                  <input class="setup-input setup-input-sm" id="settingsGoalKraftPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-                </div>
-                <div class="setup-field setup-field-sm">
-                  <label class="setup-label">Mobilität %</label>
-                  <input class="setup-input setup-input-sm" id="settingsGoalMobilitaetPct" type="number" step="1" min="0" max="100" oninput="updateGoalPctHint()">
-                </div>
-              </div>
-              <div class="setup-hint setup-hint-sm" id="settingsGoalPctHint" style="margin-top:8px">Anteile in % der Wochenstunden gesamt. Pro Typ leer lassen, wenn kein Ziel gewünscht. Wird in der Trainingswoche als Soll-Ist-Balken angezeigt.</div>
-            </div>
-          </div>
-          <div class="settings-btn-row">
-            <button class="setup-btn setup-btn-sm" onclick="saveTrainingGoals()">Speichern</button>
-            <button class="setup-btn setup-btn-sm setup-btn-outline" onclick="closeSettingsPage()">Abbrechen</button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -441,6 +428,78 @@
     <div id="localDayNotesSection" style="display:none;margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
       <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--text2);margin-bottom:10px">Bisherige Einträge (nur lokal in diesem Browser)</div>
       <div id="localDayNotesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Einstellungen-Modal: schwebendes Fenster (wie der Morgen-Check) statt eigener Seite. Zwei-Spalten: links Themen-Liste, rechts Detail-Felder -->
+<div class="modal-overlay" id="settingsModal" style="display:none" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="modal modal-settings">
+    <div class="modal-settings-header">
+      <h3 style="margin-bottom:0">Einstellungen</h3>
+      <button class="btn" onclick="closeSettingsModal()">✕</button>
+    </div>
+    <div class="settings-panes">
+      <div class="settings-nav">
+        <div class="settings-nav-item active" data-pane="connections" onclick="selectSettingsPane('connections')">
+          <div class="settings-nav-title">Verbindungen</div>
+          <div class="settings-nav-desc">Intervals.icu &amp; GitHub Notizen</div>
+        </div>
+        <div class="settings-nav-item" data-pane="restdays" onclick="selectSettingsPane('restdays')">
+          <div class="settings-nav-title">Trainingsfreie Tage</div>
+          <div class="settings-nav-desc">Feste Wochentage ohne Training</div>
+        </div>
+      </div>
+
+      <div class="settings-detail">
+        <!-- Verbindungen -->
+        <div class="settings-pane" id="pane-connections">
+          <div class="settings-group-title">Intervals.icu</div>
+          <div class="setup-field">
+            <label class="setup-label">Athlete ID</label>
+            <input class="setup-input" id="settingsAthleteId" type="text">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">API Key</label>
+            <input class="setup-input" id="settingsApiKey" type="password">
+          </div>
+          <div class="setup-hint">intervals.icu → Einstellungen → API → API Key</div>
+
+          <div class="settings-group-title" style="margin-top:16px">GitHub Notizen</div>
+          <div class="setup-field">
+            <label class="setup-label">Personal Access Token</label>
+            <input class="setup-input" id="settingsGhToken" type="password" placeholder="ghp_xxxxxxxxxxxx">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">Repository (Owner/Repo)</label>
+            <input class="setup-input" id="settingsGhRepo" type="text" placeholder="user-tjw/training-notes">
+          </div>
+          <div class="setup-hint">github.com → Settings → Developer settings → Personal access tokens → Scopes: <strong>repo</strong>. Muss ein privates Repo sein.</div>
+
+          <div class="settings-btn-row" style="margin-top:14px">
+            <button class="setup-btn" onclick="saveApiSettings()">Speichern</button>
+          </div>
+        </div>
+
+        <!-- Trainingsfreie Tage: feste Wochentage, reine Anzeige-Regel im Wochenkalender -->
+        <div class="settings-pane" id="pane-restdays" style="display:none">
+          <div class="settings-group-title">Trainingsfreie Tage</div>
+          <div class="weekday-list" id="restDaysList">
+            <div class="weekday-row"><input type="checkbox" id="restDay0"><label for="restDay0">Montag</label></div>
+            <div class="weekday-row"><input type="checkbox" id="restDay1"><label for="restDay1">Dienstag</label></div>
+            <div class="weekday-row"><input type="checkbox" id="restDay2"><label for="restDay2">Mittwoch</label></div>
+            <div class="weekday-row"><input type="checkbox" id="restDay3"><label for="restDay3">Donnerstag</label></div>
+            <div class="weekday-row"><input type="checkbox" id="restDay4"><label for="restDay4">Freitag</label></div>
+            <div class="weekday-row"><input type="checkbox" id="restDay5"><label for="restDay5">Samstag</label></div>
+            <div class="weekday-row"><input type="checkbox" id="restDay6"><label for="restDay6">Sonntag</label></div>
+          </div>
+          <div class="setup-hint" style="margin-top:8px">Reine Anzeige-Regel im Wochenkalender, nur für heute/zukünftig — kein Eintrag, kein GitHub-Sync. Ein echtes Training oder ein manueller Plan-Eintrag hat immer Vorrang.</div>
+
+          <div class="settings-btn-row" style="margin-top:14px">
+            <button class="setup-btn" onclick="saveRestDays()">Speichern</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -618,6 +677,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260715d"></script>
+<script src="app.js?v=20260719i"></script>
 </body>
 </html>

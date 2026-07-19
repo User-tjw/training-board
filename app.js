@@ -383,25 +383,31 @@ function saveManualRespirationValue(actId, raw) {
   }
 }
 
-let _settingsReturnSection = 'cockpit';
-function openSettingsPage() {
-  const current = document.querySelector('.nav-item.active');
-  _settingsReturnSection = current ? current.dataset.section : 'cockpit';
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById('section-settings').classList.add('active');
-  document.getElementById('pageTitle').textContent = 'Einstellungen';
+// Einstellungen: schwebendes Modal (wie der Morgen-Check) — links Themen-Liste (.settings-nav-item), rechts die passende .settings-pane
+function openSettingsModal() {
   populateSettingsForm();
+  selectSettingsPane('connections');
+  document.getElementById('settingsModal').style.display = 'flex';
 }
-function closeSettingsPage() {
-  const item = document.querySelector(`.nav-item[data-section="${_settingsReturnSection}"]`) || document.querySelector('.nav-item[data-section="cockpit"]');
-  item.click();
+function closeSettingsModal() {
+  document.getElementById('settingsModal').style.display = 'none';
 }
+function selectSettingsPane(name) {
+  document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.pane === name));
+  document.querySelectorAll('.settings-pane').forEach(p => p.style.display = (p.id === 'pane-' + name) ? 'block' : 'none');
+}
+
 function populateSettingsForm() {
   document.getElementById('settingsAthleteId').value = athleteId;
   document.getElementById('settingsApiKey').value = apiKey;
   document.getElementById('settingsGhToken').value = ghToken;
   document.getElementById('settingsGhRepo').value = ghRepo;
+  const days = getRestDays();
+  for (let i = 0; i < 7; i++) document.getElementById('restDay'+i).checked = days.includes(i);
+}
+
+// Plan-Seite (Trainingsziel + Trainings-Soll + Wettkämpfe/Periodisierung) — separat von den Einstellungen, siehe populateSettingsForm()
+function populatePlanForm() {
   const plan = getTrainingPlan();
   document.getElementById('settingsTrainingGoal').value = plan.trainingGoal || '';
   document.getElementById('settingsGoalWeekHours').value = plan.weekHours ?? '';
@@ -410,6 +416,109 @@ function populateSettingsForm() {
   document.getElementById('settingsGoalKraftPct').value = plan.byTypePct?.Kraft ?? '';
   document.getElementById('settingsGoalMobilitaetPct').value = plan.byTypePct?.['Mobilität'] ?? '';
   updateGoalPctHint();
+  renderRacesList(plan.races || []);
+  renderPhaseTimeline();
+}
+
+// Wettkämpfe: Liste mit Name/Datum/Priorität (A/B/C), siehe UA-Rennsystem in cowork/skill-uphill-athlete.md.
+// A treibt die Phasen-Zeitleiste, B/C sind reine Kalendermarkierungen im Wochenkalender (siehe buildWeekCalendar).
+let _raceRowSeq = 0;
+function renderRacesList(races) {
+  const el = document.getElementById('raceList');
+  _raceRowSeq = 0;
+  el.innerHTML = races.map(r => raceRowHtml(r)).join('');
+}
+function raceRowHtml(r) {
+  const id = 'race' + (_raceRowSeq++);
+  const prio = r.priority || 'A';
+  return `<div class="race-row" data-race-id="${id}">
+    <input class="setup-input race-row-name" type="text" placeholder="Name" value="${escHtml(r.name || '')}">
+    <input class="setup-input race-row-date" type="date" value="${r.date || ''}">
+    <select class="setup-input race-row-prio">
+      <option value="A"${prio==='A'?' selected':''}>A</option>
+      <option value="B"${prio==='B'?' selected':''}>B</option>
+      <option value="C"${prio==='C'?' selected':''}>C</option>
+    </select>
+    <button class="btn icon-btn" title="Entfernen" onclick="this.closest('.race-row').remove()">✕</button>
+  </div>`;
+}
+function addRaceRow() {
+  document.getElementById('raceList').insertAdjacentHTML('beforeend', raceRowHtml({ priority: 'A' }));
+}
+function readRacesFromForm() {
+  return Array.from(document.querySelectorAll('#raceList .race-row')).map(row => ({
+    name: row.querySelector('.race-row-name').value.trim(),
+    date: row.querySelector('.race-row-date').value,
+    priority: row.querySelector('.race-row-prio').value,
+  })).filter(r => r.name && r.date);
+}
+
+// Uphill-Athlete-Periodisierung (siehe cowork/skill-uphill-athlete.md): 4 Phasen rückwärts vom
+// Wettkampfdatum des A-Rennens, Dauer als Mittelwert der dort angegebenen Spannen.
+const UA_PHASES = [
+  { name: 'Basis',      days: 105, focus: 'AeT aufbauen, Volumen',        color: '#3b82f6' },
+  { name: 'Kraft',      days: 49,  focus: 'Kraft + Bergläufe',            color: '#8b5cf6' },
+  { name: 'Spezifisch', days: 35,  focus: 'Wettkampf-Intensitäten',       color: '#f59e0b' },
+  { name: 'Taper',      days: 18,  focus: 'Frische aufbauen',             color: '#10b981' },
+];
+// Nächstes bevorstehendes A-Rennen; ohne Zukunfts-Treffer das zeitlich letzte vergangene A-Rennen als Kontext.
+function findPrimaryRace(races) {
+  const aRaces = (races || []).filter(r => r.priority === 'A' && r.date).sort((a,b) => a.date.localeCompare(b.date));
+  if (!aRaces.length) return null;
+  const todayStr = fmtDate(new Date());
+  return aRaces.find(r => r.date >= todayStr) || aRaces[aRaces.length - 1];
+}
+function computeTrainingPhases(raceDateStr) {
+  if (!raceDateStr) return null;
+  const raceDate = new Date(raceDateStr + 'T00:00:00');
+  if (isNaN(raceDate)) return null;
+  let end = raceDate;
+  const phases = [];
+  for (let i = UA_PHASES.length - 1; i >= 0; i--) {
+    const start = new Date(end); start.setDate(start.getDate() - UA_PHASES[i].days);
+    phases.unshift({ ...UA_PHASES[i], start, end: new Date(end) });
+    end = start;
+  }
+  return { phases, raceDate };
+}
+function renderPhaseTimeline() {
+  const el = document.getElementById('phaseTimeline');
+  if (!el) return;
+  const primary = findPrimaryRace(readRacesFromForm());
+  const result = primary ? computeTrainingPhases(primary.date) : null;
+  if (!result) {
+    el.innerHTML = `<div class="setup-hint">Kein A-Wettkampf eingetragen — Basisphase.</div>`;
+    return;
+  }
+  const { phases } = result;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const totalDays = phases.reduce((s,p) => s + p.days, 0);
+  const fmtShort = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+
+  if (today < phases[0].start) {
+    el.innerHTML = `<div class="setup-hint">"${escHtml(primary.name)}" noch weit voraus — Basisphase beginnt ${fmtShort(phases[0].start)}.</div>`;
+    return;
+  }
+  if (today > result.raceDate) {
+    el.innerHTML = `<div class="setup-hint">"${escHtml(primary.name)}" liegt in der Vergangenheit.</div>`;
+    return;
+  }
+
+  const segments = phases.map(p => {
+    const isCurrent = today >= p.start && today < p.end;
+    const width = (p.days / totalDays * 100).toFixed(2);
+    return `<div class="phase-segment${isCurrent ? ' current' : ''}" style="width:${width}%;background:${p.color}1a;border-color:${p.color};color:${p.color}">
+      <div class="phase-label">${p.name}</div>
+      <div class="phase-daterange">${fmtShort(p.start)}–${fmtShort(p.end)}</div>
+    </div>`;
+  }).join('');
+  const todayPct = Math.min(100, Math.max(0, (today - phases[0].start) / (86400000 * totalDays) * 100));
+  el.innerHTML = `<div class="phase-timeline">${segments}<div class="phase-marker" style="left:${todayPct}%" title="Heute"></div></div>`;
+}
+
+// Trainingsfreie Wochentage: reine lokale Anzeige-Einstellung (kein GitHub-Sync), 0=Montag…6=Sonntag
+function getRestDays() {
+  try { return JSON.parse(localStorage.getItem('rest_days')) || []; } catch { return []; }
 }
 function updateGoalPctHint() {
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? 0 : v; };
@@ -436,9 +545,10 @@ function saveApiSettings() {
   syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
   loadAll();
-  closeSettingsPage();
+  closeSettingsModal();
 }
 
+// Plan-Seite: Trainingsziel + Trainings-Soll (dauerhafte Seite, kein Modal — daher Flash-Bestätigung statt Schließen)
 function saveTrainingGoals() {
   const trainingGoal = document.getElementById('settingsTrainingGoal').value.trim();
 
@@ -452,14 +562,30 @@ function saveTrainingGoals() {
   if (mo !== null) byTypePct['Mobilität'] = mo;
   const byType = {};
   if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
-  const plan = { weekHours, byTypePct, byType, trainingGoal, updatedAt: Date.now() };
+  const races = readRacesFromForm();
+  const plan = { weekHours, byTypePct, byType, trainingGoal, races, updatedAt: Date.now() };
   localStorage.setItem('training_plan', JSON.stringify(plan));
   if (ghToken && ghRepo) {
     saveTrainingPlanToGH(plan).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
   }
 
   renderCockpitWeek();
-  closeSettingsPage();
+  renderPhaseTimeline();
+  const saved = document.getElementById('trainingGoalSaved');
+  if (saved) {
+    saved.style.display = 'inline';
+    clearTimeout(saved._hideTimer);
+    saved._hideTimer = setTimeout(() => { saved.style.display = 'none'; }, 2000);
+  }
+}
+
+// Einstellungen-Modal: Trainingsfreie Tage — schließt das Modal nach dem Speichern
+function saveRestDays() {
+  const days = [];
+  for (let i = 0; i < 7; i++) if (document.getElementById('restDay'+i).checked) days.push(i);
+  localStorage.setItem('rest_days', JSON.stringify(days));
+  renderCockpitWeek();
+  closeSettingsModal();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -475,6 +601,7 @@ function init() {
   setupNav();
   applyHfZonesToInputs();
   updateZones();
+  populatePlanForm();
   syncTrainingPlanFromGH();
   syncManualRespirationFromGH();
   syncActivityMetaFromGH();
@@ -627,7 +754,9 @@ function setStatus(ok) {
 
 const TYPE_COLORS = {Laufen:'#3b82f6',Rad:'#10b981',Kraft:'#8b5cf6',Atmung:'#06b6d4',Mobilität:'#f59e0b'};
 // Plan-Typen = Trainingsarten + Sonderfälle (kein echtes Training). Eigene Farben für die Sonderfälle.
-const PLAN_EXTRA_COLORS = {Ruhetag:'#94a3b8', Krankheit:'#dc2626'};
+// Wettkampf-Gold wird für die automatischen Renn-Marker im Wochenkalender wiederverwendet (siehe buildWeekCalendar) —
+// bewusst NICHT Teil von PLAN_TYPES: Rennen werden ausschließlich über die Renn-Liste auf der Plan-Seite angelegt.
+const PLAN_EXTRA_COLORS = {Ruhetag:'#94a3b8', Krankheit:'#dc2626', Wettkampf:'#eab308'};
 // Atmung ist bei echten (abgeschlossenen) Aktivitäten weiter erkennbar/eingefärbt (TYPE_COLORS),
 // aber als Plan-Typ zum manuellen Anlegen nicht mehr wählbar.
 const PLAN_TYPES = [...Object.keys(TYPE_COLORS).filter(t => t !== 'Atmung'), 'Ruhetag', 'Krankheit'];
@@ -695,6 +824,14 @@ function buildWeekCalendar(weekStart, weekActs) {
     </div>`;
   }
 
+  // Wettkämpfe (A/B/C, Plan-Seite) — automatischer Marker am jeweiligen Renntag, kein plan_session-Eintrag nötig.
+  function raceBar(r) {
+    const color = PLAN_EXTRA_COLORS.Wettkampf;
+    return `<div class="wc-planbar wc-racebar" style="--wc-c:${color}" title="${escHtml(r.name)} (${r.priority}-Rennen)">
+      <div class="wc-bar-top"><span class="wc-planbar-type">${escHtml(r.name).toUpperCase()}</span><span class="wc-planbar-tag">${r.priority}</span></div>
+    </div>`;
+  }
+
   // Geplante Einheit vergangener Tage, die nicht ausgeführt wurde, verschwindet ab dem Folgetag
   // aus dem Kalender (nur Anzeige — ICU-Events/plan_sessions bleiben in den Rohdaten erhalten).
   function visiblePlanSessionsFor(d) {
@@ -707,18 +844,31 @@ function buildWeekCalendar(weekStart, weekActs) {
     return `<div class="week-cal-head-cell${today?' today':''}">${dayNames[i]} ${d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}</div>`;
   }).join('') + `<div class="week-cal-head-cell week-cal-head-summary">DIESE WOCHE</div>`;
 
-  // Pro Tag eine Spalte: echte Aktivitäten + geplante Einheiten (Geister-Balken) + „+ planen" + Tagessumme
+  // Fest eingestellte trainingsfreie Wochentage: nur heute/zukünftig, nur wenn der Tag sonst leer wäre
+  // (echte Aktivität oder manueller Plan-Eintrag haben immer Vorrang) — reine Anzeige-Regel, kein Datenobjekt.
+  const restDays = getRestDays();
+  function isFixedRestDay(d) {
+    const weekdayIdx = (d.date.getDay() + 6) % 7; // JS: 0=So…6=Sa → 0=Mo…6=So
+    return d.dStr >= todayStr && restDays.includes(weekdayIdx);
+  }
+
+  const races = (getTrainingPlan().races || []).filter(r => r.name && r.date);
+
+  // Pro Tag eine Spalte: echte Aktivitäten + geplante Einheiten (Geister-Balken) + Wettkämpfe + „+ planen" + Tagessumme
   const dayCols = byDay.map(d => {
     const dayMin = Math.round(d.acts.reduce((s,a) => s+(a.moving_time||0), 0) / 60);
     const actualTypes = new Set(d.acts.map(a => normalizeType(a.type)));
     const planned = visiblePlanSessionsFor(d);
+    const dayRaces = races.filter(r => r.date === d.dStr);
     const actualBars = d.acts.map(activityBar).join('');
     const planBars = planned.map(s => planBar(d.dStr, s, actualTypes.has(s.type))).join('');
-    const empty = (!d.acts.length && !planned.length) ? `<div class="wc-empty">–</div>` : '';
+    const raceBars = dayRaces.map(raceBar).join('');
+    const isEmpty = !d.acts.length && !planned.length && !dayRaces.length;
+    const empty = isEmpty ? (isFixedRestDay(d) ? `<div class="wc-restday" style="--wc-c:${PLAN_EXTRA_COLORS.Ruhetag}">Trainingsfrei</div>` : `<div class="wc-empty">–</div>`) : '';
     // „+ planen" nur für heute & zukünftige Tage
     const addBtn = d.dStr >= todayStr ? `<button class="wc-add" onclick="event.stopPropagation();openPlanModal('${d.dStr}')" title="Einheit planen">+ planen</button>` : '';
     const total = dayMin > 0 ? `<div class="wc-day-total">${dayMin} min</div>` : '';
-    return `<div class="week-cal-daycol${d.isToday?' today':''}">${actualBars}${planBars}${empty}${addBtn}${total}</div>`;
+    return `<div class="week-cal-daycol${d.isToday?' today':''}">${raceBars}${actualBars}${planBars}${empty}${addBtn}${total}</div>`;
   }).join('');
 
   const plan = getTrainingPlan();
@@ -1541,7 +1691,7 @@ async function syncJSONFromGH(ghPath, storageKey, getLocal, onApplied) {
 }
 
 function saveTrainingPlanToGH(plan) { return saveJSONToGH(GH_PLAN_FILE, plan, 'Update training plan'); }
-function syncTrainingPlanFromGH() { return syncJSONFromGH(GH_PLAN_FILE, 'training_plan', getTrainingPlan, renderCockpitWeek); }
+function syncTrainingPlanFromGH() { return syncJSONFromGH(GH_PLAN_FILE, 'training_plan', getTrainingPlan, () => { renderCockpitWeek(); populatePlanForm(); }); }
 function saveManualRespirationToGH(data) { return saveJSONToGH(GH_RESPIRATION_FILE, data, 'Update Atmung-Daten'); }
 function syncManualRespirationFromGH() { return syncJSONFromGH(GH_RESPIRATION_FILE, 'manual_respiration', getManualRespiration, renderFromCache); }
 function saveActivityMetaToGH(data) { return saveJSONToGH(GH_ACTIVITY_META_FILE, data, 'Update Aktivitäts-Daten'); }
@@ -1802,7 +1952,7 @@ let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
 
 function openNoteEditor(dateStr) {
-  if (!ghToken || !ghRepo) { openSettingsPage(); return; }
+  if (!ghToken || !ghRepo) { openSettingsModal(); return; }
   _noteEditorLocalMode = false;
   _editingLocalNoteId = null;
   const targetDate = dateStr || fmtDate(new Date());
@@ -2072,7 +2222,7 @@ function trainerLabel(slug) { return TRAINER_OPTIONS.find(t => t.v === slug)?.l 
 let _trainerNoteDay = null;
 
 function openTrainerNoteModal(dateStr) {
-  if (!ghToken || !ghRepo) { openSettingsPage(); return; }
+  if (!ghToken || !ghRepo) { openSettingsModal(); return; }
   _trainerNoteDay = dateStr || fmtDate(new Date());
   document.getElementById('trainerNoteDate').value = _trainerNoteDay;
   document.getElementById('trainerNoteTrainer').innerHTML = TRAINER_OPTIONS.map(t => `<option value="${t.v}">${t.l}</option>`).join('');
