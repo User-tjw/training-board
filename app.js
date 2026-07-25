@@ -1105,27 +1105,45 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
   const latestRHF = rhfSeries[rhfSeries.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
 
-  // HRV Ampel
-  const hrv7 = hrvSeries.slice(-7).map(d => d.hrv).filter(Boolean);
-  const hrv7avg = avg(hrv7);
+  // HRV Ampel (individuelle SD-Bänder / Z-Score, Fallback auf %-Logik bei zu wenig Historie)
   const todayHRV = latestHRV.hrv || 0;
-  const pct = hrv7avg ? ((todayHRV - hrv7avg) / hrv7avg) * 100 : 0;
+  const hrvResult = todayHRV ? hrvVerdictAt(hrvSeries, hrvSeries.length - 1) : null;
+  const hrv7avg = hrvResult ? hrvResult.base7avg : 0;
 
   let verdict, desc, cls;
   if (!todayHRV) {
     verdict = '● Keine HRV-Daten'; desc = 'Noch kein HRV-Wert für heute.'; cls = 'neutral';
-  } else if (pct >= -3) {
-    verdict = '● Bereit · Hart trainieren';
-    desc = `HRV ${Math.round(todayHRV)} ms liegt im Bereich des 7-Tage-Ø (${Math.round(hrv7avg)} ms). Guter Tag für Qualitätseinheiten.`;
-    cls = 'up';
-  } else if (pct >= -10) {
-    verdict = '● Moderat · Locker bleiben';
-    desc = `HRV ${Math.round(todayHRV)} ms leicht unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Nur lockeres Training.`;
-    cls = 'neutral';
+  } else if (hrvResult && hrvResult.mode === 'z') {
+    const z = hrvResult.z;
+    if (z >= -1) {
+      verdict = '● Bereit · Hart trainieren';
+      desc = `HRV ${Math.round(todayHRV)} ms (Z ${z.toFixed(2)}) im individuellen Normalbereich. Guter Tag für Qualitätseinheiten.`;
+      cls = 'up';
+    } else if (z >= -2) {
+      verdict = '● Moderat · Locker bleiben';
+      desc = `HRV ${Math.round(todayHRV)} ms (Z ${z.toFixed(2)}) unter der individuellen Norm. Nur lockeres Training.`;
+      cls = 'neutral';
+    } else {
+      verdict = '● Erholen · Ruhetag';
+      desc = `HRV ${Math.round(todayHRV)} ms (Z ${z.toFixed(2)}) deutlich unter der individuellen Norm. Erholung empfohlen.`;
+      cls = 'down';
+    }
   } else {
-    verdict = '● Erholen · Ruhetag';
-    desc = `HRV ${Math.round(todayHRV)} ms deutlich unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Erholung empfohlen.`;
-    cls = 'down';
+    // Fallback: alte %-Schwellenlogik (noch zu wenig Datenhistorie für individuelle SD)
+    const pct = hrvResult ? hrvResult.pct : 0;
+    if (pct >= -3) {
+      verdict = '● Bereit · Hart trainieren';
+      desc = `HRV ${Math.round(todayHRV)} ms liegt im Bereich des 7-Tage-Ø (${Math.round(hrv7avg)} ms). Guter Tag für Qualitätseinheiten.`;
+      cls = 'up';
+    } else if (pct >= -10) {
+      verdict = '● Moderat · Locker bleiben';
+      desc = `HRV ${Math.round(todayHRV)} ms leicht unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Nur lockeres Training.`;
+      cls = 'neutral';
+    } else {
+      verdict = '● Erholen · Ruhetag';
+      desc = `HRV ${Math.round(todayHRV)} ms deutlich unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Erholung empfohlen.`;
+      cls = 'down';
+    }
   }
 
   // Job-Belastung (Schritte gestern) als zweites Signal: kann die HRV-Ampel nur abwerten, nie aufwerten.
@@ -1213,14 +1231,13 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
 
   // HRV-Tagesstatus-Ampel: immer die letzten 7 echten Tage, unabhängig von der Kachel-Auswahl
   const hrv7data = hrvSeries.slice(-7);
-  const hrv7rolling = hrv7data.map((d,i) => {
-    const win = hrvSeries.slice(Math.max(0, hrvSeries.length-7+i-6), hrvSeries.length-7+i+1);
-    return avg(win.map(w=>w.hrv).filter(Boolean));
-  });
+  const hrv7startIdx = hrvSeries.length - hrv7data.length;
   document.getElementById('cockpitHRVDots').innerHTML = hrv7data.map((d,i) => {
     if (!d.hrv) return '<span style="color:#e2e8f0">●</span>';
-    const p = hrv7rolling[i] ? ((d.hrv-hrv7rolling[i])/hrv7rolling[i])*100 : 0;
-    const col = p >= -3 ? '#10b981' : p >= -10 ? '#f59e0b' : '#ef4444';
+    const r = hrvVerdictAt(hrvSeries, hrv7startIdx + i);
+    const col = !r ? '#e2e8f0'
+      : r.mode === 'z' ? (r.z >= -1 ? '#10b981' : r.z >= -2 ? '#f59e0b' : '#ef4444')
+      : (r.pct >= -3 ? '#10b981' : r.pct >= -10 ? '#f59e0b' : '#ef4444');
     const day = new Date(d.id).toLocaleDateString('de-DE',{weekday:'short'});
     return `<span title="${day}: ${Math.round(d.hrv)} ms" style="color:${col};cursor:default">●</span>`;
   }).join('');
@@ -2632,6 +2649,36 @@ function fmtAxisDate(id) { const [y,m,d] = id.split('-'); return `${d}.${m}.${y.
 function fmtNum(n) { return n == null ? n : n.toLocaleString('de-DE'); }
 function sortedWellness(w) { return [...w].sort((a,b)=>a.id>b.id?1:-1); }
 function avg(arr) { return arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0; }
+
+// HRV-Bewertung nach individuellen SD-Bändern (Plews-Methode, ln-transformiert), Stand 25.07.2026.
+// Baseline (7-Tage-Ø) und Streuung (90-Tage-SD) werden aus den Tagen VOR "idx" berechnet, der
+// heutige Wert zählt nicht in seine eigene Baseline. Bei zu wenig Datenhistorie (<60 Werte im
+// 90-Tage-Fenster) Fallback auf die alte %-Schwellenlogik. Siehe skill-training-management.md.
+function sampleSD(arr) {
+  if (arr.length < 2) return null;
+  const m = avg(arr);
+  const variance = arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
+  return Math.sqrt(variance);
+}
+function hrvVerdictAt(hrvSeries, idx) {
+  const todayVal = hrvSeries[idx]?.hrv;
+  if (!todayVal) return null;
+  const before = hrvSeries.slice(0, idx);
+  const base7 = before.slice(-7).map(d => d.hrv).filter(Boolean);
+  const base90 = before.slice(-90).map(d => d.hrv).filter(Boolean);
+  if (base7.length >= 3 && base90.length >= 60) {
+    const meanLn7 = avg(base7.map(Math.log));
+    const sd = sampleSD(base90.map(Math.log));
+    if (sd) {
+      const z = (Math.log(todayVal) - meanLn7) / sd;
+      return { mode: 'z', z, base7avg: avg(base7) };
+    }
+  }
+  if (!base7.length) return null;
+  const base7avg = avg(base7);
+  const pct = base7avg ? ((todayVal - base7avg) / base7avg) * 100 : 0;
+  return { mode: 'pct', pct, base7avg };
+}
 function formatDur(secs) { const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
 function normalizeType(type) {
   if(!type) return 'Mobilität';
