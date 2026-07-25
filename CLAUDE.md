@@ -18,22 +18,24 @@ Kein Backend, kein Server, kein Deployment nötig.
 ## Projektstruktur
 
 ```
-TrainingBoard/
+TrainIQ/
 ├── index.html            ← Die gesamte App (HTML + CSS + JS)
+├── app.js                ← App-Logik (ausgelagert)
+├── style.css             ← Styles (ausgelagert)
 ├── favicon.svg           ← App-Icon
 ├── Start-Dashboard.bat   ← Lokaler Start auf PC (http://localhost:8765)
 ├── CLAUDE.md             ← Diese Datei
-├── .claude/
-│   └── launch.json       ← Dev-Server-Konfig für Browser-Vorschau
-└── cowork/               ← Trainingscoach-Material für Claude Cowork
-    ├── athletenprofil.md
-    ├── projekt-anweisung.md
-    ├── skill-training-management.md
-    ├── skill-reha-management.md
-    ├── skill-krafttraining.md
-    ├── skill-ernaehrung.md
-    ├── skill-intervals-icu.md
-    └── training-board_lauftechnik-bergauf-bergab.md
+├── cowork/               ← Trainingscoach-Material für Claude Cowork
+│   ├── athletenprofil.md
+│   ├── projekt-anweisung.md
+│   ├── skill-training-management.md
+│   ├── skill-reha-management.md
+│   ├── skill-krafttraining.md
+│   ├── skill-ernaehrung.md
+│   ├── skill-intervals-icu.md
+│   └── training-board_lauftechnik-bergauf-bergab.md
+├── Archiv/               ← Ältere Versionen / Ablage
+└── CSV-Export/           ← CSV-Exporte
 ```
 
 **Konvention:** Alles, was inhaltlich für den Trainingscoach/Claude Cowork bestimmt ist (Recherche, Notizen, Skills), gehört nach `cowork/` — nicht ins Projekt-Root.
@@ -86,4 +88,3 @@ Bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) schreibt die App Noti
 - [harlerunner.de](https://harlerunner.de) — KI-Trainerteam Konzept + Loop UI
 - [uphillathlete.com](https://uphillathlete.com) — Uphill Athlete Trainingsprinzipien
 - [liebscher-pracht.com] https://www.liebscher-bracht.com/
-
