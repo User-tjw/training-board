@@ -6,6 +6,8 @@
 - keine Live-Schreibtests mehr gegen dein echtes Repo ohne ausdrückliche Erlaubnis - nutze nur lokale Daten
 - visuelle Verifikation immer Nachfragen, z.B. keine Screenshots/Browser-Tests bei reinen Code-/Text-Änderungen, 
 - Antworten kurz halten, keine Zusammenfassungen am Ende
+- Vor jeder Arbeit am Projekt: `git pull` (bzw. `git pull --rebase`) ausführen — der Head Coach committet auch direkt auf GitHub, lokaler Stand kann veraltet sein *(Stand: 25.07.2026)*
+- Neue Einträge in dieser Datei künftig mit Datum versehen *(Stand: 25.07.2026)*
 
 ## Konzept
 
