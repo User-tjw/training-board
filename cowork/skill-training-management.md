@@ -55,12 +55,20 @@ Optional: Muskelkater, Stress, besondere Ereignisse, Schrittzahl (Job-Belastung)
 
 ### Auswertungslogik
 
-**HRV-Bewertung (Plews-Methode vereinfacht):**
-- Vergleiche heutige HRV mit dem 7-Tage-Rollmittel
-- > +10% über Mittelwert → sehr gut, grünes Licht
-- ±10% um Mittelwert → normal
-- > 10% unter Mittelwert → Vorsicht, Belastung reduzieren
-- > 20% unter Mittelwert → Rot, nur Regeneration
+**HRV-Bewertung (individuelle SD-Bänder, Plews-Methode, Stand 24.07.2026):**
+
+1. Ln-Transformation des täglichen HRV-Werts (rMSSD): `ln(HRV)`
+2. 7-Tage-Rollmittel von `ln(HRV)` — Baseline aus den 7 Tagen VOR dem heutigen Wert (heutiger Tag zählt nicht mit in die Baseline)
+3. Individuelle Streuung: SD von `ln(HRV)` aus einem rollierenden 90-Tage-Fenster (ebenfalls ohne den heutigen Tag). Mindestens 60 Werte im Fenster nötig — bei weniger Daten: alte %-Logik als Fallback nutzen.
+4. Z-Wert: `Z = (ln(HRV_heute) − 7-Tage-Ø ln(HRV)) / SD(ln HRV, 90 Tage)`
+5. Ampel:
+   - 🟢 Grün: Z ≥ -1
+   - 🟡 Gelb: -2 ≤ Z < -1
+   - 🔴 Rot: Z < -2
+
+**Thomas' aktuelle individuelle SD:** SD(ln HRV, 90 Tage) ≈ 0,136 (Stand 24.07.2026, berechnet aus CSV-Export mit 812 Werten, 26.04.2024–24.07.2026). Dieser Wert ist kein fixer Systemparameter, sondern muss bei jedem neuen CSV-Reimport aus intervals.icu neu berechnet werden (kein Live-API-Zugriff, siehe Skill `intervals-icu`).
+
+*Hinweis:* Die alte %-Schwellenlogik hat individuelle Tagesschwankung ignoriert und bei Thomas (natürlich höhere Streuung) tendenziell zu früh Rot ausgelöst. Beispiel 24.07.2026: HRV 30 vs. 7-Tage-Ø 37,6 → alte Logik: -20,2% → Rot. Neue Logik: Z = -1,66 → Gelb.
 
 **Ampelsystem:**
 | Ampel | Bedeutung | Konsequenz |
