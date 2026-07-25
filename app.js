@@ -1273,7 +1273,6 @@ function renderCockpitLoad() {
   const fc = makeFitnessChart(fitnessSlice, hrvByDate, rhfByDate, loadByDate, respByDate); fc.options.maintainAspectRatio = false;
   renderChart('fitnessChart', fc);
 
-  document.getElementById('avgHR').textContent = avg(actSlice.map(a=>a.average_heartrate).filter(Boolean)) ? Math.round(avg(actSlice.map(a=>a.average_heartrate).filter(Boolean))) : '—';
   const wSlice = sliceDays(wellnessSorted, days, d => new Date(d.id));
   const aS = avg(wSlice.map(d=>d.sleepSecs).filter(Boolean));
   document.getElementById('avgSleep').textContent = aS ? (aS/3600).toFixed(1) : '—';
