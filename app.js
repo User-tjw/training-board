@@ -409,7 +409,6 @@ function populateSettingsForm() {
 // Plan-Seite (Trainingsziel + Trainings-Soll + Wettkämpfe/Periodisierung) — separat von den Einstellungen, siehe populateSettingsForm()
 function populatePlanForm() {
   const plan = getTrainingPlan();
-  document.getElementById('settingsTrainingGoal').value = plan.trainingGoal || '';
   document.getElementById('settingsGoalWeekHours').value = plan.weekHours ?? '';
   document.getElementById('settingsGoalLaufenPct').value = plan.byTypePct?.Laufen ?? '';
   document.getElementById('settingsGoalRadPct').value = plan.byTypePct?.Rad ?? '';
@@ -540,16 +539,18 @@ function renderPhaseTimeline() {
   cycles.forEach(cycle => {
     const gapDays = (cycle.phases[0].start - prevEnd) / 86400000;
     if (gapDays > 0.5) {
-      const gapWidth = (gapDays / totalDays * 100).toFixed(2);
-      segments += `<div class="phase-segment phase-gap" style="width:${gapWidth}%">
+      const gapWidth = gapDays / totalDays * 100;
+      const gapCompact = gapWidth < 6 ? ' phase-compact' : '';
+      segments += `<div class="phase-segment phase-gap${gapCompact}" style="width:${gapWidth.toFixed(2)}%" title="Übergang: ${fmtShort(prevEnd)}–${fmtShort(cycle.phases[0].start)}">
         <div class="phase-label">Übergang</div>
         <div class="phase-daterange">${fmtShort(prevEnd)}–${fmtShort(cycle.phases[0].start)}</div>
       </div>`;
     }
     cycle.phases.forEach(p => {
       const isCurrent = today >= p.start && today < p.end;
-      const width = (p.days / totalDays * 100).toFixed(2);
-      segments += `<div class="phase-segment${isCurrent ? ' current' : ''}" style="width:${width}%;background:${p.color}1a;border-color:${p.color};color:${p.color}">
+      const width = p.days / totalDays * 100;
+      const compact = width < 6 ? ' phase-compact' : '';
+      segments += `<div class="phase-segment${isCurrent ? ' current' : ''}${compact}" style="width:${width.toFixed(2)}%;background:${p.color}1a;border-color:${p.color};color:${p.color}" title="${p.name}: ${p.focus} (${fmtShort(p.start)}–${fmtShort(p.end)})">
         <div class="phase-label">${p.name}</div>
         <div class="phase-daterange">${fmtShort(p.start)}–${fmtShort(p.end)}</div>
       </div>`;
@@ -678,10 +679,8 @@ function saveApiSettings() {
   closeSettingsModal();
 }
 
-// Plan-Seite: Trainingsziel + Trainings-Soll (dauerhafte Seite, kein Modal — daher Flash-Bestätigung statt Schließen)
+// Plan-Seite: Trainings-Soll (dauerhafte Seite, kein Modal — daher Flash-Bestätigung statt Schließen)
 function saveTrainingGoals() {
-  const trainingGoal = document.getElementById('settingsTrainingGoal').value.trim();
-
   const num = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
   const weekHours = num('settingsGoalWeekHours');
   const byTypePct = {};
@@ -693,7 +692,7 @@ function saveTrainingGoals() {
   const byType = {};
   if (weekHours) Object.entries(byTypePct).forEach(([t, pct]) => { byType[t] = Math.round(weekHours * pct / 100 * 10) / 10; });
   const races = readRacesFromForm();
-  const plan = { weekHours, byTypePct, byType, trainingGoal, races, updatedAt: Date.now() };
+  const plan = { weekHours, byTypePct, byType, races, updatedAt: Date.now() };
   localStorage.setItem('training_plan', JSON.stringify(plan));
   if (ghToken && ghRepo) {
     saveTrainingPlanToGH(plan).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
