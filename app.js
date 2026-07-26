@@ -370,6 +370,53 @@ function saveHfZones() {
   }
 }
 
+// Persönliche Daten (Name/Geburtstag/FTP/Größe) — ändern sich über die Zeit, daher als Einstellung
+// statt fest im Code (siehe copyNoteForClaude(), das Alter wird aus dem Geburtstag berechnet).
+function getAthleteProfile() {
+  try { return JSON.parse(localStorage.getItem('athlete_profile') || '{}'); } catch(e) { return {}; }
+}
+
+function applyAthleteProfileToInputs() {
+  const p = getAthleteProfile();
+  document.getElementById('profileName').value = p.name ?? 'Thomas Wagner';
+  document.getElementById('profileBirthDate').value = p.birthDate ?? '1975-07-16';
+  document.getElementById('profileFtp').value = p.ftp ?? 250;
+  document.getElementById('profileHeight').value = p.height ?? 172;
+}
+
+function saveAthleteProfileLocal() {
+  const name = document.getElementById('profileName')?.value.trim() || 'Thomas Wagner';
+  const birthDate = document.getElementById('profileBirthDate')?.value || null;
+  const ftp = parseInt(document.getElementById('profileFtp')?.value) || null;
+  const height = parseFloat(document.getElementById('profileHeight')?.value) || null;
+  const profile = { name, birthDate, ftp, height, updatedAt: Date.now() };
+  localStorage.setItem('athlete_profile', JSON.stringify(profile));
+  return profile;
+}
+
+function saveAthleteProfile() {
+  const profile = saveAthleteProfileLocal();
+  if (ghToken && ghRepo) {
+    saveAthleteProfileToGH(profile).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
+  const saved = document.getElementById('profileSaved');
+  if (saved) {
+    saved.style.display = 'inline';
+    clearTimeout(saved._hideTimer);
+    saved._hideTimer = setTimeout(() => { saved.style.display = 'none'; }, 2000);
+  }
+}
+
+function calcAge(birthDateStr) {
+  if (!birthDateStr) return null;
+  const b = new Date(birthDateStr + 'T00:00');
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
 function saveManualRespirationValue(actId, raw) {
   if (!actId) return;
   const value = raw === '' || raw == null ? null : parseFloat(String(raw).replace(',', '.'));
@@ -404,6 +451,7 @@ function populateSettingsForm() {
   document.getElementById('settingsGhRepo').value = ghRepo;
   const days = getRestDays();
   for (let i = 0; i < 7; i++) document.getElementById('restDay'+i).checked = days.includes(i);
+  applyAthleteProfileToInputs();
 }
 
 // Plan-Seite (Trainingsziel + Trainings-Soll + Wettkämpfe/Periodisierung) — separat von den Einstellungen, siehe populateSettingsForm()
@@ -675,6 +723,7 @@ function saveApiSettings() {
   syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
   syncRestDaysFromGH();
+  syncAthleteProfileFromGH();
   loadAll();
   closeSettingsModal();
 }
@@ -733,6 +782,7 @@ function init() {
     `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   setupNav();
   applyHfZonesToInputs();
+  applyAthleteProfileToInputs();
   updateZones();
   populatePlanForm();
   syncTrainingPlanFromGH();
@@ -742,6 +792,7 @@ function init() {
   syncHiddenActivitiesFromGH();
   syncHfZonesFromGH();
   syncRestDaysFromGH();
+  syncAthleteProfileFromGH();
   loadAll();
 }
 
@@ -1667,6 +1718,7 @@ const GH_ACTIVITY_META_FILE = 'settings/activity-meta.json';
 const GH_PLAN_SESSIONS_FILE = 'settings/plan-sessions.json';
 const GH_HIDDEN_ACTIVITIES_FILE = 'settings/hidden-activities.json';
 const GH_REST_DAYS_FILE = 'settings/rest-days.json';
+const GH_PROFILE_FILE = 'settings/athlete-profile.json';
 let _notes = [];
 let _editingNote = null;
 
@@ -1853,6 +1905,8 @@ function saveHfZonesToGH(zones) { return saveJSONToGH(GH_ZONES_FILE, zones, 'Upd
 function syncHfZonesFromGH() { return syncJSONFromGH(GH_ZONES_FILE, 'hf_zones', getHfZones, () => { applyHfZonesToInputs(); updateZones(); renderZonesGroup(); }); }
 function saveRestDaysToGH(data) { return saveJSONToGH(GH_REST_DAYS_FILE, data, 'Update trainingsfreie Tage'); }
 function syncRestDaysFromGH() { return syncJSONFromGH(GH_REST_DAYS_FILE, 'rest_days', getRestDaysData, () => { populateSettingsForm(); renderCockpitWeek(); }); }
+function saveAthleteProfileToGH(profile) { return saveJSONToGH(GH_PROFILE_FILE, profile, 'Update Athletenprofil'); }
+function syncAthleteProfileFromGH() { return syncJSONFromGH(GH_PROFILE_FILE, 'athlete_profile', getAthleteProfile, applyAthleteProfileToInputs); }
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -2239,9 +2293,17 @@ async function copyNoteForClaude() {
   const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
 
   const text = id => document.getElementById(id)?.textContent.trim() || '—';
+  const profile = getAthleteProfile();
+  const age = calcAge(profile.birthDate);
+  const maxHr = getHfZones().maxHr;
+  const athleteInfo = [
+    age != null ? `${age}J` : null,
+    profile.ftp ? `FTP ${profile.ftp}W` : null,
+    maxHr ? `Max-HF ${maxHr}` : null,
+  ].filter(Boolean).join(' | ');
   const lines = [
     `# Tagesbericht — ${dateLong}`,
-    `Athlet: Thomas Wagner | 50J | 74.6kg | FTP 250W | Max-HF 183`,
+    `Athlet: ${profile.name || 'Thomas Wagner'}` + (athleteInfo ? ` | ${athleteInfo}` : ''),
     '',
     '## Trainingsplan-Kontext',
     currentUaPhaseText(),

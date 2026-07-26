@@ -434,6 +434,10 @@
           <div class="settings-nav-title">Trainingsfreie Tage</div>
           <div class="settings-nav-desc">Feste Wochentage ohne Training</div>
         </div>
+        <div class="settings-nav-item" data-pane="profile" onclick="selectSettingsPane('profile')">
+          <div class="settings-nav-title">Persönliche Daten</div>
+          <div class="settings-nav-desc">Name, Geburtstag, FTP</div>
+        </div>
       </div>
 
       <div class="settings-detail">
@@ -482,6 +486,33 @@
 
           <div class="settings-btn-row" style="margin-top:14px">
             <button class="setup-btn" onclick="saveRestDays()">Speichern</button>
+          </div>
+        </div>
+
+        <!-- Persönliche Daten: Basis-/Leistungsdaten, die sich über die Zeit ändern (Alter, FTP) statt fest im Code -->
+        <div class="settings-pane" id="pane-profile" style="display:none">
+          <div class="settings-group-title">Persönliche Daten</div>
+          <div class="setup-field">
+            <label class="setup-label">Name</label>
+            <input class="setup-input" id="profileName" type="text">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">Geburtstag</label>
+            <input class="setup-input" id="profileBirthDate" type="date">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">FTP (Watt)</label>
+            <input class="setup-input" id="profileFtp" type="number" placeholder="z.B. 250">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">Größe (cm)</label>
+            <input class="setup-input" id="profileHeight" type="number" placeholder="optional">
+          </div>
+          <div class="setup-hint">Max-HF wird unter „HF-Zonen" gepflegt und hier automatisch mitverwendet. Alter wird aus dem Geburtstag berechnet, statt fest hinterlegt zu sein.</div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-top:14px">
+            <button class="setup-btn setup-btn-sm" onclick="saveAthleteProfile()">Speichern</button>
+            <span id="profileSaved" style="display:none;font-size:12px;color:var(--green)">✓ Gespeichert</span>
           </div>
         </div>
       </div>
