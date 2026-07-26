@@ -566,7 +566,7 @@
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeActivityModal()">Abbrechen</button>
     </div>
     <!-- Blendet die Einheit nur auf diesem Dashboard aus — bei intervals.icu bleibt sie unangetastet -->
-    <button class="btn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red)" onclick="deleteActivityModal()">✕ Aus diesem Dashboard ausblenden</button>
+    <button class="btn" id="activityModalHideBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red)" onclick="deleteActivityModal()">✕ Aus diesem Dashboard ausblenden</button>
     <div class="setup-error" id="activityModalError">Fehler beim Speichern.</div>
   </div>
 </div>
@@ -598,11 +598,12 @@
   </div>
 </div>
 
-<!-- Wellness-Editor: einzelne Tageswerte (Gewicht, Ruhepuls, HRV) nachträglich korrigieren. Wird direkt
-     zu Intervals.icu zurückgeschrieben (icuWrite), damit die Werte über alle Geräte/Apps synchron bleiben. -->
+<!-- Wellness-Editor: Tageswerte (Gewicht, Ruhepuls, HRV) UND die Tagesnotiz (Schlafqualität/Freitext)
+     in einem Fenster — bewusst kein "Morgen-Check"/Morgenbericht, sondern die Wellness-eigene Ansicht.
+     Werte gehen direkt zu Intervals.icu (icuWrite), die Notiz ins GitHub-Notizen-Repo (bzw. lokal ohne GitHub). -->
 <div class="modal-overlay" id="wellnessEditModal" style="display:none" onclick="if(event.target===this)closeWellnessEditModal()">
-  <div class="modal">
-    <h3>Tageswerte bearbeiten</h3>
+  <div class="modal modal-wide">
+    <h3>Tageswerte &amp; Notiz bearbeiten</h3>
     <div id="wellnessEditModalDate" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin:-10px 0 16px"></div>
     <div class="note-editor-grid2">
       <div class="setup-field">
@@ -618,12 +619,22 @@
       <label class="setup-label">HRV (ms)</label>
       <input class="setup-input" id="wellnessEditHrv" type="number" step="0.1" min="0" placeholder="z.B. 35">
     </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+    <div class="setup-field">
+      <label class="setup-label">Schlafqualität (optional)</label>
+      <div class="mood-picker" id="wellnessEditMoodPicker"></div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Notiz (Markdown)</label>
+      <textarea class="note-textarea" id="wellnessEditNoteContent" placeholder="Notiz hier eingeben…"></textarea>
+    </div>
     <div class="setup-error" id="wellnessEditError">Fehler beim Speichern.</div>
-    <div style="display:flex;gap:10px;margin-top:8px">
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveWellnessEdit()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeWellnessEditModal()">Abbrechen</button>
+      <button id="wellnessEditDeleteNoteBtn" class="btn" style="flex-basis:100%;padding:12px;font-size:14px;color:var(--red);border-color:var(--red);display:none" onclick="deleteWellnessEditNote()">✕ Notiz löschen</button>
     </div>
-    <div style="font-size:10px;color:var(--text2);margin-top:10px">Änderungen werden direkt zu Intervals.icu übertragen.</div>
+    <div style="font-size:10px;color:var(--text2);margin-top:10px">Gewicht/Ruhepuls/HRV gehen direkt zu Intervals.icu, die Notiz ins GitHub-Notizen-Repo.</div>
   </div>
 </div>
 

@@ -1559,8 +1559,11 @@ function renderWellnessDayList(sorted) {
     const stepsVal = steps != null ? fmtNum(steps) : '—';
     const n = journalByDate[d.id];
     const moodVal = n && n.mood != null ? moodIcon(n.mood,16) : '—';
+    const noteTitleHtml = n
+      ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
+      : '<span style="color:var(--text2)">—</span>';
 
-    return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openWellnessEditModal('${d.id}')" title="Werte nachträglich ändern">
+    return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openWellnessEditModal('${d.id}')" title="Tageswerte & Notiz bearbeiten">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
         <span class="mono" style="font-size:12px">${dateLabel}</span>
       </div>
@@ -1570,15 +1573,22 @@ function renderWellnessDayList(sorted) {
       ${statChip('HRV', hrvVal)}
       ${statChip('Schritte', stepsVal)}
       ${statChip('Schlafqual.', moodVal)}
-      <div style="display:flex;align-items:center;margin-left:auto">
-        <button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Werte nachträglich ändern" onclick="event.stopPropagation();openWellnessEditModal('${d.id}')">${pencilIcon(13)}</button>
+      <div class="trend-kpi-sep" style="min-height:32px"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+        ${noteTitleHtml}
+        <button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Tageswerte & Notiz bearbeiten" onclick="event.stopPropagation();openWellnessEditModal('${d.id}')">${pencilIcon(13)}</button>
       </div>
     </div>`;
   }).join('');
 }
 
 let _wellnessEditDay = null;
+let _wellnessEditNote = null;
+let _wellnessEditLocalMode = false;
 
+// Tageswerte (Intervals.icu) UND Tagesnotiz (GitHub/lokal) in einem Fenster — bewusst keine
+// Wiederverwendung des separaten "Morgen-Check"-Dialogs (siehe openNoteEditor), da Wellness eine
+// eigene Ansicht bleiben soll. Notiz-Zustand analog zu openNoteEditor()/openDayNoteEditor().
 function openWellnessEditModal(dayStr) {
   _wellnessEditDay = dayStr;
   const d = _wellnessFull.find(x => x.id === dayStr) || {};
@@ -1587,12 +1597,23 @@ function openWellnessEditModal(dayStr) {
   document.getElementById('wellnessEditRestingHR').value = d.restingHR != null ? Math.round(d.restingHR) : '';
   document.getElementById('wellnessEditHrv').value = d.hrv != null ? d.hrv : '';
   document.getElementById('wellnessEditError').style.display = 'none';
+
+  _wellnessEditLocalMode = !(ghToken && ghRepo);
+  _wellnessEditNote = _wellnessEditLocalMode
+    ? (_localDayNotes.find(x => x.date.slice(0,10) === dayStr) || null)
+    : (_notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr) || null);
+  renderMoodPicker(_wellnessEditNote ? _wellnessEditNote.mood : null, 'wellnessEditMoodPicker');
+  document.getElementById('wellnessEditNoteContent').value = _wellnessEditNote ? _wellnessEditNote.body : '';
+  document.getElementById('wellnessEditDeleteNoteBtn').style.display = _wellnessEditNote ? 'block' : 'none';
+
   document.getElementById('wellnessEditModal').style.display = 'flex';
 }
 
 function closeWellnessEditModal() {
   document.getElementById('wellnessEditModal').style.display = 'none';
   _wellnessEditDay = null;
+  _wellnessEditNote = null;
+  _wellnessEditLocalMode = false;
 }
 
 async function saveWellnessEdit() {
@@ -1608,10 +1629,70 @@ async function saveWellnessEdit() {
     let entry = _wellnessFull.find(x => x.id === _wellnessEditDay);
     if (!entry) { entry = { id: _wellnessEditDay }; _wellnessFull.push(entry); }
     Object.assign(entry, updated || body);
+    await saveWellnessEditNote();
     closeWellnessEditModal();
+    refreshCockpitMoodTile();
     renderFromCache();
   } catch(e) {
     errEl.textContent = 'Fehler beim Speichern: ' + e.message;
+    errEl.style.display = 'block';
+  }
+}
+
+// Speichert Schlafqualität/Freitext zusätzlich zu den Tageswerten — nur wenn tatsächlich etwas
+// eingetragen ist, damit keine leeren Notizen für unberührte Tage entstehen (dafür gibt es den
+// eigenen Löschen-Button, siehe deleteWellnessEditNote).
+async function saveWellnessEditNote() {
+  const moodSel = document.getElementById('wellnessEditMoodPicker').dataset.selected;
+  const mood = moodSel ? parseInt(moodSel) : null;
+  const contentVal = document.getElementById('wellnessEditNoteContent').value.trim();
+  if (!contentVal && mood == null && !_wellnessEditNote) return;
+
+  const title = _wellnessEditNote ? _wellnessEditNote.title : 'Tagesnotiz';
+  const timeVal = _wellnessEditNote && _wellnessEditNote.date ? _wellnessEditNote.date.slice(11,16) : nowLocalISO().slice(11,16);
+  const date = _wellnessEditDay + 'T' + timeVal;
+
+  if (_wellnessEditLocalMode) {
+    if (_wellnessEditNote) {
+      Object.assign(_wellnessEditNote, { title, body: contentVal, date, mood });
+    } else {
+      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body: contentVal, date, mood });
+    }
+    saveLocalDayNotes();
+    return;
+  }
+
+  const content = buildNoteContent(contentVal, 'journal', title, date, mood);
+  const filename = _wellnessEditNote ? _wellnessEditNote.filename : `${Date.now()}-journal.md`;
+  const sha = _wellnessEditNote ? _wellnessEditNote.sha : null;
+  const res = await saveNoteToGH(filename, content, sha);
+  if (_wellnessEditNote) {
+    Object.assign(_wellnessEditNote, { title, body: contentVal, date, mood, sha: res.content.sha });
+  } else {
+    _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, body: contentVal });
+  }
+}
+
+async function deleteWellnessEditNote() {
+  if (!_wellnessEditNote) return;
+  if (!confirm('Notiz für diesen Tag wirklich löschen?')) return;
+  const errEl = document.getElementById('wellnessEditError');
+  try {
+    if (_wellnessEditLocalMode) {
+      _localDayNotes = _localDayNotes.filter(x => x.id !== _wellnessEditNote.id);
+      saveLocalDayNotes();
+    } else {
+      await deleteNoteFromGH(_wellnessEditNote.filename, _wellnessEditNote.sha);
+      _notes = _notes.filter(x => x.filename !== _wellnessEditNote.filename);
+    }
+    _wellnessEditNote = null;
+    renderMoodPicker(null, 'wellnessEditMoodPicker');
+    document.getElementById('wellnessEditNoteContent').value = '';
+    document.getElementById('wellnessEditDeleteNoteBtn').style.display = 'none';
+    refreshCockpitMoodTile();
+    renderFromCache();
+  } catch(e) {
+    errEl.textContent = 'Fehler beim Löschen: ' + e.message;
     errEl.style.display = 'block';
   }
 }
@@ -1981,12 +2062,18 @@ function findActivityById(id) {
       || null;
 }
 
+// Ruhetage ohne echte Intervals.icu-Aktivität (id "note-<Datum>", siehe renderOverviewGroup) haben
+// kein Objekt in _activitiesFull — synthetisches Fallback-Objekt, damit RPE/Befinden/Bemerkung auch
+// für sie unter derselben (stabilen) id gespeichert werden können wie für echte Aktivitäten.
 function openActivityModal(actId) {
-  const act = findActivityById(actId);
+  const isNoteOnlyId = String(actId).startsWith('note-');
+  const act = isNoteOnlyId
+    ? { id: actId, _noteOnly: true, name: 'Ruhetag', start_date_local: String(actId).slice(5) + 'T12:00:00' }
+    : findActivityById(actId);
   if (!act) return;
   _activityModalId = act.id;
-  const type = normalizeType(act.type);
-  const color = TYPE_COLORS[type] || '#94a3b8';
+  const type = isNoteOnlyId ? 'Ruhetag' : normalizeType(act.type);
+  const color = isNoteOnlyId ? PLAN_EXTRA_COLORS.Ruhetag : (TYPE_COLORS[type] || '#94a3b8');
   document.getElementById('activityModalType').innerHTML = `<span class="tag" style="background:${color}20;color:${color}">${type}</span>`;
   document.getElementById('activityModalTitle').textContent = act.name || type;
   document.getElementById('activityModalDate').textContent = new Date(act.start_date_local).toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
@@ -2014,6 +2101,7 @@ function openActivityModal(actId) {
   document.getElementById('actRespiration').value = resp != null ? resp : '';
 
   document.getElementById('activityModalError').style.display = 'none';
+  document.getElementById('activityModalHideBtn').style.display = isNoteOnlyId ? 'none' : 'block';
   document.getElementById('activityModal').style.display = 'flex';
 }
 
@@ -2645,21 +2733,19 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
     const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
-    let titleHtml = '<span style="color:var(--text2)">—</span>';
+    // Trainer-Zusammenfassungen sind separate Notizen, unabhängig von der Tagesnotiz (die jetzt
+    // ausschließlich unter Wellness gelesen/bearbeitet wird, siehe renderWellnessDayList) — eigener
+    // klickbarer Chip, falls für den Tag mindestens eine vorliegt.
+    let trainerChipHtml = '';
     if (journalByDate) {
-      const n = journalByDate[dayKey];
-      titleHtml = n
-        ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
-        : '<span style="color:var(--text2)">—</span>';
-      // Trainer-Zusammenfassungen sind separate Notizen (nicht im Titel oben enthalten) — eigener
-      // klickbarer Chip, falls für den Tag mindestens eine vorliegt.
       const trainerCount = trainerNotesFor(dayKey).length;
       if (trainerCount) {
-        titleHtml += `<span style="cursor:pointer;font-size:10px;color:var(--text2);margin-top:2px;display:inline-block" onclick="event.stopPropagation();openTrainerNotesViewer('${dayKey}')" title="Trainer-Zusammenfassungen anzeigen">💬 ${trainerCount}</span>`;
+        trainerChipHtml = `<span style="cursor:pointer;font-size:10px;color:var(--text2);display:inline-block" onclick="event.stopPropagation();openTrainerNotesViewer('${dayKey}')" title="Trainer-Zusammenfassungen anzeigen">💬 ${trainerCount}</span>`;
       }
     }
-    // RPE, Trainingsbefinden und Bemerkung jetzt pro Aktivität (activity_meta)
-    const meta = isNoteOnly ? {} : getActivityMetaFor(a.id);
+    // RPE, Trainingsbefinden und Bemerkung jetzt pro Aktivität (activity_meta) — bei Ruhetagen unter
+    // derselben stabilen "note-<Datum>"-id wie im Detail-Fenster (openActivityModal).
+    const meta = getActivityMetaFor(a.id);
     const rpeVal = meta.rpe!=null ? `<span style="color:hsl(${rpeHue(meta.rpe)},70%,45%);font-weight:600">${meta.rpe}</span>` : '—';
     const feelVal = meta.feel!=null ? moodIcon(meta.feel,16) : '—';
     const remark = meta.note ? escHtml(meta.note) : '';
@@ -2670,7 +2756,7 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
       </div>
       <div style="display:flex;flex-direction:column;width:150px;flex-shrink:0">
         <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Aktivität</span>
-        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word${isNoteOnly?'':';cursor:pointer'}"${isNoteOnly?'':` onclick="openActivityModal('${a.id}')" title="Details & Bewertung öffnen"`}>${nameVal}</span>
+        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word;cursor:pointer" onclick="openActivityModal('${a.id}')" title="Details & Bewertung öffnen">${nameVal}</span>
         ${remark?`<span style="font-size:10px;color:var(--text2);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${remark}">✎ ${remark}</span>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:60px">
@@ -2685,7 +2771,7 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
       ${statChip('Höhe', elev)}
       ${journalByDate?statChip('Anstreng.', rpeVal):''}
       ${journalByDate?statChip('Befinden', feelVal):''}
-      ${journalByDate?`<div class="trend-kpi-sep" style="min-height:32px"></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto">${titleHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="${isNoteOnly?'Morgen-Check bearbeiten':'Bearbeiten — Details & Bewertung'}" onclick="${isNoteOnly?`openNoteEditor('${dayKey}')`:`openActivityModal('${a.id}')`}">${pencilIcon(13)}</button></div>`:''}
+      ${journalByDate?`<div class="trend-kpi-sep" style="min-height:32px"></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto">${trainerChipHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Bearbeiten — Details &amp; Bewertung" onclick="openActivityModal('${a.id}')">${pencilIcon(13)}</button></div>`:''}
     </div>`;
   }).join('');
 }
