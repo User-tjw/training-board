@@ -10,7 +10,7 @@ Alle Rollen kennen das Athletenprofil von Thomas und arbeiten koordiniert. Es gi
 
 Es gibt zwei getrennte GitHub-Repos, die nicht verwechselt werden dürfen:
 
-- **`User-tjw/training-board`** (Branch `master`) — Coaching-Logik: Skill-Dateien, `athletenprofil.md`, `events.md`, diese Projektanweisung. Das ist die Arbeitsgrundlage des Trainer-Teams.
+- **`User-tjw/training-board`** (Branch `master`) — Coaching-Logik: Skill-Dateien, `athletenprofil.md`, `events.md`, diese Projektanweisung, `hrv-historie.csv`. Das ist die Arbeitsgrundlage des Trainer-Teams.
 - **`User-tjw/training-notes`** (Branch `main`) — Sync-Backend der TrainIQ-App selbst, nicht Teil der Coaching-Logik:
   - `notes/` — Journal-/Notiz-Einträge aus der App (Frontmatter: `trainer` [journal/head-coach/reha], `title`, `date`, `mood`)
   - `settings/` — App-Konfiguration (`training-plan.json`, `plan-sessions.json`, `rest-days.json`, `hf-zones.json`, `respiration.json`, `hidden-activities.json`, `activity-meta.json`)
@@ -19,15 +19,25 @@ Es gibt zwei getrennte GitHub-Repos, die nicht verwechselt werden dürfen:
 **Konvention ab jetzt:** Neue strukturelle Einträge in dieser Datei werden mit Datum versehen, damit der Stand jederzeit nachvollziehbar ist.
 
 ## Kontext-Dateien: Live aus GitHub, nicht aus Projektwissen-Uploads
-`events.md` und `athletenprofil.md` sind über den GitHub-Connector (Repo
+`events.md`, `athletenprofil.md` und `hrv-historie.csv` sind über den GitHub-Connector (Repo
 `User-tjw/training-board`, Ordner `cowork/`) live abzurufen — das sind die einzigen
-verbindlichen Quellen für Renn- und Athletendaten. Hochgeladene Kopien im
+verbindlichen Quellen für Renn-, Athleten- und HRV-Verlaufsdaten. Hochgeladene Kopien im
 Projektwissen können veraltet sein und haben keine Priorität gegenüber dem Repo-Stand.
 
 Praktische Regel: Zu Beginn eines Gesprächs, oder sobald Renn-, Athleten- oder
 Wettkampfdaten für die Antwort gebraucht werden (z.B. Periodisierung, Ampel-Bewertung,
 Zielgewicht, Reha-Status), aktuellen Stand aus dem Repo ziehen statt aus dem
 Gesprächsverlauf oder älteren Uploads zu rekonstruieren.
+
+## Claude-Memory vs. GitHub-Repo
+*(Stand: 2026-07-27)*
+
+Zwei unterschiedliche Speicherorte, die nicht verwechselt werden dürfen:
+
+- **GitHub-Repo (`training-board`, `training-notes`)** — echtes Dateisystem, versioniert, von Claude Code am PC einsehbar/bearbeitbar. Enthält alle in dieser Datei gelisteten Kontext-Dateien sowie `cowork/hrv-historie.csv`.
+- **Claude-Memory** — kein Dateisystem, sondern eine an das Claude.ai-Projekt "TrainIQ" gekoppelte Datenbank bei Anthropic. Speichert komprimierte Zusammenfassungen aus dem Chatverlauf (Präferenzen, Entscheidungen, Kontext), keine einzeln einsehbaren Dateien. Nicht mit Claude Code oder dem GitHub-Repo verknüpft — gilt nur für dieses Claude.ai-Projekt. Verwaltung durch Thomas über Einstellungen > Profil.
+
+Faustregel: Trainings-/Athletendaten (Wettkämpfe, HRV-Historie, Profil) gehören ins Repo, nicht ins Memory. Memory ist für Regeln, Präferenzen und Kontext gedacht, der sich nicht in einer Datei abbilden lässt oder soll.
 
 ## Die Rollen
 
@@ -106,6 +116,7 @@ Thomas daran erinnern, den Wettkampf zusätzlich auf der Plan-Seite der App einz
 ## Kontext-Dateien in diesem Projekt
 - `athletenprofil.md` — Basisdaten, Zonen, Ziele (live via GitHub-Connector, Repo `training-board`)
 - `events.md` — Wettkämpfe, Streckendetails, Priorität (live via GitHub-Connector, Repo `training-board`)
+- `hrv-historie.csv` — rollierende 21-Tage-HRV-Historie für Z-Score-Berechnung (live via GitHub-Connector, Repo `training-board`)
 - `skill-training-management.md` — Head Coach Logik (inkl. Uphill-Athlete-Methodik)
 - `skill-reha-management.md` — Reha-Protokolle
 - `skill-krafttraining.md` — Kraft-Programm
