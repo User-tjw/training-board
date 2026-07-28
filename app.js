@@ -1816,7 +1816,9 @@ async function ghFetch(path, options = {}) {
   const res = await fetch(`https://api.github.com${path}`, { ...options, headers: ghHeaders() });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || `GitHub ${res.status}`);
+    const e = new Error(err.message || `GitHub ${res.status}`);
+    e.status = res.status;
+    throw e;
   }
   if (res.status === 204) return null;
   return res.json();
@@ -1950,7 +1952,7 @@ async function loadJSONFromGH(ghPath) {
   }
 }
 
-async function saveJSONToGH(ghPath, data, message) {
+async function saveJSONToGH(ghPath, data, message, _retry = true) {
   if (!ghToken || !ghRepo) return;
   try {
     const file = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`);
@@ -1961,8 +1963,15 @@ async function saveJSONToGH(ghPath, data, message) {
   }
   const payload = { message, content: b64enc(JSON.stringify(data, null, 2)) };
   if (_ghShaCache[ghPath]) payload.sha = _ghShaCache[ghPath];
-  const res = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`, { method:'PUT', body:JSON.stringify(payload) });
-  _ghShaCache[ghPath] = res.content.sha;
+  try {
+    const res = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`, { method:'PUT', body:JSON.stringify(payload) });
+    _ghShaCache[ghPath] = res.content.sha;
+  } catch(e) {
+    // Sha war veraltet, z.B. weil ein anderes Tab/Gerät zwischenzeitlich geschrieben hat.
+    // Einmal mit frischem Sha erneut versuchen, bevor der Fehler nach oben gereicht wird.
+    if (_retry && e.status === 409) return saveJSONToGH(ghPath, data, message, false);
+    throw e;
+  }
 }
 
 async function syncJSONFromGH(ghPath, storageKey, getLocal, onApplied) {
