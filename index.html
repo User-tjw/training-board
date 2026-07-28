@@ -178,6 +178,8 @@
             <div class="trend-kpi-item"><div class="trend-kpi-label">Gewicht</div><div class="trend-kpi-val" id="cockpitWeight">— <span class="trend-kpi-trend" id="cockpitWeightTrend"></span></div></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Schlaf Ø</div><div class="trend-kpi-val" id="avgSleep">—</div></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Schlafqualität</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
+            <div class="trend-kpi-sep"></div>
+            <div class="trend-kpi-item"><div class="trend-kpi-label">Konditionstrend</div><div class="trend-kpi-val" id="cockpitEF">— <span class="trend-kpi-trend" id="cockpitEFTrend"></span></div></div>
           </div>
         </div>
         <!-- Trainingswoche-Kalender mit Soll-Ist-Balken -->
@@ -533,11 +535,13 @@
     </div>
     <!-- Fixe Kennzahlen aus intervals.icu (nur Anzeige) -->
     <div id="activityModalStats" class="activity-stats"></div>
-    <!-- Training Effect: automatisch vorbefüllt (Pace/Watt/Load), nachträglich frei editierbar -->
+    <!-- Efficiency Factor: rein informativ, nur sichtbar wenn berechenbar (siehe computeEfficiencyFactor) -->
+    <div id="activityModalEF" style="font-size:12px;color:var(--text2);margin-top:6px;display:none"></div>
+    <!-- Training Effect: Kategorie automatisch vorgeschlagen (siehe suggestEffectCategory), nachträglich frei überschreibbar -->
     <div class="setup-field" style="margin-top:10px">
       <label class="setup-label">Training Effect</label>
-      <input class="setup-input" id="actTrainingEffect" type="text" placeholder="z.B. 6:25/km">
-      <div class="setup-hint">Automatisch vorbefüllt (Pace/Watt/Load) · nachträglich änderbar</div>
+      <select class="setup-input" id="actTrainingEffect"></select>
+      <div class="setup-hint">Automatisch vorgeschlagen anhand Ø-HF · nachträglich änderbar</div>
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <!-- Empfundene Anstrengung (RPE 1–10) -->
@@ -556,6 +560,14 @@
         <label class="setup-label">Ø Atmung/Min (optional)</label>
         <input class="setup-input" id="actRespiration" type="number" min="1" step="0.1" placeholder="z.B. 14">
       </div>
+      <div class="setup-field">
+        <label class="setup-label">Temperatur °C (optional)</label>
+        <input class="setup-input" id="actTemp" type="number" step="1" placeholder="z.B. 18">
+      </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Witterung (optional)</label>
+      <input class="setup-input" id="actWeather" type="text" placeholder="z.B. sonnig, leicht windig">
     </div>
     <div class="setup-field">
       <label class="setup-label">Bemerkung zur Einheit (optional)</label>
@@ -565,6 +577,7 @@
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityModal()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeActivityModal()">Abbrechen</button>
     </div>
+    <button class="btn" id="copyActivityBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px" onclick="copyActivityForClaude()">✦ Aktivität + 7-Tage-Kontext für Claude kopieren</button>
     <!-- Blendet die Einheit nur auf diesem Dashboard aus — bei intervals.icu bleibt sie unangetastet -->
     <button class="btn" id="activityModalHideBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red)" onclick="deleteActivityModal()">✕ Aus diesem Dashboard ausblenden</button>
     <div class="setup-error" id="activityModalError">Fehler beim Speichern.</div>
@@ -589,6 +602,12 @@
     <div class="setup-field">
       <label class="setup-label">Ziel / Notiz (optional)</label>
       <textarea class="note-textarea" id="planNote" style="min-height:70px" placeholder="z.B. GA1 locker · 5×1000 Intervalle · Longrun…"></textarea>
+    </div>
+    <!-- Optionale Struktur (Aufwärmen/Hauptteil/Cooldown o.ä.), rein App-intern — kein Intervalle-Push zu Intervals.icu/Garmin -->
+    <div class="setup-field">
+      <label class="setup-label">Struktur (optional)</label>
+      <textarea class="note-textarea" id="planPhases" style="min-height:70px" oninput="onPlanPhasesInput()" placeholder="Eine Phase pro Zeile — Label | Minuten | Zone, z.B.:&#10;Aufwärmen | 10 | Zone 1&#10;Hauptteil | 40 | Zone 2&#10;Cooldown | 5 | Zone 1"></textarea>
+      <div class="setup-hint">Wenn ausgefüllt, wird „Dauer (min)" automatisch aus der Summe der Phasen berechnet.</div>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="savePlanModal()">Speichern</button>

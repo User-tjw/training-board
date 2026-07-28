@@ -961,6 +961,76 @@ function computeDefaultTrainingEffect(act, type) {
   return '';
 }
 
+// Trainingseffect-Kategorien (statt reiner Pace-/Watt-Zahl) — grobe Einstufung der Trainingsart,
+// orientiert an gängiger Laufterminologie (Daniels/Uphill Athlete gemischt).
+const EFFECT_CATEGORIES = ['Erholung','Basis','Pace','Tempo','Schwelle','VO2max','Anaerob','Sprint'];
+
+// Ordnet anhand der Ø-Herzfrequenz und der bestehenden HF-Zonen (aet/ant/maxHr, siehe getHfZones)
+// automatisch eine der 8 Kategorien zu — reine Heuristik, im Modal jederzeit überschreibbar.
+// "Sprint" wird nie automatisch vorgeschlagen: bei kurzen Maximaleinsätzen bleibt die Ø-HF durch
+// die HF-Trägheit zu niedrig, um verlässlich zu sein.
+function suggestEffectCategory(act, type) {
+  if (type !== 'Laufen' && type !== 'Rad') return '';
+  const hr = act.average_heartrate;
+  const { aet, ant, maxHr } = getHfZones();
+  if (!hr || !aet || !ant) return '';
+  const vo2Top = (ant + (maxHr || ant * 1.2)) / 2;
+  if (hr < aet * 0.80) return 'Erholung';
+  if (hr < aet) return 'Basis';
+  if (hr < aet + 0.4 * (ant - aet)) return 'Pace';
+  if (hr < ant * 0.97) return 'Tempo';
+  if (hr < ant * 1.03) return 'Schwelle';
+  if (hr < vo2Top) return 'VO2max';
+  return 'Anaerob';
+}
+
+// Kategorien, für die ein Efficiency-Factor-Vergleich sportlich sinnvoll ist (aerobe Einheiten,
+// bei denen Pace/Watt und HF weitgehend linear zusammenhängen). Bei harten Intervallen (Schwelle
+// aufwärts) verzerrt die Anstrengung den Wert, deshalb dort keine Berechnung.
+const EF_CATEGORIES = ['Erholung','Basis','Pace'];
+
+// Efficiency Factor: Pace bzw. Leistung pro Herzschlag — steigt der Wert bei vergleichbarer
+// Kategorie über die Zeit, deutet das auf eine verbesserte aerobe Fitness hin (klassische
+// Endurance-Coaching-Kennzahl, z.B. "Watts per beat" beim Radfahren).
+function computeEfficiencyFactor(act, type) {
+  if (type !== 'Laufen' && type !== 'Rad') return null;
+  const hr = act.average_heartrate;
+  if (!hr || !act.moving_time || act.moving_time < 20 * 60) return null;
+  const meta = getActivityMetaFor(act.id);
+  const category = meta.effectCategory || suggestEffectCategory(act, type);
+  if (!EF_CATEGORIES.includes(category)) return null;
+  if (type === 'Laufen') {
+    if (!act.average_speed) return null;
+    return (act.average_speed * 60) / hr;
+  }
+  const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
+  if (!watts) return null;
+  return watts / hr;
+}
+
+// Vergleicht den Efficiency Factor der Aktivität mit dem Median der letzten vergleichbaren
+// Einheiten (gleicher Typ + Kategorie, max. 120 Tage zurück) — gibt null zurück, wenn weder der
+// Wert selbst noch genug Vergleichseinheiten vorhanden sind.
+function computeEfficiencyTrend(act, type) {
+  const value = computeEfficiencyFactor(act, type);
+  if (value == null) return null;
+  const category = getActivityMetaFor(act.id).effectCategory || suggestEffectCategory(act, type);
+  const cutoff = new Date(act.start_date_local); cutoff.setDate(cutoff.getDate() - 120);
+  const compare = (_activitiesFull || [])
+    .filter(a => a.id !== act.id && normalizeType(a.type) === type && new Date(a.start_date_local) >= cutoff && new Date(a.start_date_local) < new Date(act.start_date_local))
+    .filter(a => (getActivityMetaFor(a.id).effectCategory || suggestEffectCategory(a, type)) === category)
+    .map(a => computeEfficiencyFactor(a, type))
+    .filter(v => v != null)
+    .slice(-10);
+  if (!compare.length) return { value, trendPct: 0, label: '→', n: 0 };
+  const sorted = [...compare].sort((a,b) => a-b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 ? sorted[mid] : (sorted[mid-1] + sorted[mid]) / 2;
+  const trendPct = Math.round(((value - median) / median) * 100);
+  const label = trendPct > 2 ? '↑' : trendPct < -2 ? '↓' : '→';
+  return { value, trendPct, label, n: compare.length };
+}
+
 function buildWeekCalendar(weekStart, weekActs) {
   const dayNames = ['MO','DI','MI','DO','FR','SA','SO'];
   const todayStr = fmtDate(new Date());
@@ -996,13 +1066,16 @@ function buildWeekCalendar(weekStart, weekActs) {
   function planBar(dayStr, s, done) {
     const color = planTypeColor(s.type);
     const readOnly = s.source === 'icu';
-    const sub = [s.min ? s.min + ' min' : '', done ? 'erledigt' : 'geplant'].filter(Boolean).join(' · ');
+    const hasPhases = s.phases && s.phases.length;
+    const sub = [s.min ? s.min + ' min' : '', hasPhases ? `${s.phases.length} Phasen` : '', done ? 'erledigt' : 'geplant'].filter(Boolean).join(' · ');
     // ICU-eigene Einträge sind nicht editierbar (kein lokales Session-Objekt), aber löschbar
     const click = readOnly
       ? `onclick="event.stopPropagation();deleteIcuOnlyEvent(${s.icuEventId})"`
       : `onclick="event.stopPropagation();openPlanModal('${dayStr}','${s.id}')"`;
     const tag = done ? '✓' : (readOnly ? 'ICU' : 'GEPLANT');
-    const title = readOnly ? 'Aus Intervals.icu — klicken zum Löschen' : 'Geplante Einheit bearbeiten';
+    const title = readOnly ? 'Aus Intervals.icu — klicken zum Löschen'
+      : hasPhases ? s.phases.map(p => `${p.label}: ${p.min}min${p.zone ? ' ('+p.zone+')' : ''}`).join(' → ')
+      : 'Geplante Einheit bearbeiten';
     return `<div class="wc-planbar${done?' done':''}" style="--wc-c:${color}" ${click} title="${title}">
       <div class="wc-bar-top"><span class="wc-planbar-type">${s.type.toUpperCase()}</span><span class="wc-planbar-tag">${tag}</span></div>
       <div class="wc-bar-sub">${sub}</div>
@@ -1273,6 +1346,19 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
   const prevWeight = allWeight[allWeight.length-8] || null;
   document.getElementById('cockpitWeight').innerHTML =
     (latestWeight ? latestWeight.weight.toFixed(1) : '—') + ' ' + trendArrow(latestWeight?.weight, prevWeight?.weight);
+
+  // Konditionstrend: Efficiency Factor der letzten dazu geeigneten (aeroben) Aktivität ggü. Verlauf
+  const recentForEF = [...activitiesFull].filter(a => !a._noteOnly)
+    .sort((a,b) => new Date(b.start_date_local) - new Date(a.start_date_local));
+  let efTile = null;
+  for (const a of recentForEF) {
+    const t = normalizeType(a.type);
+    const trend = computeEfficiencyTrend(a, t);
+    if (trend) { efTile = trend; break; }
+  }
+  document.getElementById('cockpitEF').innerHTML = efTile
+    ? efTile.value.toFixed(1) + ' ' + (efTile.n ? `<span class="trend-kpi-trend ${efTile.label==='↑'?'up':efTile.label==='↓'?'down':'flat'}">${efTile.label}</span>` : '')
+    : '—';
 
   refreshCockpitMoodTile();
 
@@ -2105,9 +2191,23 @@ function openActivityModal(actId) {
   renderRpePicker(meta.rpe || null);
   renderFeelPicker(meta.feel || null);
   document.getElementById('actNote').value = meta.note || '';
-  document.getElementById('actTrainingEffect').value = meta.trainingEffect || computeDefaultTrainingEffect(act, type);
+  const effectSel = document.getElementById('actTrainingEffect');
+  effectSel.innerHTML = '<option value="">– wählen –</option>' + EFFECT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
+  effectSel.value = meta.effectCategory || suggestEffectCategory(act, type) || '';
+  document.getElementById('actTemp').value = meta.temp != null ? meta.temp : '';
+  document.getElementById('actWeather').value = meta.weather || '';
   const resp = getManualRespiration()[act.id];
   document.getElementById('actRespiration').value = resp != null ? resp : '';
+  const ef = computeEfficiencyTrend(act, type);
+  const efEl = document.getElementById('activityModalEF');
+  if (ef) {
+    efEl.style.display = 'block';
+    const unit = type === 'Rad' ? ' W/bpm' : ' m/min/bpm';
+    const trendText = ef.n ? `Trend ggü. letzten ${ef.n} vergleichbaren Einheiten: ${ef.label} ${ef.trendPct > 0 ? '+' : ''}${ef.trendPct}%` : 'noch keine Vergleichswerte';
+    efEl.textContent = `Effizienz: ${ef.value.toFixed(1)}${unit} · ${trendText}`;
+  } else {
+    efEl.style.display = 'none';
+  }
 
   document.getElementById('activityModalError').style.display = 'none';
   document.getElementById('activityModalHideBtn').style.display = isNoteOnlyId ? 'none' : 'block';
@@ -2137,13 +2237,65 @@ async function saveActivityModal() {
   const rpe  = rpeSel  ? parseInt(rpeSel)  : null;
   const feel = feelSel ? parseInt(feelSel) : null;
   const note = document.getElementById('actNote').value.trim();
-  const trainingEffect = document.getElementById('actTrainingEffect').value.trim();
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note, trainingEffect });
+  const effectCategory = document.getElementById('actTrainingEffect').value;
+  const tempRaw = document.getElementById('actTemp').value.trim();
+  const temp = tempRaw ? parseFloat(tempRaw) : null;
+  const weather = document.getElementById('actWeather').value.trim();
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, temp, weather });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   closeActivityModal();
   refreshCockpitMoodTile();
   renderFromCache();
+}
+
+// Kopiert die geöffnete Aktivität (inkl. RPE/Befinden/Atmung/Notiz/Temperatur/Witterung/
+// Trainingseffect/Efficiency Factor) plus 7-Tage-Kontext für den KI-Trainer — analog zu
+// copyNoteForClaude(), aber pro Einheit statt pro Journal-Eintrag.
+async function copyActivityForClaude() {
+  if (!_activityModalId) return;
+  const isNoteOnlyId = String(_activityModalId).startsWith('note-');
+  const act = isNoteOnlyId
+    ? { id: _activityModalId, _noteOnly: true, name: 'Ruhetag', start_date_local: String(_activityModalId).slice(5) + 'T12:00:00' }
+    : findActivityById(_activityModalId);
+  if (!act) return;
+  const type = isNoteOnlyId ? 'Ruhetag' : normalizeType(act.type);
+  const dateLong = new Date(act.start_date_local).toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
+
+  const meta = getActivityMetaFor(act.id);
+  const resp = getManualRespiration()[act.id];
+  const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
+  const statParts = [];
+  if (act.distance) statParts.push((act.distance/1000).toFixed(1)+' km');
+  if (act.moving_time) statParts.push(formatDur(act.moving_time));
+  if (act.average_heartrate) statParts.push('Ø '+Math.round(act.average_heartrate)+' bpm');
+  if (watts) statParts.push('Ø '+Math.round(watts)+' W');
+  if (act.total_elevation_gain) statParts.push(Math.round(act.total_elevation_gain)+' hm');
+
+  const lines = [
+    `# Aktivität — ${dateLong}`,
+    `${type}: ${act.name || type}${statParts.length ? ' — '+statParts.join(' · ') : ''}`,
+    '',
+  ];
+  if (meta.effectCategory) lines.push(`Trainingseffect: ${meta.effectCategory}`);
+  if (meta.rpe) lines.push(`RPE ${meta.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===meta.rpe)?.l})`);
+  if (meta.feel) lines.push(`Befinden ${meta.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===meta.feel)?.l})`);
+  if (resp != null) lines.push(`Atmung ${resp}/min`);
+  if (meta.temp != null || meta.weather) lines.push(`Witterung: ${meta.temp != null ? meta.temp+'°C' : ''}${meta.temp != null && meta.weather ? ', ' : ''}${meta.weather || ''}`);
+  const ef = computeEfficiencyTrend(act, type);
+  if (ef) lines.push(`Efficiency Factor: ${ef.value.toFixed(1)}${type === 'Rad' ? ' W/bpm' : ' m/min/bpm'}${ef.n ? ` · Trend ggü. letzten ${ef.n} Einheiten: ${ef.label} ${ef.trendPct > 0 ? '+' : ''}${ef.trendPct}%` : ''}`);
+  if (meta.note) lines.push(`Bemerkung: ${meta.note}`);
+
+  const dayLines = build7DayContextLines();
+  if (dayLines.length) lines.push('', '## Kontext der letzten 7 Tage', ...dayLines);
+  lines.push('', '---', '_Kontext aus TrainIQ — bitte berücksichtigen._');
+
+  const btn = document.getElementById('copyActivityBtn');
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'));
+    btn.textContent = '✓ Kopiert!';
+    setTimeout(() => { btn.textContent = '✦ Aktivität + 7-Tage-Kontext für Claude kopieren'; }, 2500);
+  } catch(e) { alert('Kopieren fehlgeschlagen.'); }
 }
 
 // ─── Plan-Modal (geplante Einheit im Wochenkalender anlegen/bearbeiten) ────────
@@ -2158,6 +2310,9 @@ function openPlanModal(dayStr, id) {
   if (!s) document.getElementById('planType').value = 'Laufen';
   document.getElementById('planMin').value = s && s.min ? s.min : '';
   document.getElementById('planNote').value = s ? (s.note || '') : '';
+  document.getElementById('planPhases').value = s && s.phases && s.phases.length
+    ? s.phases.map(p => `${p.label} | ${p.min} | ${p.zone || ''}`).join('\n') : '';
+  onPlanPhasesInput();
   document.getElementById('planDeleteBtn').style.display = s ? 'block' : 'none';
   document.getElementById('planModal').style.display = 'flex';
 }
@@ -2167,15 +2322,40 @@ function closePlanModal() {
   _planDay = null; _planId = null;
 }
 
+// Parst die optionale Phasen-Struktur im Plan-Modal: eine Phase pro Zeile „Label | Minuten | Zone".
+function parsePlanPhases(text) {
+  return (text || '').split('\n').map(l => l.trim()).filter(Boolean)
+    .map(line => {
+      const [label, minRaw, zone] = line.split('|').map(p => p.trim());
+      const min = minRaw ? parseInt(minRaw.replace(/\D/g,'')) : null;
+      return label && min ? { label, min, zone: zone || '' } : null;
+    })
+    .filter(Boolean);
+}
+
+// Sobald Phasen eingetragen sind, wird "Dauer (min)" automatisch aus deren Summe berechnet
+// und ist nicht mehr frei editierbar.
+function onPlanPhasesInput() {
+  const phases = parsePlanPhases(document.getElementById('planPhases').value);
+  const minEl = document.getElementById('planMin');
+  if (phases.length) {
+    minEl.value = phases.reduce((s,p) => s + p.min, 0);
+    minEl.readOnly = true;
+  } else {
+    minEl.readOnly = false;
+  }
+}
+
 async function savePlanModal() {
   if (!_planDay) return;
   const type = document.getElementById('planType').value;
+  const phases = parsePlanPhases(document.getElementById('planPhases').value);
   const minRaw = document.getElementById('planMin').value.trim();
-  const min = minRaw ? parseInt(minRaw) : null;
+  const min = phases.length ? phases.reduce((s,p) => s + p.min, 0) : (minRaw ? parseInt(minRaw) : null);
   const note = document.getElementById('planNote').value.trim();
   const existing = _planId ? getPlanSessionsFor(_planDay).find(s => s.id === _planId) : null;
   const icuEventId = existing && existing.icuEventId;
-  await upsertPlanSession(_planDay, { id: _planId || 'p' + Date.now(), type, min, note, ...(icuEventId ? { icuEventId } : {}) });
+  await upsertPlanSession(_planDay, { id: _planId || 'p' + Date.now(), type, min, note, ...(phases.length ? { phases } : {}), ...(icuEventId ? { icuEventId } : {}) });
   closePlanModal();
   renderCockpitWeek();
 }
@@ -2381,41 +2561,11 @@ async function saveNoteEditor() {
   }
 }
 
-async function copyNoteForClaude() {
-  const title = document.getElementById('noteEditorTitleInput').value.trim();
-  const body  = document.getElementById('noteEditorContent').value.trim();
-  const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
-  const moodSel = document.getElementById('moodPicker').dataset.selected;
-  const mood  = moodSel ? parseInt(moodSel) : null;
-  const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-
-  const text = id => document.getElementById(id)?.textContent.trim() || '—';
-  const profile = getAthleteProfile();
-  const age = calcAge(profile.birthDate);
-  const maxHr = getHfZones().maxHr;
-  const athleteInfo = [
-    age != null ? `${age}J` : null,
-    profile.ftp ? `FTP ${profile.ftp}W` : null,
-    maxHr ? `Max-HF ${maxHr}` : null,
-  ].filter(Boolean).join(' | ');
-  const lines = [
-    `# Tagesbericht — ${dateLong}`,
-    `Athlet: ${profile.name || 'Thomas Wagner'}` + (athleteInfo ? ` | ${athleteInfo}` : ''),
-    '',
-    '## Trainingsplan-Kontext',
-    currentUaPhaseText(),
-    'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.',
-    '',
-    '## Automatische Einschätzung (TrainIQ)',
-    text('cockpitVerdict'),
-    text('cockpitDesc'),
-    '',
-    '## Weitere Werte',
-    `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
-  ];
-  // Trainingseinheiten der letzten 7 Tage als Kontext für die Trainer-Empfehlung, inkl. Schritte/Tag
-  // (Aktivitätsstatus) — einmal pro Tag angehängt statt wiederholt bei jeder Einheit, da Schritte ein
-  // Tageswert sind. Tage ohne Training tauchen als eigene Zeile auf, wenn Schritte vorliegen.
+// Trainingseinheiten der letzten 7 Tage als Kontext für die Trainer-Empfehlung, inkl. Schritte/Tag
+// (Aktivitätsstatus) — einmal pro Tag angehängt statt wiederholt bei jeder Einheit, da Schritte ein
+// Tageswert sind. Tage ohne Training tauchen als eigene Zeile auf, wenn Schritte vorliegen.
+// Von copyNoteForClaude() und copyActivityForClaude() gemeinsam genutzt.
+function build7DayContextLines() {
   const since = daysAgo(7);
   const recentByDay = {};
   (_activitiesFull || [])
@@ -2481,6 +2631,42 @@ async function copyNoteForClaude() {
       if (m.note) dayLines.push(`  · Bemerkung: ${m.note}`);
     });
   });
+  return dayLines;
+}
+
+async function copyNoteForClaude() {
+  const title = document.getElementById('noteEditorTitleInput').value.trim();
+  const body  = document.getElementById('noteEditorContent').value.trim();
+  const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
+  const moodSel = document.getElementById('moodPicker').dataset.selected;
+  const mood  = moodSel ? parseInt(moodSel) : null;
+  const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+  const text = id => document.getElementById(id)?.textContent.trim() || '—';
+  const profile = getAthleteProfile();
+  const age = calcAge(profile.birthDate);
+  const maxHr = getHfZones().maxHr;
+  const athleteInfo = [
+    age != null ? `${age}J` : null,
+    profile.ftp ? `FTP ${profile.ftp}W` : null,
+    maxHr ? `Max-HF ${maxHr}` : null,
+  ].filter(Boolean).join(' | ');
+  const lines = [
+    `# Tagesbericht — ${dateLong}`,
+    `Athlet: ${profile.name || 'Thomas Wagner'}` + (athleteInfo ? ` | ${athleteInfo}` : ''),
+    '',
+    '## Trainingsplan-Kontext',
+    currentUaPhaseText(),
+    'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.',
+    '',
+    '## Automatische Einschätzung (TrainIQ)',
+    text('cockpitVerdict'),
+    text('cockpitDesc'),
+    '',
+    '## Weitere Werte',
+    `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
+  ];
+  const dayLines = build7DayContextLines();
   if (dayLines.length) lines.push('', '## Trainingseinheiten & Schritte der letzten 7 Tage', ...dayLines);
 
   lines.push('', `## ${title || 'Journal-Eintrag'}`);
