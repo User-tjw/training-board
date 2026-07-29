@@ -2490,6 +2490,8 @@ function build7DayContextLines() {
       return;
     }
 
+    dayLines.push(`- ${dLabel}`);
+
     const commuteActs = acts.filter(isCommuteRide);
     const trainActs = acts.filter(a => !isCommuteRide(a));
     let stepsUsed = false;
@@ -2502,7 +2504,7 @@ function build7DayContextLines() {
       if (sumDist) parts.push((sumDist/1000).toFixed(1)+' km');
       if (sumElev) parts.push(Math.round(sumElev)+' hm');
       if (steps) { parts.push(`${steps} Schritte`); stepsUsed = true; }
-      dayLines.push(`- ${dLabel} · Rad: Pendeln — ${parts.join(' · ')}`);
+      dayLines.push(`  · Rad: Pendeln — ${parts.join(' · ')}`);
     }
 
     trainActs.forEach(a => {
@@ -2514,7 +2516,7 @@ function build7DayContextLines() {
       if (watts) parts.push('Ø '+Math.round(watts)+' W');
       if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
       if (!stepsUsed && steps) { parts.push(`${steps} Schritte`); stepsUsed = true; }
-      dayLines.push(`- ${dLabel} · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
+      dayLines.push(`  · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
       // eigene Trainingsbewertung pro Einheit (RPE / Befinden / Atmung / Bemerkung)
       const m = getActivityMetaFor(a.id);
       const resp = getManualRespiration()[a.id];
@@ -2522,8 +2524,8 @@ function build7DayContextLines() {
       if (m.rpe) evalParts.push(`RPE ${m.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===m.rpe)?.l})`);
       if (m.feel) evalParts.push(`Befinden ${m.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===m.feel)?.l})`);
       if (resp != null) evalParts.push(`Atmung ${resp}/min`);
-      if (evalParts.length) dayLines.push(`  · ${evalParts.join(' · ')}`);
-      if (m.note) dayLines.push(`  · Bemerkung: ${m.note}`);
+      if (evalParts.length) dayLines.push(`    · ${evalParts.join(' · ')}`);
+      if (m.note) dayLines.push(`    · Bemerkung: ${m.note}`);
     });
   });
   return dayLines;
