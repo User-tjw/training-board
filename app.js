@@ -2551,6 +2551,18 @@ function buildNextDaysPlanLines() {
   return lines;
 }
 
+// Neueste Reha-Trainerzusammenfassung (unabhängig vom Tag) als Statuszeile für den Morgen-Check —
+// so muss der Head Coach Gate/Fenster/Ausschluss nicht aus Skill-Datei/Gedächtnis ziehen. Pflege
+// bleibt bewusst manuell über den bestehenden 💬-Mechanismus, keine neue Datenstruktur nötig.
+function latestRehaStatusLine() {
+  const rehaNotes = (_notes || [])
+    .filter(n => n.type === 'trainer-summary' && n.trainer === 'reha' && n.date)
+    .sort((a,b) => b.date.localeCompare(a.date));
+  if (!rehaNotes.length) return null;
+  const dateShort = new Date(rehaNotes[0].date).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
+  return `Reha-Status (Stand ${dateShort}): ${rehaNotes[0].body}`;
+}
+
 async function copyNoteForClaude() {
   const body  = document.getElementById('noteEditorContent').value.trim();
   const dateVal = _noteEditorDate || fmtDate(new Date());
@@ -2574,6 +2586,8 @@ async function copyNoteForClaude() {
     '## Morgen-Check',
     `HRV: ${text('cockpitHRV')} ms · Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
   ];
+  const rehaLine = latestRehaStatusLine();
+  if (rehaLine) lines.push(rehaLine);
   if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
   lines.push(body || '_Keine Notiz eingegeben._');
 
