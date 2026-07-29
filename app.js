@@ -2211,6 +2211,8 @@ async function copyActivityForClaude() {
   const ef = computeEfficiencyTrend(act, type);
   if (ef) lines.push(`Efficiency Factor: ${ef.value.toFixed(1)}${type === 'Rad' ? ' W/bpm' : ' m/min/bpm'}${ef.n ? ` · Trend ggü. letzten ${ef.n} Einheiten: ${ef.label} ${ef.trendPct > 0 ? '+' : ''}${ef.trendPct}%` : ''}`);
   if (meta.note) lines.push(`Bemerkung: ${meta.note}`);
+  const rehaLine = latestRehaStatusLine();
+  if (rehaLine) lines.push(rehaLine);
 
   const dayLines = build7DayContextLines();
   if (dayLines.length) lines.push('', '## Kontext der letzten 7 Tage', ...dayLines);
