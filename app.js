@@ -1736,7 +1736,41 @@ const TRAINER_OPTIONS = [
   {v:'kraft', l:'Kraft'},
   {v:'ernaehrung', l:'Ernährung'},
   {v:'methodik', l:'UA-Methodik'},
+  {v:'mobilitaet', l:'Mobilität'},
 ];
+
+// Erkennt die Rollen-Überschriften aus den Team-Antworten (siehe projekt-anweisung.md, Abschnitt
+// "Die Rollen") in reingekopiertem Chat-Text, um ihn automatisch pro Trainer aufzuteilen.
+const TRAINER_HEADER_PATTERNS = [
+  { trainer: 'head-coach', re: /^head coach$/i },
+  { trainer: 'reha', re: /^reha(-trainer)?$/i },
+  { trainer: 'kraft', re: /^kraft(-trainer)?$/i },
+  { trainer: 'ernaehrung', re: /^(sporternährungs-coach|ernährungs-coach|ernährung)$/i },
+  { trainer: 'methodik', re: /^(ua-methodik-berater|ua-methodik)$/i },
+  { trainer: 'mobilitaet', re: /^(mobilitäts-trainer|mobilität)$/i },
+];
+
+// Teilt reingekopierten Team-Antwort-Text an den Rollen-Überschriften auf. Text ohne erkennbare
+// Überschrift (oder vor der ersten) fällt auf Head Coach zurück, da der die koordinierende Rolle ist.
+function splitTrainerSections(text) {
+  const lines = text.split('\n');
+  const sections = [];
+  let current = null;
+  lines.forEach(line => {
+    const stripped = line.replace(/^[^\p{L}]*/u, '').trim();
+    const match = stripped.length < 40 && TRAINER_HEADER_PATTERNS.find(p => p.re.test(stripped));
+    if (match) {
+      current = { trainer: match.trainer, lines: [] };
+      sections.push(current);
+    } else if (current) {
+      current.lines.push(line);
+    } else if (line.trim()) {
+      current = { trainer: 'head-coach', lines: [line] };
+      sections.push(current);
+    }
+  });
+  return sections.map(s => ({ trainer: s.trainer, body: s.lines.join('\n').trim() })).filter(s => s.body);
+}
 
 // ─── Tagesnotizen lokal (Fallback ohne GitHub) ────────────────────────────────
 
@@ -2647,8 +2681,7 @@ let _trainerNoteDay = null;
 function openTrainerNoteModal(dateStr) {
   if (!ghToken || !ghRepo) { openSettingsModal(); return; }
   _trainerNoteDay = dateStr || fmtDate(new Date());
-  document.getElementById('trainerNoteDate').value = _trainerNoteDay;
-  document.getElementById('trainerNoteTrainer').innerHTML = TRAINER_OPTIONS.map(t => `<option value="${t.v}">${t.l}</option>`).join('');
+  document.getElementById('trainerNoteDateDisplay').textContent = new Date(_trainerNoteDay + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   document.getElementById('trainerNoteContent').value = '';
   document.getElementById('trainerNoteError').style.display = 'none';
   document.getElementById('trainerNoteModal').style.display = 'flex';
@@ -2660,18 +2693,21 @@ function closeTrainerNoteModal() {
 }
 
 async function saveTrainerNoteModal() {
-  const trainer = document.getElementById('trainerNoteTrainer').value;
-  const dateVal = document.getElementById('trainerNoteDate').value || _trainerNoteDay;
-  const body = document.getElementById('trainerNoteContent').value.trim();
+  const dateVal = _trainerNoteDay || fmtDate(new Date());
+  const rawBody = document.getElementById('trainerNoteContent').value.trim();
   const errEl = document.getElementById('trainerNoteError');
-  if (!body) { errEl.textContent = 'Zusammenfassung darf nicht leer sein.'; errEl.style.display = 'block'; return; }
-  const title = `${trainerLabel(trainer)}-Zusammenfassung`;
+  if (!rawBody) { errEl.textContent = 'Zusammenfassung darf nicht leer sein.'; errEl.style.display = 'block'; return; }
   const date = dateVal + 'T' + nowLocalISO().slice(11,16);
-  const content = buildNoteContent(body, trainer, title, date, null, true);
-  const filename = `${Date.now()}-trainer.md`;
+  const sections = splitTrainerSections(rawBody);
   try {
-    const res = await saveNoteToGH(filename, content, null);
-    _notes.unshift({ filename, sha: res.content.sha, trainer, title, date, mood: null, type: 'trainer-summary', body });
+    for (let i = 0; i < sections.length; i++) {
+      const { trainer, body } = sections[i];
+      const title = `${trainerLabel(trainer)}-Zusammenfassung`;
+      const content = buildNoteContent(body, trainer, title, date, null, true);
+      const filename = `${Date.now() + i}-trainer-${trainer}.md`;
+      const res = await saveNoteToGH(filename, content, null);
+      _notes.unshift({ filename, sha: res.content.sha, trainer, title, date, mood: null, type: 'trainer-summary', body });
+    }
     closeTrainerNoteModal();
     renderFromCache();
   } catch(e) {

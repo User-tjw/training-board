@@ -676,19 +676,11 @@
 <div class="modal-overlay" id="trainerNoteModal" style="display:none" onclick="if(event.target===this)closeTrainerNoteModal()">
   <div class="modal modal-wide">
     <h3>💬 Trainer-Zusammenfassung speichern</h3>
-    <div class="note-editor-grid2" style="margin-top:14px">
-      <div class="setup-field">
-        <label class="setup-label">Trainer</label>
-        <select class="setup-input" id="trainerNoteTrainer"></select>
-      </div>
-      <div class="setup-field">
-        <label class="setup-label">Datum</label>
-        <input class="setup-input" id="trainerNoteDate" type="date">
-      </div>
-    </div>
+    <div id="trainerNoteDateDisplay" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin:4px 0 14px"></div>
     <div class="setup-field">
       <label class="setup-label">Zusammenfassung</label>
-      <textarea class="note-textarea" id="trainerNoteContent" style="min-height:120px" placeholder="Kurze Zusammenfassung der Trainer-Rückmeldung…"></textarea>
+      <textarea class="note-textarea" id="trainerNoteContent" style="min-height:120px" placeholder="Antwort des Trainer-Teams hier reinkopieren…"></textarea>
+      <div class="setup-hint" style="margin-top:6px">Rollen-Überschriften (🏔️ Head Coach, 🦺 Reha-Trainer, …) werden automatisch erkannt und getrennt gespeichert. Ohne Überschrift landet alles unter Head Coach.</div>
     </div>
     <div class="setup-error" id="trainerNoteError">Fehler beim Speichern.</div>
     <div style="display:flex;gap:10px;margin-top:8px">
