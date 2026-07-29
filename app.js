@@ -1750,6 +1750,15 @@ const TRAINER_HEADER_PATTERNS = [
   { trainer: 'mobilitaet', re: /^(mobilitäts-trainer|mobilität)$/i },
 ];
 
+// Entfernt Markdown-Betonung (**fett**, _kursiv_, #Überschrift) und Emoji/Symbole an den Rändern
+// einer Zeile, schneidet Zusatztext nach "—"/":" ab (z.B. "Head Coach — Job-Load") — damit die
+// Rollen-Erkennung auch bei unterschiedlicher Chat-Formatierung zuverlässig greift.
+function normalizeHeaderCandidate(line) {
+  let s = line.trim().replace(/^[*_#\s]+/, '').replace(/[*_#\s]+$/, '');
+  s = s.replace(/^[^\p{L}]*/u, '');
+  return s.split(/\s*[—:]\s*/)[0].trim();
+}
+
 // Teilt reingekopierten Team-Antwort-Text an den Rollen-Überschriften auf. Text ohne erkennbare
 // Überschrift (oder vor der ersten) fällt auf Head Coach zurück, da der die koordinierende Rolle ist.
 function splitTrainerSections(text) {
@@ -1757,7 +1766,7 @@ function splitTrainerSections(text) {
   const sections = [];
   let current = null;
   lines.forEach(line => {
-    const stripped = line.replace(/^[^\p{L}]*/u, '').trim();
+    const stripped = normalizeHeaderCandidate(line);
     const match = stripped.length < 40 && TRAINER_HEADER_PATTERNS.find(p => p.re.test(stripped));
     if (match) {
       current = { trainer: match.trainer, lines: [] };
