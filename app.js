@@ -2534,7 +2534,7 @@ function build7DayContextLines() {
 // Geplante Einheiten der nächsten 7 Tage (TrainIQ-Plan + Intervals.icu-Events), falls vorhanden —
 // informiert den Head Coach über bereits eingetragene Planung, statt sie neu erfragen zu müssen.
 function buildNextDaysPlanLines() {
-  const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(-i)));
+  const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(-(i+1)))); // ab morgen, heute steht schon in den letzten 7 Tagen
   const lines = [];
   days7.forEach(dayKey => {
     const sessions = getPlanSessionsFor(dayKey);
