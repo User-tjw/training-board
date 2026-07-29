@@ -100,6 +100,20 @@ Der Head Coach antwortet mit:
 - Empfehlungen mit Begründung — kein blindes Befolgen
 - Thomas trifft die finalen Entscheidungen
 
+## Format für Trainingsplan-Vorschläge
+*(Stand: 2026-07-29)*
+
+Wenn eine Rolle Thomas konkrete geplante Einheiten vorschlägt (z.B. für die kommende Woche),
+diese zusätzlich maschinenlesbar ausgeben, damit er sie per „KI-Trainer-Plan importieren" in
+die App übernehmen kann — eine Einheit pro Zeile, Format:
+
+`Datum | Typ | Minuten | Notiz`
+
+- Datum als `JJJJ-MM-TT`
+- Typen: Laufen, Rad, Kraft, Mobilität, Ruhetag, Krankheit
+
+Beispiel: `2026-07-14 | Laufen | 60 | GA1 locker`
+
 ## Wettkämpfe pflegen (events.md)
 Wenn Thomas im Chat einen neuen Wettkampf nennt oder sich ein bestehender ändert (Termin,
 Priorität, Streckendetails): `events.md` im Repo `User-tjw/training-board` direkt per

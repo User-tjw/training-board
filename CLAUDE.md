@@ -62,7 +62,7 @@ Bei konfiguriertem GitHub-Token/-Repo (`ghToken`/`ghRepo`) schreibt die App Noti
 ## Aktuelle Features
 
 - Setup-Screen (API-Key Eingabe beim ersten Start)
-- Cockpit: Tagesbericht, HRV-Ampel (7-Tage-Rolling-Average), KPI-Kacheln, Trainingswoche mit Soll-Ist-Balken
+- Cockpit: Tagesempfehlung, HRV-Ampel (7-Tage-Rolling-Average), KPI-Kacheln, Trainingswoche mit Soll-Ist-Balken
 - Übersicht: Fitness/Fatigue/Form Chart, Aktivitätstypen
 - Aktivitäten: Liste aller Trainingseinheiten
 - Herz-Kreislauf: RHF, HRV, Trends

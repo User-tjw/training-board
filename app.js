@@ -1126,7 +1126,7 @@ function buildWeekCalendar(weekStart, weekActs) {
     // „+ planen" nur für heute & zukünftige Tage
     const addBtn = d.dStr >= todayStr ? `<button class="wc-add" onclick="event.stopPropagation();openPlanModal('${d.dStr}')" title="Einheit planen">+ planen</button>` : '';
     const total = dayMin > 0 ? `<div class="wc-day-total">${dayMin} min</div>` : '';
-    return `<div class="week-cal-daycol${d.isToday?' today':''}">${raceBars}${actualBars}${planBars}${empty}${addBtn}${total}</div>`;
+    return `<div class="week-cal-daycol${d.isToday?' today':''}"><div class="wc-daycol-scroll">${raceBars}${actualBars}${planBars}${empty}${addBtn}</div>${total}</div>`;
   }).join('');
 
   const plan = getTrainingPlan();
@@ -1227,84 +1227,7 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
   const latestHRV = hrvSeries[hrvSeries.length-1] || {};
   const latestRHF = rhfSeries[rhfSeries.length-1] || {};
   const latestF = fitness[fitness.length-1] || {};
-
-  // HRV Ampel (individuelle SD-Bänder / Z-Score, Fallback auf %-Logik bei zu wenig Historie)
   const todayHRV = latestHRV.hrv || 0;
-  const hrvResult = todayHRV ? hrvVerdictAt(hrvSeries, hrvSeries.length - 1) : null;
-  const hrv7avg = hrvResult ? hrvResult.base7avg : 0;
-
-  let verdict, desc, cls;
-  if (!todayHRV) {
-    verdict = '● Keine HRV-Daten'; desc = 'Noch kein HRV-Wert für heute.'; cls = 'neutral';
-  } else if (hrvResult && hrvResult.mode === 'z') {
-    const z = hrvResult.z;
-    if (z >= -1) {
-      verdict = '● Bereit · Hart trainieren';
-      desc = `HRV ${Math.round(todayHRV)} ms (Z ${z.toFixed(2)}) im individuellen Normalbereich. Guter Tag für Qualitätseinheiten.`;
-      cls = 'up';
-    } else if (z >= -2) {
-      verdict = '● Moderat · Locker bleiben';
-      desc = `HRV ${Math.round(todayHRV)} ms (Z ${z.toFixed(2)}) unter der individuellen Norm. Nur lockeres Training.`;
-      cls = 'neutral';
-    } else {
-      verdict = '● Erholen · Ruhetag';
-      desc = `HRV ${Math.round(todayHRV)} ms (Z ${z.toFixed(2)}) deutlich unter der individuellen Norm. Erholung empfohlen.`;
-      cls = 'down';
-    }
-  } else {
-    // Fallback: alte %-Schwellenlogik (noch zu wenig Datenhistorie für individuelle SD)
-    const pct = hrvResult ? hrvResult.pct : 0;
-    if (pct >= -3) {
-      verdict = '● Bereit · Hart trainieren';
-      desc = `HRV ${Math.round(todayHRV)} ms liegt im Bereich des 7-Tage-Ø (${Math.round(hrv7avg)} ms). Guter Tag für Qualitätseinheiten.`;
-      cls = 'up';
-    } else if (pct >= -10) {
-      verdict = '● Moderat · Locker bleiben';
-      desc = `HRV ${Math.round(todayHRV)} ms leicht unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Nur lockeres Training.`;
-      cls = 'neutral';
-    } else {
-      verdict = '● Erholen · Ruhetag';
-      desc = `HRV ${Math.round(todayHRV)} ms deutlich unter dem 7-Tage-Ø (${Math.round(hrv7avg)} ms). Erholung empfohlen.`;
-      cls = 'down';
-    }
-  }
-
-  // Job-Belastung (Schritte gestern) als zweites Signal: kann die HRV-Ampel nur abwerten, nie aufwerten.
-  // JOB_LOAD_HIGH = konfigurierbarer Schwellenwert (Einstellungen unter Wellness), JOB_LOAD_LOW = die Hälfte davon.
-  const stepsByDateJob = {};
-  sortedWellness(wellness).forEach(d => { if (wellnessSteps(d) != null) stepsByDateJob[d.id] = wellnessSteps(d); });
-  const JOB_LOAD_HIGH = stepsThreshold();
-  const JOB_LOAD_LOW = Math.round(JOB_LOAD_HIGH / 2);
-  const stepsYesterday = stepsByDateJob[fmtDate(daysAgo(1))];
-  const jobLoad = stepsYesterday == null ? null
-    : stepsYesterday >= JOB_LOAD_HIGH ? 'hoch'
-    : stepsYesterday <= JOB_LOAD_LOW ? 'niedrig' : 'mittel';
-
-  if (todayHRV && cls === 'up' && jobLoad === 'hoch') {
-    verdict = '● Moderat · Locker bleiben';
-    desc = `HRV ${Math.round(todayHRV)} ms gut, aber hohe Job-Belastung gestern (${fmtNum(stepsYesterday)} Schritte) — Qualität heute nicht empfohlen.`;
-    cls = 'neutral';
-  } else if (todayHRV && cls === 'up' && jobLoad === 'mittel') {
-    desc += ' Job-Belastung moderat — planmäßig.';
-  }
-
-  // Zusatzhinweis bei mehreren Tagen hoher Job-Belastung in Folge (endend gestern)
-  let highStreak = 0;
-  let streakStartDate = null, streakEndDate = null;
-  for (let d = daysAgo(1); ; d.setDate(d.getDate() - 1)) {
-    const s = stepsByDateJob[fmtDate(d)];
-    if (s == null || s < JOB_LOAD_HIGH) break;
-    if (highStreak === 0) streakEndDate = fmtDate(d);
-    streakStartDate = fmtDate(d);
-    highStreak++;
-  }
-  if (todayHRV && highStreak >= 3) {
-    desc += ` ${highStreak} Tage hohe Job-Belastung in Folge (${streakStartDate}–${streakEndDate}) — Erholung aktiv einplanen.`;
-  }
-
-  const vEl = document.getElementById('cockpitVerdict');
-  vEl.textContent = verdict; vEl.className = 'trend-verdict ' + cls;
-  document.getElementById('cockpitDesc').textContent = desc;
 
   function trendArrow(curr, prev) {
     if (curr == null || prev == null) return '';
@@ -1320,20 +1243,6 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
     (todayHRV ? Math.round(todayHRV) : '—') + ' ' + trendArrow(todayHRV || null, prevHRV?.hrv);
   document.getElementById('cockpitRHF').innerHTML =
     (latestRHF.restingHR || '—') + ' ' + trendArrow(latestRHF.restingHR, prevRHF?.restingHR);
-
-  const rhfDiff2 = (latestRHF.restingHR != null && prevRHF?.restingHR != null) ? Math.round(latestRHF.restingHR - prevRHF.restingHR) : null;
-  const hrvDiff2 = (todayHRV && prevHRV?.hrv != null) ? Math.round(todayHRV - prevHRV.hrv) : null;
-  let cardioDesc;
-  if (rhfDiff2 == null || hrvDiff2 == null) {
-    cardioDesc = 'Noch nicht genug Daten für eine Herz-Kreislauf-Einschätzung.';
-  } else if (rhfDiff2 <= 0 && hrvDiff2 >= 0) {
-    cardioDesc = `Ruhepuls ${rhfDiff2 < 0 ? 'sinkt' : 'stabil'}, HRV ${hrvDiff2 > 0 ? 'steigt' : 'stabil'} — das Herz-Kreislauf-System erholt sich gut.`;
-  } else if (rhfDiff2 > 0 && hrvDiff2 < 0) {
-    cardioDesc = 'Ruhepuls steigt, HRV sinkt — mehr Erholung einplanen.';
-  } else {
-    cardioDesc = 'Ruhepuls und HRV zeigen ein gemischtes Bild — weiter beobachten.';
-  }
-  document.getElementById('cockpitCardioDesc').textContent = cardioDesc;
   document.getElementById('cockpitCTL').innerHTML =
     (latestF.ctl ? Math.round(latestF.ctl) : '—') + ' ' + trendArrow(latestF.ctl, prevF?.ctl);
   document.getElementById('cockpitATL').innerHTML =
@@ -1364,19 +1273,6 @@ function renderCockpitStatus(wellness, fitness, activitiesFull) {
 
   // Trainingswoche (navigierbar) als Kalender (zwei Bänder: Ausdauer / Kraft)
   renderCockpitWeek();
-
-  // HRV-Tagesstatus-Ampel: immer die letzten 7 echten Tage, unabhängig von der Kachel-Auswahl
-  const hrv7data = hrvSeries.slice(-7);
-  const hrv7startIdx = hrvSeries.length - hrv7data.length;
-  document.getElementById('cockpitHRVDots').innerHTML = hrv7data.map((d,i) => {
-    if (!d.hrv) return '<span style="color:#e2e8f0">●</span>';
-    const r = hrvVerdictAt(hrvSeries, hrv7startIdx + i);
-    const col = !r ? '#e2e8f0'
-      : r.mode === 'z' ? (r.z >= -1 ? '#10b981' : r.z >= -2 ? '#f59e0b' : '#ef4444')
-      : (r.pct >= -3 ? '#10b981' : r.pct >= -10 ? '#f59e0b' : '#ef4444');
-    const day = new Date(d.id).toLocaleDateString('de-DE',{weekday:'short'});
-    return `<span title="${day}: ${Math.round(d.hrv)} ms" style="color:${col};cursor:default">●</span>`;
-  }).join('');
 }
 
 // ─── Cockpit: Trainingsbelastung & Erholung (Fitness/Fatigue/Form, HRV-Trend, 80/20-Check) ────
@@ -1645,9 +1541,6 @@ function renderWellnessDayList(sorted) {
     const stepsVal = steps != null ? fmtNum(steps) : '—';
     const n = journalByDate[d.id];
     const moodVal = n && n.mood != null ? moodIcon(n.mood,16) : '—';
-    const noteTitleHtml = n
-      ? `<span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(n.title)}</span>`
-      : '<span style="color:var(--text2)">—</span>';
 
     return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openWellnessEditModal('${d.id}')" title="Tageswerte & Notiz bearbeiten">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
@@ -1661,7 +1554,6 @@ function renderWellnessDayList(sorted) {
       ${statChip('Schlafqual.', moodVal)}
       <div class="trend-kpi-sep" style="min-height:32px"></div>
       <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-        ${noteTitleHtml}
         <button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Tageswerte & Notiz bearbeiten" onclick="event.stopPropagation();openWellnessEditModal('${d.id}')">${pencilIcon(13)}</button>
       </div>
     </div>`;
@@ -1734,7 +1626,7 @@ async function saveWellnessEditNote() {
   const contentVal = document.getElementById('wellnessEditNoteContent').value.trim();
   if (!contentVal && mood == null && !_wellnessEditNote) return;
 
-  const title = _wellnessEditNote ? _wellnessEditNote.title : 'Tagesnotiz';
+  const title = _wellnessEditNote ? _wellnessEditNote.title : 'Morgenbericht';
   const timeVal = _wellnessEditNote && _wellnessEditNote.date ? _wellnessEditNote.date.slice(11,16) : nowLocalISO().slice(11,16);
   const date = _wellnessEditDay + 'T' + timeVal;
 
@@ -2434,6 +2326,8 @@ async function confirmPlanImport() {
 
 let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
+let _noteEditorDate = null;
+let _noteEditorTitle = 'Morgenbericht';
 
 function openNoteEditor(dateStr) {
   if (!ghToken || !ghRepo) { openSettingsModal(); return; }
@@ -2442,9 +2336,10 @@ function openNoteEditor(dateStr) {
   const targetDate = dateStr || fmtDate(new Date());
   const existing = _notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === targetDate);
   _editingNote = existing ? { filename: existing.filename, sha: existing.sha, date: existing.date } : null;
+  _noteEditorDate = targetDate;
+  _noteEditorTitle = existing ? existing.title : 'Morgenbericht';
   document.getElementById('noteEditorHeading').textContent = existing ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
-  document.getElementById('noteEditorTitleInput').value = existing ? existing.title : 'Tagesnotiz';
-  document.getElementById('noteEditorDate').value = targetDate;
+  document.getElementById('noteEditorModalDate').textContent = new Date(targetDate + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   document.getElementById('noteEditorContent').value = existing ? existing.body : '';
   renderMoodPicker(existing ? existing.mood : null, 'moodPicker');
 
@@ -2464,9 +2359,10 @@ function openDayNoteEditor(localNoteId) {
   _noteEditorLocalMode = true;
   _editingLocalNoteId = localNoteId || null;
   const n = localNoteId ? _localDayNotes.find(x => x.id === localNoteId) : null;
+  _noteEditorDate = n ? n.date.slice(0,10) : fmtDate(new Date());
+  _noteEditorTitle = n ? n.title : 'Morgenbericht';
   document.getElementById('noteEditorHeading').textContent = n ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
-  document.getElementById('noteEditorTitleInput').value = n ? n.title : 'Tagesnotiz';
-  document.getElementById('noteEditorDate').value = n ? n.date.slice(0,10) : fmtDate(new Date());
+  document.getElementById('noteEditorModalDate').textContent = new Date(_noteEditorDate + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   document.getElementById('noteEditorContent').value = n ? n.body : '';
   renderMoodPicker(n ? n.mood : null, 'moodPicker');
   document.getElementById('noteEditorError').style.display = 'none';
@@ -2515,16 +2411,15 @@ function deleteLocalDayNote(id) {
 }
 
 async function saveNoteEditor() {
-  const title   = document.getElementById('noteEditorTitleInput').value.trim();
+  const title   = _noteEditorTitle;
   const body    = document.getElementById('noteEditorContent').value.trim();
-  const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
+  const dateVal = _noteEditorDate || fmtDate(new Date());
   const existing = _editingNote || (_editingLocalNoteId ? _localDayNotes.find(x => x.id === _editingLocalNoteId) : null);
   const timeVal  = existing && existing.date ? existing.date.slice(11, 16) : nowLocalISO().slice(11, 16);
   const date     = dateVal + 'T' + timeVal;
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood    = moodSel ? parseInt(moodSel) : null;
   const errEl   = document.getElementById('noteEditorError');
-  if (!title) { errEl.textContent = 'Titel erforderlich.'; errEl.style.display='block'; return; }
   errEl.style.display = 'none';
 
   if (_noteEditorLocalMode) {
@@ -2635,9 +2530,8 @@ function build7DayContextLines() {
 }
 
 async function copyNoteForClaude() {
-  const title = document.getElementById('noteEditorTitleInput').value.trim();
   const body  = document.getElementById('noteEditorContent').value.trim();
-  const dateVal = document.getElementById('noteEditorDate').value || fmtDate(new Date());
+  const dateVal = _noteEditorDate || fmtDate(new Date());
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood  = moodSel ? parseInt(moodSel) : null;
   const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
@@ -2652,40 +2546,28 @@ async function copyNoteForClaude() {
     maxHr ? `Max-HF ${maxHr}` : null,
   ].filter(Boolean).join(' | ');
   const lines = [
-    `# Tagesbericht — ${dateLong}`,
+    `# Morgen-Check — ${dateLong}`,
     `Athlet: ${profile.name || 'Thomas Wagner'}` + (athleteInfo ? ` | ${athleteInfo}` : ''),
     '',
-    '## Trainingsplan-Kontext',
-    currentUaPhaseText(),
-    'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.',
-    '',
-    '## Automatische Einschätzung (TrainIQ)',
-    text('cockpitVerdict'),
-    text('cockpitDesc'),
-    '',
-    '## Weitere Werte',
-    `Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
+    '## Morgen-Check',
+    `HRV: ${text('cockpitHRV')} ms · Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
   ];
+  if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
+  lines.push(body || '_Keine Notiz eingegeben._');
+
   const dayLines = build7DayContextLines();
   if (dayLines.length) lines.push('', '## Trainingseinheiten & Schritte der letzten 7 Tage', ...dayLines);
 
-  lines.push('', `## ${title || 'Journal-Eintrag'}`);
-  if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
-  lines.push(body || '_Keine Notiz eingegeben._');
-  lines.push('');
-  lines.push('## Falls du einen Trainingsplan vorschlägst');
-  lines.push('Gib ihn bitte maschinenlesbar aus — eine Einheit pro Zeile, Format: `Datum | Typ | Minuten | Notiz`');
-  lines.push('(Datum als JJJJ-MM-TT; Typen: Laufen, Rad, Kraft, Mobilität, Ruhetag, Krankheit). Beispiel:');
-  lines.push('2026-07-14 | Laufen | 60 | GA1 locker');
-  lines.push('');
-  lines.push('---');
+  lines.push('', '## Trainingsplan-Kontext', currentUaPhaseText(), 'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.');
+
+  lines.push('', '---');
   lines.push('_Kontext aus TrainIQ — bitte berücksichtigen._');
 
   const btn = document.getElementById('copyNoteBtn');
   try {
     await navigator.clipboard.writeText(lines.join('\n'));
     btn.textContent = '✓ Kopiert!';
-    setTimeout(() => { btn.textContent = '✦ Tagesbericht + Notiz für Claude kopieren'; }, 2500);
+    setTimeout(() => { btn.textContent = '✦ Morgen-Check + Notiz für Claude kopieren'; }, 2500);
   } catch(e) { alert('Kopieren fehlgeschlagen.'); }
 }
 
@@ -2694,7 +2576,7 @@ async function copyNoteForClaude() {
 // Löscht die im Editor gerade bearbeitete (bestehende) Notiz aus dem GitHub-Repo
 async function deleteEditingNote() {
   if (!_editingNote) return;
-  const title = document.getElementById('noteEditorTitleInput').value.trim() || 'Notiz';
+  const title = _noteEditorTitle || 'Notiz';
   if (!confirm(`Notiz "${title}" wirklich löschen?`)) return;
   try {
     await deleteNoteFromGH(_editingNote.filename, _editingNote.sha);
@@ -2992,34 +2874,6 @@ function sortedWellness(w) { return [...w].sort((a,b)=>a.id>b.id?1:-1); }
 function avg(arr) { return arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:0; }
 
 // HRV-Bewertung nach individuellen SD-Bändern (Plews-Methode, ln-transformiert), Stand 25.07.2026.
-// Baseline (7-Tage-Ø) und Streuung (90-Tage-SD) werden aus den Tagen VOR "idx" berechnet, der
-// heutige Wert zählt nicht in seine eigene Baseline. Bei zu wenig Datenhistorie (<60 Werte im
-// 90-Tage-Fenster) Fallback auf die alte %-Schwellenlogik. Siehe skill-training-management.md.
-function sampleSD(arr) {
-  if (arr.length < 2) return null;
-  const m = avg(arr);
-  const variance = arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
-  return Math.sqrt(variance);
-}
-function hrvVerdictAt(hrvSeries, idx) {
-  const todayVal = hrvSeries[idx]?.hrv;
-  if (!todayVal) return null;
-  const before = hrvSeries.slice(0, idx);
-  const base7 = before.slice(-7).map(d => d.hrv).filter(Boolean);
-  const base90 = before.slice(-90).map(d => d.hrv).filter(Boolean);
-  if (base7.length >= 3 && base90.length >= 60) {
-    const meanLn7 = avg(base7.map(Math.log));
-    const sd = sampleSD(base90.map(Math.log));
-    if (sd) {
-      const z = (Math.log(todayVal) - meanLn7) / sd;
-      return { mode: 'z', z, base7avg: avg(base7) };
-    }
-  }
-  if (!base7.length) return null;
-  const base7avg = avg(base7);
-  const pct = base7avg ? ((todayVal - base7avg) / base7avg) * 100 : 0;
-  return { mode: 'pct', pct, base7avg };
-}
 function formatDur(secs) { const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60); return h>0?`${h}h ${m}m`:`${m}m`; }
 function normalizeType(type) {
   if(!type) return 'Mobilität';

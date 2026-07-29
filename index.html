@@ -156,17 +156,11 @@
   </div>
 
   <main class="main">
-    <!-- Cockpit: Dashboard-Startseite mit Tagesbericht, KPI-Kacheln, Trainingswoche-Kalender, Fitness-Chart und 80/20-Check -->
+    <!-- Cockpit: Dashboard-Startseite mit Tagesempfehlung, KPI-Kacheln, Trainingswoche-Kalender, Fitness-Chart und 80/20-Check -->
     <section id="section-cockpit" class="section active">
       <div class="content">
-        <!-- Tagesbericht-Kachel: Verdikt/Beschreibung oben, KPI-Reihe (HRV, Ruhepuls, CTL/ATL/TSB, Gewicht, ...) darunter -->
+        <!-- Kennzahlen-Kachel: reine Datenanzeige (HRV, Ruhepuls, CTL/ATL/TSB, Gewicht, ...), keine automatische Bewertung -->
         <div class="trend-hero" style="flex-direction:column;align-items:stretch;gap:18px">
-          <div class="trend-left">
-            <div class="card-title" style="margin-bottom:16px">Tagesbericht</div>
-            <div class="trend-verdict" id="cockpitVerdict">Wird geladen...</div>
-            <div class="trend-desc" id="cockpitDesc"></div>
-            <div class="trend-desc" id="cockpitCardioDesc" style="margin-top:4px"></div>
-          </div>
           <div class="trend-kpi-row">
             <div class="trend-kpi-item"><div class="trend-kpi-label">HRV</div><div class="trend-kpi-val" id="cockpitHRV">— <span class="trend-kpi-trend" id="cockpitHRVTrend"></span></div></div>
             <div class="trend-kpi-item"><div class="trend-kpi-label">Ruhepuls</div><div class="trend-kpi-val" id="cockpitRHF">— <span class="trend-kpi-trend" id="cockpitRHFTrend"></span></div></div>
@@ -217,7 +211,6 @@
           <div class="group-card-body" style="--cols:1">
             <div class="group-card-section">
               <div class="card-title" style="margin-bottom:12px">Fitness · Fatigue · Form · HRV · Ruhepuls</div>
-              <div id="cockpitHRVDots" style="padding:0 0 8px;font-size:20px;letter-spacing:4px"></div>
               <div class="chart-box" style="height:340px"><canvas id="fitnessChart"></canvas></div>
             </div>
             <div class="group-card-section">
@@ -385,17 +378,7 @@
 <div class="modal-overlay" id="noteEditorModal" style="display:none" onclick="if(event.target===this)closeNoteEditor()">
   <div class="modal modal-wide">
     <h3 id="noteEditorHeading">Morgen-Check</h3>
-    <!-- Titel + Datum nebeneinander (spart Höhe → weniger Scrollen) -->
-    <div class="note-editor-grid2" style="margin-top:14px">
-      <div class="setup-field">
-        <label class="setup-label">Titel</label>
-        <input class="setup-input" id="noteEditorTitleInput" type="text" placeholder="z.B. Morgen Check-In">
-      </div>
-      <div class="setup-field">
-        <label class="setup-label">Datum</label>
-        <input class="setup-input" id="noteEditorDate" type="date">
-      </div>
-    </div>
+    <div id="noteEditorModalDate" style="font-size:11px;color:var(--text2);font-family:var(--mono);margin:4px 0 0"></div>
     <div class="setup-field">
       <label class="setup-label">Schlafqualität (optional)</label>
       <div class="mood-picker" id="moodPicker"></div>
@@ -407,7 +390,7 @@
     <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveNoteEditor()">Speichern</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeNoteEditor()">Abbrechen</button>
-      <button id="copyNoteBtn" class="btn" style="flex-basis:100%;padding:12px;font-size:14px" onclick="copyNoteForClaude()">✦ Tagesbericht + Notiz für Claude kopieren</button>
+      <button id="copyNoteBtn" class="btn" style="flex-basis:100%;padding:12px;font-size:14px" onclick="copyNoteForClaude()">✦ Morgen-Check + Notiz für Claude kopieren</button>
       <!-- Löschen: nur sichtbar wenn eine BESTEHENDE Notiz bearbeitet wird (per JS in openNoteEditor ein-/ausgeblendet) -->
       <button id="noteEditorDeleteBtn" class="btn" style="flex-basis:100%;padding:12px;font-size:14px;color:var(--red);border-color:var(--red);display:none" onclick="deleteEditingNote()">✕ Notiz löschen</button>
     </div>
