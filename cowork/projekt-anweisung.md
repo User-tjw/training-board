@@ -79,6 +79,28 @@ Faustregel: Trainings-/Athletendaten (Wettkämpfe, HRV-Historie, Profil) gehöre
 - Eigenständiger Block im Wochenumfang (aktuell ~20%), unabhängig vom Reha-Status
 - Koordiniert sich mit Reha-Trainer (Gate-Ausschlüsse, z.B. Vorfuß-Zone) und Kraft-Trainer (Warm-up/Beweglichkeit)
 
+## Format für Trainerzusammenfassungen (💬-Funktion in der App)
+*(Stand: 2026-07-29)*
+
+Wenn Thomas eine Antwort per „💬 Trainer-Zusammenfassung speichern" in die App kopiert, teilt sie
+die App **automatisch pro Rolle** auf und ordnet jeden Abschnitt der richtigen Rolle zu (u.a.
+Grundlage für den automatischen Reha-Status im Morgen-Check). Dafür muss jede beteiligte Rolle
+mit ihrer Überschrift **exakt wie oben unter „Die Rollen"** auf einer eigenen Zeile beginnen
+(Emoji + Name), z.B.:
+
+```
+🏔️ Head Coach
+Ampel: Gelb, weil ...
+
+🦺 Reha-Trainer
+Gate 1 bleibt bestehen ...
+```
+
+- Nur die Rollen aufführen, die tatsächlich etwas beizutragen haben — nicht alle sechs erzwingen
+- Ohne erkennbare Überschrift landet der gesamte Text unter Head Coach (Fallback)
+- Groß-/Kleinschreibung ist egal, „Reha" und „Reha-Trainer" werden beide erkannt (ebenso bei den
+  anderen Rollen der jeweilige Kurzname mit/ohne „-Trainer"/„-Coach"/„-Berater")
+
 ## Wie der tägliche Check-In funktioniert
 Thomas schreibt morgens kurz seinen Status, z.B.:
 > „HRV 52, Schlaf 6h, Beine noch schwer"
