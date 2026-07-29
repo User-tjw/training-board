@@ -2531,6 +2531,26 @@ function build7DayContextLines() {
   return dayLines;
 }
 
+// Geplante Einheiten der nächsten 7 Tage (TrainIQ-Plan + Intervals.icu-Events), falls vorhanden —
+// informiert den Head Coach über bereits eingetragene Planung, statt sie neu erfragen zu müssen.
+function buildNextDaysPlanLines() {
+  const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(-i)));
+  const lines = [];
+  days7.forEach(dayKey => {
+    const sessions = getPlanSessionsFor(dayKey);
+    if (!sessions.length) return;
+    const dLabel = new Date(dayKey + 'T00:00').toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
+    lines.push(`- ${dLabel}`);
+    sessions.forEach(s => {
+      const parts = [];
+      if (s.min) parts.push(`${s.min} min`);
+      if (s.note) parts.push(s.note);
+      lines.push(`  · ${s.type}${parts.length ? ' — '+parts.join(' · ') : ''}`);
+    });
+  });
+  return lines;
+}
+
 async function copyNoteForClaude() {
   const body  = document.getElementById('noteEditorContent').value.trim();
   const dateVal = _noteEditorDate || fmtDate(new Date());
@@ -2559,6 +2579,9 @@ async function copyNoteForClaude() {
 
   const dayLines = build7DayContextLines();
   if (dayLines.length) lines.push('', '## Trainingseinheiten & Schritte der letzten 7 Tage', ...dayLines);
+
+  const planLines = buildNextDaysPlanLines();
+  if (planLines.length) lines.push('', '## Geplante Einheiten der nächsten Tage', ...planLines);
 
   lines.push('', '## Trainingsplan-Kontext', currentUaPhaseText(), 'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.');
 
