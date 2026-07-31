@@ -2092,6 +2092,37 @@ function findActivityById(id) {
       || null;
 }
 
+// Automatisch aus Intervals.icu abgeleitete Kennzahlen einer Aktivität — Basis für die editierbaren
+// Felder im Aktivitäts-Modal. Ø Geschwindigkeit wird aus Distanz/Zeit berechnet, da Intervals.icu
+// sie nicht direkt liefert.
+function autoActivityStats(act) {
+  const distKm = act.distance ? act.distance/1000 : null;
+  const timeMin = act.moving_time ? act.moving_time/60 : null;
+  const hrBpm = act.average_heartrate || null;
+  const elevM = act.total_elevation_gain || null;
+  const wattsW = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts || null;
+  const speedKmh = (distKm != null && timeMin) ? distKm / (timeMin/60) : null;
+  return { distKm, timeMin, hrBpm, elevM, wattsW, speedKmh };
+}
+
+const ACTIVITY_STAT_DEFS = [
+  { key:'distKm',   label:'Distanz',      dec:1, unit:' km' },
+  { key:'timeMin',  label:'Zeit (min)',   dec:0, unit:' min' },
+  { key:'hrBpm',    label:'Ø HF',         dec:0, unit:' bpm' },
+  { key:'speedKmh', label:'Ø Geschw.',    dec:1, unit:' km/h' },
+  { key:'elevM',    label:'Höhe',         dec:0, unit:' hm' },
+  { key:'wattsW',   label:'Ø Leistung',   dec:0, unit:' W' },
+];
+
+// Manuell korrigierte Werte (activity_meta) haben Vorrang vor den automatischen Intervals.icu-Werten —
+// z.B. bei fehlerhaften Sensor-Messungen (Ø HF bei Hitze o.ä.).
+function effectiveActivityStats(act, meta) {
+  const auto = autoActivityStats(act);
+  const eff = {};
+  ACTIVITY_STAT_DEFS.forEach(d => { eff[d.key] = meta[d.key] != null ? meta[d.key] : auto[d.key]; });
+  return { auto, eff };
+}
+
 // Ruhetage ohne echte Intervals.icu-Aktivität (id "note-<Datum>", siehe renderOverviewGroup) haben
 // kein Objekt in _activitiesFull — synthetisches Fallback-Objekt, damit RPE/Befinden/Bemerkung auch
 // für sie unter derselben (stabilen) id gespeichert werden können wie für echte Aktivitäten.
@@ -2108,21 +2139,28 @@ function openActivityModal(actId) {
   document.getElementById('activityModalTitle').textContent = act.name || type;
   document.getElementById('activityModalDate').textContent = new Date(act.start_date_local).toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 
-  // Fixe Kennzahlen aus intervals.icu (nur Anzeige)
-  const stats = [];
-  if (act.distance) stats.push(['Distanz', (act.distance/1000).toFixed(1)+' km']);
-  if (act.moving_time) stats.push(['Zeit', formatDur(act.moving_time)]);
-  if (act.average_heartrate) stats.push(['Ø HF', Math.round(act.average_heartrate)+' bpm']);
-  if (act.total_elevation_gain) stats.push(['Höhe', Math.round(act.total_elevation_gain)+' m']);
-  const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
-  if (watts) stats.push(['Ø Leistung', Math.round(watts)+' W']);
-  if (act.icu_training_load) stats.push(['Load', Math.round(act.icu_training_load)]);
-  document.getElementById('activityModalStats').innerHTML = stats.map(([l,v]) =>
-    `<div class="activity-stat"><span class="activity-stat-label">${l}</span><span class="activity-stat-val">${v}</span></div>`
-  ).join('') || '<div class="setup-hint">Keine Kennzahlen vorhanden.</div>';
+  // Kennzahlen aus Intervals.icu, editierbar — bei Sensor-Fehlern (z.B. HF bei Hitze) korrigierbar.
+  // Manuell geänderte Werte überschreiben den Automatik-Wert dauerhaft (activity_meta), bis das Feld
+  // wieder geleert wird.
+  const meta = getActivityMetaFor(act.id);
+  const { auto, eff } = effectiveActivityStats(act, meta);
+  document.getElementById('activityModalStats').innerHTML = ACTIVITY_STAT_DEFS
+    .filter(d => auto[d.key] != null || eff[d.key] != null)
+    .map(d => {
+      const val = eff[d.key] != null ? (+eff[d.key]).toFixed(d.dec) : '';
+      const placeholder = auto[d.key] != null ? `auto: ${(+auto[d.key]).toFixed(d.dec)}` : '';
+      return `<div class="setup-field" style="margin-bottom:0">
+        <label class="setup-label">${d.label}</label>
+        <input class="setup-input" data-stat-key="${d.key}" type="text" inputmode="decimal" value="${val}" placeholder="${placeholder}"></div>`;
+    }).join('') || '<div class="setup-hint">Keine Kennzahlen vorhanden.</div>';
+  if (act.icu_training_load) {
+    document.getElementById('activityModalStats').insertAdjacentHTML('beforeend',
+      `<div class="setup-field" style="margin-bottom:0">
+        <label class="setup-label">Load</label>
+        <input class="setup-input" value="${Math.round(act.icu_training_load)}" disabled></div>`);
+  }
 
   // Bewertungs-Felder: RPE/Befinden/Bemerkung aus activity_meta, Atmung aus manual_respiration
-  const meta = getActivityMetaFor(act.id);
   renderRpePicker(meta.rpe || null);
   renderFeelPicker(meta.feel || null);
   document.getElementById('actNote').value = meta.note || '';
@@ -2176,7 +2214,13 @@ async function saveActivityModal() {
   const tempRaw = document.getElementById('actTemp').value.trim();
   const temp = tempRaw ? parseFloat(tempRaw) : null;
   const weather = document.getElementById('actWeather').value.trim();
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, temp, weather });
+  const statPatch = {};
+  document.querySelectorAll('#activityModalStats [data-stat-key]').forEach(inp => {
+    const raw = inp.value.trim().replace(',', '.');
+    const num = parseFloat(raw);
+    statPatch[inp.dataset.statKey] = raw && !isNaN(num) ? num : null;
+  });
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, temp, weather, ...statPatch });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   closeActivityModal();
@@ -2200,13 +2244,14 @@ async function copyActivityForClaude() {
 
   const meta = getActivityMetaFor(act.id);
   const resp = getManualRespiration()[act.id];
-  const watts = act.icu_weighted_avg_watts || act.icu_average_watts || act.average_watts;
+  const { eff } = effectiveActivityStats(act, meta);
   const statParts = [];
-  if (act.distance) statParts.push((act.distance/1000).toFixed(1)+' km');
-  if (act.moving_time) statParts.push(formatDur(act.moving_time));
-  if (act.average_heartrate) statParts.push('Ø '+Math.round(act.average_heartrate)+' bpm');
-  if (watts) statParts.push('Ø '+Math.round(watts)+' W');
-  if (act.total_elevation_gain) statParts.push(Math.round(act.total_elevation_gain)+' hm');
+  if (eff.distKm != null) statParts.push(eff.distKm.toFixed(1)+' km');
+  if (eff.timeMin != null) statParts.push(formatDur(Math.round(eff.timeMin*60)));
+  if (eff.hrBpm != null) statParts.push('Ø '+Math.round(eff.hrBpm)+' bpm');
+  if (eff.wattsW != null) statParts.push('Ø '+Math.round(eff.wattsW)+' W');
+  if (eff.speedKmh != null) statParts.push('Ø '+eff.speedKmh.toFixed(1)+' km/h');
+  if (eff.elevM != null) statParts.push(Math.round(eff.elevM)+' hm');
 
   const lines = [
     `# Trainingsbericht — ${dateLong}`,
@@ -2214,13 +2259,13 @@ async function copyActivityForClaude() {
     '',
   ];
   if (meta.effectCategory) lines.push(`Trainingseffect: ${meta.effectCategory}`);
-  if (meta.rpe) lines.push(`RPE ${meta.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===meta.rpe)?.l})`);
-  if (meta.feel) lines.push(`Befinden ${meta.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===meta.feel)?.l})`);
   if (resp != null) lines.push(`Atmung ${resp}/min`);
   if (meta.temp != null || meta.weather) lines.push(`Witterung: ${meta.temp != null ? meta.temp+'°C' : ''}${meta.temp != null && meta.weather ? ', ' : ''}${meta.weather || ''}`);
+  if (meta.rpe) lines.push(`RPE ${meta.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===meta.rpe)?.l})`);
+  if (meta.feel) lines.push(`Befinden ${meta.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===meta.feel)?.l})`);
+  if (meta.note) lines.push(`Bemerkung: ${meta.note}`);
   const ef = computeEfficiencyTrend(act, type);
   if (ef) lines.push(`Efficiency Factor: ${ef.value.toFixed(1)}${type === 'Rad' ? ' W/bpm' : ' m/min/bpm'}${ef.n ? ` · Trend ggü. letzten ${ef.n} Einheiten: ${ef.label} ${ef.trendPct > 0 ? '+' : ''}${ef.trendPct}%` : ''}`);
-  if (meta.note) lines.push(`Bemerkung: ${meta.note}`);
 
   lines.push('', '---', '_Kontext aus TrainIQ — bei Bedarf Trainingsverlauf & Reha-Status aus dem Repo (GitHub) heranziehen._');
 

@@ -278,11 +278,9 @@
     .note-editor-divider { display:flex; align-items:center; gap:10px; margin:6px 0 12px; }
     .note-editor-divider::before, .note-editor-divider::after { content:''; flex:1; border-top:1px solid var(--border); }
     .note-editor-divider span { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--text2); }
-    /* Aktivitäten-Modal: fixe Kennzahlen-Kacheln (nur Anzeige) */
-    .activity-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; }
-    .activity-stat { background:var(--bg3); border-radius:8px; padding:8px 10px; text-align:center; }
-    .activity-stat-label { display:block; font-size:9px; text-transform:uppercase; letter-spacing:0.4px; color:var(--text2); }
-    .activity-stat-val { display:block; font-size:14px; font-weight:600; font-family:var(--mono); color:var(--text); margin-top:2px; }
+    /* Aktivitäten-Modal: Kennzahlen als reguläre setup-input-Felder (Load nur Anzeige, Rest editierbar) */
+    .activity-stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:10px 12px; }
+    .activity-stats .setup-input:disabled { color:var(--text2); }
     .note-rendered { font-size:13px; line-height:1.75; color:var(--text); }
     .note-rendered h1,.note-rendered h2,.note-rendered h3 { font-weight:600; margin:12px 0 4px; color:var(--text); }
     .note-rendered p { margin-bottom:8px; }
