@@ -2209,7 +2209,7 @@ async function copyActivityForClaude() {
   if (act.total_elevation_gain) statParts.push(Math.round(act.total_elevation_gain)+' hm');
 
   const lines = [
-    `# Training — ${dateLong}`,
+    `# Trainingsbericht — ${dateLong}`,
     `${type}: ${act.name || type}${statParts.length ? ' — '+statParts.join(' · ') : ''}`,
     '',
   ];
@@ -2221,10 +2221,8 @@ async function copyActivityForClaude() {
   const ef = computeEfficiencyTrend(act, type);
   if (ef) lines.push(`Efficiency Factor: ${ef.value.toFixed(1)}${type === 'Rad' ? ' W/bpm' : ' m/min/bpm'}${ef.n ? ` · Trend ggü. letzten ${ef.n} Einheiten: ${ef.label} ${ef.trendPct > 0 ? '+' : ''}${ef.trendPct}%` : ''}`);
   if (meta.note) lines.push(`Bemerkung: ${meta.note}`);
-  const rehaLine = latestRehaStatusLine();
-  if (rehaLine) lines.push(rehaLine);
 
-  lines.push('', '---', '_Kontext aus TrainIQ — bei Bedarf Trainingsverlauf aus training-notes/notes/ (GitHub) heranziehen._');
+  lines.push('', '---', '_Kontext aus TrainIQ — bei Bedarf Trainingsverlauf & Reha-Status aus dem Repo (GitHub) heranziehen._');
 
   const btn = document.getElementById('copyActivityBtn');
   try {
