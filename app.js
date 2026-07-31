@@ -2185,8 +2185,9 @@ async function saveActivityModal() {
 }
 
 // Kopiert die geöffnete Aktivität (inkl. RPE/Befinden/Atmung/Notiz/Temperatur/Witterung/
-// Trainingseffect/Efficiency Factor) plus 7-Tage-Kontext für den KI-Trainer — analog zu
-// copyNoteForClaude(), aber pro Einheit statt pro Journal-Eintrag.
+// Trainingseffect/Efficiency Factor) für den KI-Trainer — analog zu copyNoteForClaude(),
+// aber pro Einheit statt pro Journal-Eintrag. Kein 7-Tage-Kontext mehr (redundant, da der
+// Trainer bei Bedarf selbst in training-notes/notes/ auf GitHub nachschauen kann).
 async function copyActivityForClaude() {
   if (!_activityModalId) return;
   const isNoteOnlyId = String(_activityModalId).startsWith('note-');
@@ -2208,7 +2209,7 @@ async function copyActivityForClaude() {
   if (act.total_elevation_gain) statParts.push(Math.round(act.total_elevation_gain)+' hm');
 
   const lines = [
-    `# Aktivität — ${dateLong}`,
+    `# Training — ${dateLong}`,
     `${type}: ${act.name || type}${statParts.length ? ' — '+statParts.join(' · ') : ''}`,
     '',
   ];
@@ -2223,15 +2224,13 @@ async function copyActivityForClaude() {
   const rehaLine = latestRehaStatusLine();
   if (rehaLine) lines.push(rehaLine);
 
-  const dayLines = build7DayContextLines();
-  if (dayLines.length) lines.push('', '## Kontext der letzten 7 Tage', ...dayLines);
-  lines.push('', '---', '_Kontext aus TrainIQ — bitte berücksichtigen._');
+  lines.push('', '---', '_Kontext aus TrainIQ — bei Bedarf Trainingsverlauf aus training-notes/notes/ (GitHub) heranziehen._');
 
   const btn = document.getElementById('copyActivityBtn');
   try {
     await navigator.clipboard.writeText(lines.join('\n'));
     btn.textContent = '✓ Kopiert!';
-    setTimeout(() => { btn.textContent = '✦ Aktivität + 7-Tage-Kontext für Claude kopieren'; }, 2500);
+    setTimeout(() => { btn.textContent = '✦ Aktivität für Claude kopieren'; }, 2500);
   } catch(e) { alert('Kopieren fehlgeschlagen.'); }
 }
 
@@ -2504,7 +2503,7 @@ async function saveNoteEditor() {
 // Trainingseinheiten der letzten 7 Tage als Kontext für die Trainer-Empfehlung, inkl. Schritte/Tag
 // (Aktivitätsstatus) — einmal pro Tag angehängt statt wiederholt bei jeder Einheit, da Schritte ein
 // Tageswert sind. Tage ohne Training tauchen als eigene Zeile auf, wenn Schritte vorliegen.
-// Von copyNoteForClaude() und copyActivityForClaude() gemeinsam genutzt.
+// Von copyNoteForClaude() für den Morgen-Check genutzt.
 function build7DayContextLines() {
   const since = daysAgo(7);
   const recentByDay = {};
