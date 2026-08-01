@@ -2968,11 +2968,12 @@ function hoverCrosshairPlugin() {
     id: 'hoverCrosshair',
     afterEvent(chart, args) {
       const e = args.event;
-      if (e.type === 'mousemove') {
+      if (e.type === 'mousemove' || e.type === 'touchmove') {
         const {left, right, top, bottom} = chart.chartArea;
         chart._crosshairX = (e.x >= left && e.x <= right && e.y >= top && e.y <= bottom) ? e.x : null;
         args.changed = true;
-      } else if (e.type === 'mouseout') {
+      } else if (e.type === 'mouseout' || e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'click') {
+        // touchend/touchcancel: Finger angehoben — Touch-Geräte feuern kein mouseout dafür.
         chart._crosshairX = null;
         args.changed = true;
       }
