@@ -1507,10 +1507,10 @@ function renderWellnessGroup() {
   renderChart('wellnessChart',{type:'line',data:{labels,datasets:[
     {label:'HRV (ms)',data:sorted.map(d=>d.hrv?Math.round(d.hrv):null),borderColor:'#10b981',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y'},
     {label:'Ruhepuls',data:sorted.map(d=>d.restingHR||null),borderColor:'#3b82f6',tension:0.4,borderWidth:2,pointRadius:2,yAxisID:'y1'},
-  ]},options:{maintainAspectRatio:false,layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}},y1:{position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#3b82f6'}}}}});
-  renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(59,130,246,0.3)',borderColor:'#3b82f6',borderWidth:1,borderRadius:4}]},options:lineOptions()});
+  ]},options:{maintainAspectRatio:false,layout:{padding:{top:8,bottom:4}},interaction:crosshairInteraction(),plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{position:'left',grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:'#10b981'}},y1:{position:'right',grace:'10%',grid:{drawOnChartArea:false},ticks:{font:{family:CHART_FONT,size:10},color:'#3b82f6'}}}},plugins:[hoverCrosshairPlugin()]});
+  renderChart('sleepChart',{type:'bar',data:{labels,datasets:[{label:'Schlaf (h)',data:sorted.map(d=>d.sleepSecs?(d.sleepSecs/3600).toFixed(1):0),backgroundColor:'rgba(59,130,246,0.3)',borderColor:'#3b82f6',borderWidth:1,borderRadius:4}]},options:{...lineOptions(),interaction:crosshairInteraction()},plugins:[hoverCrosshairPlugin()]});
   const weightSorted=sorted.filter(d=>d.weight!=null);
-  renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:lineOptions()});
+  renderChart('weightChart',{type:'line',data:{labels:weightSorted.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Gewicht (kg)',data:weightSorted.map(d=>d.weight),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.07)',borderWidth:2,pointRadius:2,tension:0.4,fill:true}]},options:{...lineOptions(),interaction:crosshairInteraction()},plugins:[hoverCrosshairPlugin()]});
   renderStepsChart(sorted);
   renderWellnessDayList(sorted);
 }
@@ -1689,7 +1689,7 @@ function renderStepsChart(sorted) {
   const threshold = stepsThreshold();
   if (el) el.value = threshold;
   const entries = sorted.filter(d => wellnessSteps(d) != null);
-  renderChart('stepsChart',{type:'bar',data:{labels:entries.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Schritte',data:entries.map(wellnessSteps),backgroundColor:entries.map(d=>wellnessSteps(d)>=threshold?'rgba(239,68,68,0.55)':'rgba(59,130,246,0.3)'),borderColor:entries.map(d=>wellnessSteps(d)>=threshold?'#ef4444':'#3b82f6'),borderWidth:1,borderRadius:4}]},options:lineOptions()});
+  renderChart('stepsChart',{type:'bar',data:{labels:entries.map(d=>fmtAxisDate(d.id)),datasets:[{label:'Schritte',data:entries.map(wellnessSteps),backgroundColor:entries.map(d=>wellnessSteps(d)>=threshold?'rgba(239,68,68,0.55)':'rgba(59,130,246,0.3)'),borderColor:entries.map(d=>wellnessSteps(d)>=threshold?'#ef4444':'#3b82f6'),borderWidth:1,borderRadius:4}]},options:{...lineOptions(),interaction:crosshairInteraction()},plugins:[hoverCrosshairPlugin()]});
 }
 
 
@@ -2799,7 +2799,7 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
     {type:'line',label:'Form (TSB)',   data:fitness.map(d=>d.tsb?Math.round(d.tsb):null),borderColor:'#d97706',backgroundColor:'transparent',borderWidth:2,borderDash:[2,2],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,order:1},
   );
   const options = lineOptions();
-  options.interaction = {mode:'nearest', intersect:true};
+  options.interaction = crosshairInteraction();
   options.plugins.legend.position = 'top';
   options.plugins.legend.align = 'center';
   options.plugins.legend.labels.boxWidth = 18;
@@ -2846,33 +2846,7 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
       }
     });
   }
-  plugins.push({
-    id: 'hoverCrosshair',
-    afterEvent(chart, args) {
-      const e = args.event;
-      if (e.type === 'mousemove') {
-        const {left, right, top, bottom} = chart.chartArea;
-        chart._crosshairX = (e.x >= left && e.x <= right && e.y >= top && e.y <= bottom) ? e.x : null;
-        args.changed = true;
-      } else if (e.type === 'mouseout') {
-        chart._crosshairX = null;
-        args.changed = true;
-      }
-    },
-    afterDraw(chart) {
-      if (chart._crosshairX == null) return;
-      const {top, bottom} = chart.chartArea;
-      const ctx = chart.ctx;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(100,100,100,0.6)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(chart._crosshairX, top);
-      ctx.lineTo(chart._crosshairX, bottom);
-      ctx.stroke();
-      ctx.restore();
-    }
-  });
+  plugins.push(hoverCrosshairPlugin());
   return {type:'line',data:{labels,datasets},options,plugins};
 }
 
@@ -2985,6 +2959,44 @@ function renderChart(id, config) {
 
 function lineOptions() {
   return {maintainAspectRatio:false,layout:{padding:{top:8,bottom:4}},plugins:{legend:{labels:{font:{family:CHART_FONT,size:11},color:CHART_TEXT}}},scales:{x:{grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT,maxTicksLimit:8}},y:{grace:'10%',grid:{color:CHART_GRID},ticks:{font:{family:CHART_FONT,size:10},color:CHART_TEXT}}}};
+}
+
+// Graue Hilfslinie, die der Maus/dem Finger frei folgt (nicht ans Datenpunkt-Raster gebunden) —
+// gemeinsam genutzt von allen Charts, die Werte per Tooltip an der Cursor-Position zeigen sollen.
+function hoverCrosshairPlugin() {
+  return {
+    id: 'hoverCrosshair',
+    afterEvent(chart, args) {
+      const e = args.event;
+      if (e.type === 'mousemove') {
+        const {left, right, top, bottom} = chart.chartArea;
+        chart._crosshairX = (e.x >= left && e.x <= right && e.y >= top && e.y <= bottom) ? e.x : null;
+        args.changed = true;
+      } else if (e.type === 'mouseout') {
+        chart._crosshairX = null;
+        args.changed = true;
+      }
+    },
+    afterDraw(chart) {
+      if (chart._crosshairX == null) return;
+      const {top, bottom} = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(100,100,100,0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(chart._crosshairX, top);
+      ctx.lineTo(chart._crosshairX, bottom);
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+}
+
+// Tooltip zeigt alle Werte an der x-Position, unabhängig vom vertikalen Abstand zur Linie —
+// wichtig fürs iPad, wo exaktes Treffen einer dünnen Linie mit dem Finger unzuverlässig ist.
+function crosshairInteraction() {
+  return {mode:'index', intersect:false, axis:'x'};
 }
 
 function fmtAxisDate(id) { const [y,m,d] = id.split('-'); return `${d}.${m}.${y.slice(2)}`; }
