@@ -2971,7 +2971,20 @@ function hoverCrosshairPlugin() {
     // direkt am Canvas registrierten Listener bleibt der Crosshair auf Touch-Geräten nach dem
     // Anheben des Fingers stehen, weil das Plugin das "Loslassen" nie mitbekommt.
     afterInit(chart) {
-      const clear = () => { if (chart._crosshairX != null) { chart._crosshairX = null; chart.draw(); } };
+      // Chart.js selbst kennt touchend/touchcancel ebenfalls nicht (siehe afterEvent-Kommentar
+      // unten) — ohne die Zeilen hier bleibt zusätzlich zur grauen Linie auch der eingebaute
+      // Tooltip (Werte-Box) nach dem Loslassen sichtbar hängen, weil Chart.js dessen internen
+      // Hover-/Active-Elements-Status nie zurücksetzt.
+      const clear = () => {
+        let changed = false;
+        if (chart._crosshairX != null) { chart._crosshairX = null; changed = true; }
+        if (chart.tooltip && chart.tooltip.opacity > 0) {
+          chart.setActiveElements([]);
+          chart.tooltip.setActiveElements([], {x:0, y:0});
+          changed = true;
+        }
+        if (changed) chart.update();
+      };
       chart._crosshairClear = clear;
       chart._crosshairCanvas = chart.canvas;
       chart.canvas.addEventListener('touchend', clear, {passive:true});
