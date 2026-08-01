@@ -1552,10 +1552,6 @@ function renderWellnessDayList(sorted) {
       ${statChip('HRV', hrvVal)}
       ${statChip('Schritte', stepsVal)}
       ${statChip('Schlafqual.', moodVal)}
-      <div class="trend-kpi-sep" style="min-height:32px"></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-        <button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Tageswerte & Notiz bearbeiten" onclick="event.stopPropagation();openWellnessEditModal('${d.id}')">${pencilIcon(13)}</button>
-      </div>
     </div>`;
   }).join('');
 }
@@ -2897,11 +2893,6 @@ function journalByDateMap() {
   return map;
 }
 
-function pencilIcon(size) {
-  size = size || 15;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
-}
-
 function statChip(label, valueHtml) {
   return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:48px">
     <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">${label}</span>
@@ -2955,13 +2946,13 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
     const feelVal = meta.feel!=null ? moodIcon(meta.feel,16) : '—';
     const remark = meta.note ? escHtml(meta.note) : '';
 
-    return `${yearDivider}<div class="note-card" style="cursor:default;flex-wrap:wrap;row-gap:10px">
+    return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openActivityModal('${a.id}')" title="Details & Bewertung öffnen">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
         <span class="mono" style="font-size:12px">${date}</span>
       </div>
       <div style="display:flex;flex-direction:column;width:150px;flex-shrink:0">
         <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Aktivität</span>
-        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word;cursor:pointer" onclick="openActivityModal('${a.id}')" title="Details & Bewertung öffnen">${nameVal}</span>
+        <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word">${nameVal}</span>
         ${remark?`<span style="font-size:10px;color:var(--text2);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${remark}">✎ ${remark}</span>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:60px">
@@ -2976,7 +2967,7 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
       ${statChip('Höhe', elev)}
       ${journalByDate?statChip('Anstreng.', rpeVal):''}
       ${journalByDate?statChip('Befinden', feelVal):''}
-      ${journalByDate?`<div class="trend-kpi-sep" style="min-height:32px"></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto">${trainerChipHtml}<button style="width:24px;height:24px;padding:0;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer" title="Bearbeiten — Details &amp; Bewertung" onclick="openActivityModal('${a.id}')">${pencilIcon(13)}</button></div>`:''}
+      ${trainerChipHtml?`<div class="trend-kpi-sep" style="min-height:32px"></div><div style="display:flex;align-items:center;gap:8px;margin-left:auto">${trainerChipHtml}</div>`:''}
     </div>`;
   }).join('');
 }
