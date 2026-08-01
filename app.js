@@ -2966,14 +2966,30 @@ function lineOptions() {
 function hoverCrosshairPlugin() {
   return {
     id: 'hoverCrosshair',
+    // Chart.js leitet standardmäßig nur mousemove/mouseout/click/touchstart/touchmove an Plugins
+    // weiter (chart.options.events) — touchend/touchcancel sind NICHT dabei. Ohne eigenen,
+    // direkt am Canvas registrierten Listener bleibt der Crosshair auf Touch-Geräten nach dem
+    // Anheben des Fingers stehen, weil das Plugin das "Loslassen" nie mitbekommt.
+    afterInit(chart) {
+      const clear = () => { if (chart._crosshairX != null) { chart._crosshairX = null; chart.draw(); } };
+      chart._crosshairClear = clear;
+      chart._crosshairCanvas = chart.canvas;
+      chart.canvas.addEventListener('touchend', clear, {passive:true});
+      chart.canvas.addEventListener('touchcancel', clear, {passive:true});
+    },
+    afterDestroy(chart) {
+      if (chart._crosshairClear && chart._crosshairCanvas) {
+        chart._crosshairCanvas.removeEventListener('touchend', chart._crosshairClear);
+        chart._crosshairCanvas.removeEventListener('touchcancel', chart._crosshairClear);
+      }
+    },
     afterEvent(chart, args) {
       const e = args.event;
       if (e.type === 'mousemove' || e.type === 'touchmove') {
         const {left, right, top, bottom} = chart.chartArea;
         chart._crosshairX = (e.x >= left && e.x <= right && e.y >= top && e.y <= bottom) ? e.x : null;
         args.changed = true;
-      } else if (e.type === 'mouseout' || e.type === 'touchend' || e.type === 'touchcancel' || e.type === 'click') {
-        // touchend/touchcancel: Finger angehoben — Touch-Geräte feuern kein mouseout dafür.
+      } else if (e.type === 'mouseout' || e.type === 'click') {
         chart._crosshairX = null;
         args.changed = true;
       }
