@@ -7,7 +7,7 @@ Verletzungsmanagement, Prävention, Koordination von Reha-Programmen mit dem Lau
 ---
 
 ## Aktueller Status
-**1 aktives Reha-Programm: Morton-Neurom rechts (Gate 1).** (Stand: 2026-07-28)
+**2 aktive Reha-Programme: Morton-Neurom rechts (Gate 1), Morton-Neurom links — Frühstadium/Beobachtung (Gate 1).** (Stand: 2026-07-28)
 
 ---
 
@@ -49,6 +49,31 @@ Nach ca. 25 Min GA1-Lauf auf leicht abschüssigem Feldweg deutliches Symptom bem
 - **Keine unebenen/abschüssigen Feldwege bis Schuh-Rutschproblem behoben (seit 28.07.2026)**
 
 **Nächstes Update:** bei Schuh-Entscheidung, bei erneutem Symptom, oder spätestens 25.08.2026 (4-Wochen-Fenster-Ende)
+
+---
+
+### Morton-Neurom (links, 2./3. Zehe) — NEU, Frühstadium/Beobachtung
+**Diagnose:** Möglicher beginnender Morton-Neurom-Verdacht links, zwischen 2. und 3. Zehe. Erstmals bemerkt am 28.07.2026, Druckgefühl, Intensität 1/10 (sehr leicht). Bisher keine ärztliche Abklärung, keine Einlagen für links. Kein bekannter Auslöser (Job/Lauf/Schuh) bisher benannt.
+
+**Phase:** Gate 1 — reine Beobachtung, kein Trainingseingriff nötig bei dieser Intensität
+
+**Gate-Kriterien für nächste Phase (aktive Beobachtung → ggf. Reha-Maßnahmen):**
+- Wird noch definiert — abhängig vom weiteren Verlauf (bei Zunahme: analog rechts behandeln, inkl. ärztlicher Abklärung erwägen)
+
+**Übungen:**
+- Aktuell keine spezifischen Maßnahmen nötig bei Intensität 1/10
+- Präventiv: gleiche allgemeine Fußmuskel-Kräftigung wie rechts (Zehenspreizen, Handtuch-Curls, Murmeln greifen) deckt links automatisch mit ab
+- Schuhwerk-Fix (breiterer Vorfuß, Rutschsicherheit), der für rechts angestoßen wird, kommt links ohnehin zugute
+
+**Koordination mit Lauftraining:**
+- Keine Einschränkung aktuell — Intensität zu gering für Eingriff
+- Beobachtungsauftrag: bei jedem Check-in aktiv nachfragen (nicht auf spontane Meldung warten), ob sich Häufigkeit/Intensität links verändert
+- Bei Zunahme (> 2–3/10 oder häufiger) oder erstem Belastungsschmerz: eigenes Gate-Protokoll analog rechts aufbauen (Diagnose-Templat siehe unten)
+
+**Ausschlüsse (solange Gate nicht offen):**
+- Keine, solange Intensität bei 1/10 bleibt — nur Beobachtung
+
+**Nächstes Update:** beim nächsten Check-in nachfragen; sonst zusammen mit rechts am 25.08.2026 mitbewerten
 
 ---
 
