@@ -14,7 +14,41 @@ Ganzkörper-Kraftprogramm für Ausdauersportler (Laufen + Rad), heimtauglich, 2�
 
 ---
 
-## Aktuelles Programm
+## Tatsächlich durchgeführte Routine (Stand: 04.08.2026)
+
+Thomas hat sich selbst zwei Langhantel-Workouts zusammengestellt, die er nach Gefühl einsetzt ("wenn ich das Gefühl habe, dass es passt"). Vor jedem Workout: ca. 4 Min Aufwärmen/Mobilität. Übungen werden von Zeit zu Zeit angepasst — diese Version ist der aktuelle Stand, kein starres Protokoll.
+
+### Workout 1
+| Übung | Sätze × Wdh | Last |
+|-------|-------------|------|
+| Umsetzen mit Kniebeuge und Ausstoßen (Clean & Jerk-artig) | 4 × 3 | Langhantel 29 kg |
+| Fahrrad-Crunch | 4 × 8 | Körpergewicht |
+| Bizeps-Curl | — | Langhantel 19 kg |
+| Ausfallschritt | 4 × 8 | Langhantel 19 kg |
+
+### Workout 2
+| Übung | Sätze × Wdh | Last |
+|-------|-------------|------|
+| Kniebeuge hinten (Back Squat) | 4 × 6 | Langhantel 29 kg |
+| Cross-Body Bergsteiger | 4 × 8 | Körpergewicht |
+| Vorgebeugtes Rudern | 4 × 10 | Langhantel 29 kg |
+| Stehendes Wadenheben | 4 × 20 | Langhantel 29 kg |
+
+**Einordnung Kraft-Trainer:**
+- Deutlich technischer/neuromuskulär anspruchsvoller als das ursprünglich skizzierte Heim-Programm (v.a. Umsetzen mit Ausstoßen) — Technik hat Priorität vor Last-Steigerung
+- Beidbeinige Kniebeuge/Ausfallschritt statt einbeinig — funktioniert, sofern beschwerdefrei; einbeinige Varianten (Bulgarian Split Squat, Step-Up) bleiben als Ergänzung/Alternative sinnvoll
+- Erste dokumentierte Einheit (04.08.2026): 42 Min, Ø 110 bpm, locker durchgeführt, rechter Vorfuß unverändert
+
+**Koordination mit Reha (wichtig bei Morton-Neurom rechts, Gate 1):**
+- Ausfallschritt (Vorfuß-Abdruck am vorderen Bein) und Stehendes Wadenheben (direkte, wiederholte Vorfuß-/Zehenballen-Belastung, 4×20 = relativ hohes Volumen) sind die Übungen mit der größten Vorfuß-Relevanz in dieser Routine
+- Bei jeder Einheit kurz gezielt abfragen/beobachten, ob diese beiden Übungen speziell Taubheit oder Schmerz auslösen — nicht nur allgemeines Fuß-Feedback
+- Fließt in Gate-Bewertung zum 25.08.2026 mit ein
+
+---
+
+## Ursprünglich skizzierte Alternative (Referenz / Ergänzungspool)
+
+Die folgenden Einheiten dienen als Referenz bzw. Ergänzung, falls Thomas Abwechslung oder gezielt einbeinige/Home-Varianten möchte:
 
 ### Einheit A — Posterior Chain & Zug
 *(z.B. Montag oder nach einem ruhigen Lauftag)*
@@ -54,7 +88,7 @@ Ganzkörper-Kraftprogramm für Ausdauersportler (Laufen + Rad), heimtauglich, 2�
 ---
 
 ## Koordination mit Training
-- Einheit A: nicht am gleichen Tag wie langer Ausdauertag
-- Einheit B: vorzugsweise nach (nicht vor) Qualitäts-Lauf/-Rad
+- Workout 1 / Workout 2 (oder Einheit A/B): nicht am gleichen Tag wie langer Ausdauertag
+- Vorzugsweise nach (nicht vor) Qualitäts-Lauf/-Rad
 - Bei Gelb- oder Rot-Ampel: Kraft-Einheit auf nächsten Tag verschieben oder Volumen halbieren
 - Kraft-Last wird dem Head Coach gemeldet
