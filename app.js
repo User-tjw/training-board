@@ -2849,15 +2849,15 @@ function hoverCrosshairPlugin() {
       // unten) — ohne die Zeilen hier bleibt zusätzlich zur grauen Linie auch der eingebaute
       // Tooltip (Werte-Box) nach dem Loslassen sichtbar hängen, weil Chart.js dessen internen
       // Hover-/Active-Elements-Status nie zurücksetzt.
+      // Immer bedingungslos zuruecksetzen statt erst chart.tooltip.opacity>0 zu pruefen: bei einem
+      // schnellen Tap (ohne Ziehen) feuert touchend teils bevor die Tooltip-Fade-in-Animation
+      // ueberhaupt gestartet ist (opacity noch 0) — die Pruefung liess das Zuruecksetzen dann
+      // aus, die Animation zeigte das Tooltip danach ungestoert an, ohne dass es je wieder verschwand.
       const clear = () => {
-        let changed = false;
-        if (chart._crosshairX != null) { chart._crosshairX = null; changed = true; }
-        if (chart.tooltip && chart.tooltip.opacity > 0) {
-          chart.setActiveElements([]);
-          chart.tooltip.setActiveElements([], {x:0, y:0});
-          changed = true;
-        }
-        if (changed) chart.update();
+        chart._crosshairX = null;
+        chart.setActiveElements([]);
+        chart.tooltip.setActiveElements([], {x:0, y:0});
+        chart.update();
       };
       chart._crosshairClear = clear;
       chart._crosshairCanvas = chart.canvas;
