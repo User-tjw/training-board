@@ -2877,7 +2877,14 @@ function hoverCrosshairPlugin() {
         chart._crosshairX = (e.x >= left && e.x <= right && e.y >= top && e.y <= bottom) ? e.x : null;
         args.changed = true;
       } else if (e.type === 'mouseout' || e.type === 'click') {
+        // iOS loest bei einem reinen Tap (ohne Wischen) ~300ms nach touchend zusaetzlich ein
+        // synthetisches "click"-Event aus. Chart.js selbst reagiert darauf (click steht in seiner
+        // Standard-Event-Liste) und aktiviert erneut Hover-Elemente -> Tooltip erscheint wieder,
+        // nachdem unser touchend-Fix es bereits geschlossen hatte. Deshalb hier nicht nur die
+        // eigene Crosshair-Linie, sondern auch Chart.js' aktive Elemente/Tooltip explizit leeren.
         chart._crosshairX = null;
+        chart.setActiveElements([]);
+        chart.tooltip.setActiveElements([], {x:0, y:0});
         args.changed = true;
       }
     },
