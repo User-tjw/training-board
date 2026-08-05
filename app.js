@@ -2661,6 +2661,18 @@ function closeTrainerNotesViewer() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Ein-/Ausblenden-Status der Legenden-Datensätze im Trainingsbelastung-Chart (per Label persistiert),
+// damit ein per Legende ausgeblendeter Wert (z.B. HRV) beim Zeitraum-Wechsel oder Reload nicht wieder
+// auftaucht — Chart.js selbst haelt diesen Status nur am Chart-Objekt, das bei jedem Neuzeichnen neu entsteht.
+function getFitnessChartHidden() {
+  try { return JSON.parse(localStorage.getItem('fitnessChartHidden')) || {}; } catch { return {}; }
+}
+function setFitnessChartHidden(label, hidden) {
+  const h = getFitnessChartHidden();
+  if (hidden) h[label] = true; else delete h[label];
+  localStorage.setItem('fitnessChartHidden', JSON.stringify(h));
+}
+
 function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate) {
   const labels=fitness.map(d=>fmtAxisDate(d.date));
   const datasets=[];
@@ -2697,6 +2709,15 @@ function makeFitnessChart(fitness, hrvByDate, rhfByDate, loadByDate, respByDate)
   if (respByDate) {
     datasets.push({type:'line',label:'Ø Atmung/Min',data:fitness.map(d=>respByDate[d.date]||null),borderColor:'#f472b6',backgroundColor:'transparent',borderWidth:2,borderDash:[3,3],pointRadius:1.5,pointHoverRadius:4,pointBorderWidth:1,tension:0.4,spanGaps:true,order:1});
   }
+  const hiddenMap = getFitnessChartHidden();
+  datasets.forEach(d => { if (hiddenMap[d.label]) d.hidden = true; });
+  options.plugins.legend.onClick = (evt, legendItem, legend) => {
+    const chart = legend.chart;
+    const wasVisible = chart.isDatasetVisible(legendItem.datasetIndex);
+    chart.setDatasetVisibility(legendItem.datasetIndex, !wasVisible);
+    setFitnessChartHidden(legendItem.text, wasVisible);
+    chart.update();
+  };
   const todayLabel = fmtAxisDate(fmtDate(new Date()));
   const todayIndex = labels.indexOf(todayLabel);
   const plugins = [];
