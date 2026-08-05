@@ -117,7 +117,7 @@
     .logo-text { font-size: 20px; font-weight: 700; line-height: 1; }
     .logo-sub { font-size: 20px; font-weight: 400; color: var(--text2); line-height: 1; }
     .logo-sub::before { content: "· "; }
-    .logo-version { font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--text2); opacity: 0.5; }
+    .logo-version { font-family: var(--font); font-size: 11px; font-weight: 500; color: var(--text); opacity: 0.7; }
     .topnav-items { display: flex; align-items: center; gap: 2px; overflow-x: auto; margin-top: 14px; }
     .nav-item { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
