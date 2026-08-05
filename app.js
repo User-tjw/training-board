@@ -667,30 +667,6 @@ function renderSubRaceMarkers(rangeStart, rangeEnd, totalDays, fmtShort) {
   }).join('');
 }
 
-// UA-Phasen-Kontext als Textzeile für den Coach-Export (copyNoteForClaude) — gleiche
-// Berechnung wie renderPhaseTimeline(), aber liest aus dem gespeicherten Plan statt aus
-// dem DOM-Formular, damit es unabhängig davon funktioniert, ob die Plan-Seite gerade offen ist.
-function currentUaPhaseText() {
-  const today = new Date(); today.setHours(0,0,0,0);
-  const result = computeMultiCyclePhases(getTrainingPlan().races || [], today);
-  if (!result || !result.cycles.length) return 'Kein A-Wettkampf eingetragen — Basisphase.';
-  const { cycles, pastOnly } = result;
-  const fmtShort = d => d.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
-  const first = cycles[0], last = cycles[cycles.length - 1];
-
-  if (pastOnly && today > last.raceDate) {
-    return `"${last.race.name}" (${fmtShort(last.raceDate)}) liegt in der Vergangenheit — keine aktive Phase.`;
-  }
-  if (today < first.phases[0].start) {
-    return `Basisphase (noch nicht begonnen) — "${first.race.name}" am ${fmtShort(first.raceDate)}, Basisphase startet ${fmtShort(first.phases[0].start)}.`;
-  }
-  const activeCycle = cycles.find(c => today >= c.phases[0].start && today <= c.raceDate) || last;
-  const current = activeCycle.phases.find(p => today >= p.start && today < p.end) || activeCycle.phases[activeCycle.phases.length - 1];
-  const daysToRace = Math.round((activeCycle.raceDate - today) / 86400000);
-  const nextInfo = cycles.length > 1 && activeCycle !== last ? ` · danach "${last.race.name}" (${fmtShort(last.raceDate)})` : '';
-  return `${current.name}-Phase (${current.focus}) · noch ${daysToRace} Tage bis "${activeCycle.race.name}" (${fmtShort(activeCycle.raceDate)})${nextInfo}.`;
-}
-
 // Trainingsfreie Wochentage: 0=Montag…6=Sonntag, wie Trainings-Soll/HF-Zonen per GitHub synchronisiert
 function getRestDays() {
   try { return JSON.parse(localStorage.getItem('rest_days')).days || []; } catch { return []; }
@@ -2539,151 +2515,43 @@ async function saveNoteEditor() {
   }
 }
 
-// Trainingseinheiten der letzten 7 Tage als Kontext für die Trainer-Empfehlung, inkl. Schritte/Tag
-// (Aktivitätsstatus) — einmal pro Tag angehängt statt wiederholt bei jeder Einheit, da Schritte ein
-// Tageswert sind. Tage ohne Training tauchen als eigene Zeile auf, wenn Schritte vorliegen.
-// Von copyNoteForClaude() für den Morgen-Check genutzt.
-function build7DayContextLines() {
-  const since = daysAgo(7);
-  const recentByDay = {};
-  (_activitiesFull || [])
-    .filter(a => !a._noteOnly && new Date(a.start_date_local) >= since)
-    .forEach(a => { const k = fmtDate(new Date(a.start_date_local)); (recentByDay[k] = recentByDay[k] || []).push(a); });
-
-  // Pendel-/Kurzfahrten (Rad, "Fahrt zur Arbeit" oder <15min ohne Leistungsdaten) werden pro Tag
-  // zu einer Zeile zusammengefasst, um den Bericht zu verdichten — Einheiten mit Trainingswert
-  // bleiben unverändert als eigene Zeile.
-  const isCommuteRide = a => {
-    if (normalizeType(a.type) !== 'Rad') return false;
-    if (/Fahrt zur Arbeit/i.test(a.name || '')) return true;
-    const watts = a.icu_weighted_avg_watts || a.icu_average_watts || a.average_watts;
-    return (a.moving_time || 0) < 15*60 && !a.average_heartrate && !watts;
-  };
-
-  const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(i)));
-  const dayLines = [];
-  days7.forEach(dayKey => {
-    const acts = (recentByDay[dayKey] || []).sort((a,b) => new Date(a.start_date_local) - new Date(b.start_date_local));
-    const dLabel = new Date(dayKey + 'T00:00').toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
-    const wDay = (_wellnessFull || []).find(d => d.id === dayKey);
-    const steps = wDay ? wellnessSteps(wDay) : null;
-
-    if (!acts.length) {
-      if (steps) dayLines.push(`- ${dLabel} · Ruhetag — ${steps} Schritte`);
-      return;
-    }
-
-    dayLines.push(`- ${dLabel}`);
-
-    const commuteActs = acts.filter(isCommuteRide);
-    const trainActs = acts.filter(a => !isCommuteRide(a));
-    let stepsUsed = false;
-
-    if (commuteActs.length) {
-      const sumTime = commuteActs.reduce((s,a) => s + (a.moving_time||0), 0);
-      const sumDist = commuteActs.reduce((s,a) => s + (a.distance||0), 0);
-      const sumElev = commuteActs.reduce((s,a) => s + (a.total_elevation_gain||0), 0);
-      const parts = [`${Math.round(sumTime/60)}m`];
-      if (sumDist) parts.push((sumDist/1000).toFixed(1)+' km');
-      if (sumElev) parts.push(Math.round(sumElev)+' hm');
-      if (steps) { parts.push(`${steps} Schritte`); stepsUsed = true; }
-      dayLines.push(`  · Rad: Pendeln — ${parts.join(' · ')}`);
-    }
-
-    trainActs.forEach(a => {
-      const watts = a.icu_weighted_avg_watts || a.icu_average_watts || a.average_watts;
-      const parts = [];
-      if (a.moving_time) parts.push(formatDur(a.moving_time));
-      if (a.distance) parts.push((a.distance/1000).toFixed(1)+' km');
-      if (a.average_heartrate) parts.push('Ø '+Math.round(a.average_heartrate)+' bpm');
-      if (watts) parts.push('Ø '+Math.round(watts)+' W');
-      if (a.total_elevation_gain) parts.push(Math.round(a.total_elevation_gain)+' hm');
-      if (!stepsUsed && steps) { parts.push(`${steps} Schritte`); stepsUsed = true; }
-      dayLines.push(`  · ${normalizeType(a.type)}: ${a.name || normalizeType(a.type)}${parts.length ? ' — '+parts.join(' · ') : ''}`);
-      // eigene Trainingsbewertung pro Einheit (RPE / Befinden / Atmung / Bemerkung)
-      const m = getActivityMetaFor(a.id);
-      const resp = getManualRespiration()[a.id];
-      const evalParts = [];
-      if (m.rpe) evalParts.push(`RPE ${m.rpe}/10 (${RPE_OPTIONS.find(o=>o.v===m.rpe)?.l})`);
-      if (m.feel) evalParts.push(`Befinden ${m.feel}/5 (${FEEL_OPTIONS.find(o=>o.v===m.feel)?.l})`);
-      if (resp != null) evalParts.push(`Atmung ${resp}/min`);
-      if (evalParts.length) dayLines.push(`    · ${evalParts.join(' · ')}`);
-      if (m.note) dayLines.push(`    · Bemerkung: ${m.note}`);
-    });
-  });
-  return dayLines;
-}
-
-// Geplante Einheiten der nächsten 7 Tage (TrainIQ-Plan + Intervals.icu-Events), falls vorhanden —
-// informiert den Head Coach über bereits eingetragene Planung, statt sie neu erfragen zu müssen.
-function buildNextDaysPlanLines() {
-  const days7 = Array.from({length:7}, (_,i) => fmtDate(daysAgo(-(i+1)))); // ab morgen, heute steht schon in den letzten 7 Tagen
-  const lines = [];
-  days7.forEach(dayKey => {
-    const sessions = getPlanSessionsFor(dayKey);
-    if (!sessions.length) return;
-    const dLabel = new Date(dayKey + 'T00:00').toLocaleDateString('de-DE', { weekday:'short', day:'2-digit', month:'2-digit' });
-    lines.push(`- ${dLabel}`);
-    sessions.forEach(s => {
-      const parts = [];
-      if (s.min) parts.push(`${s.min} min`);
-      if (s.note) parts.push(s.note);
-      lines.push(`  · ${s.type}${parts.length ? ' — '+parts.join(' · ') : ''}`);
-    });
-  });
-  return lines;
-}
-
 // Neueste Reha-Trainerzusammenfassung (unabhängig vom Tag) als Statuszeile für den Morgen-Check —
 // so muss der Head Coach Gate/Fenster/Ausschluss nicht aus Skill-Datei/Gedächtnis ziehen. Pflege
 // bleibt bewusst manuell über den bestehenden 💬-Mechanismus, keine neue Datenstruktur nötig.
+// Details zu Gate-Kriterien bleiben in skill-reha-management.md — hier nur der Kurzstatus.
 function latestRehaStatusLine() {
   const rehaNotes = (_notes || [])
     .filter(n => n.type === 'trainer-summary' && n.trainer === 'reha' && n.date)
     .sort((a,b) => b.date.localeCompare(a.date));
-  if (!rehaNotes.length) return null;
-  const dateShort = new Date(rehaNotes[0].date).toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit' });
-  return `Reha-Status (Stand ${dateShort}): ${rehaNotes[0].body}`;
+  return rehaNotes.length ? rehaNotes[0].body : 'unverändert';
 }
 
 async function copyNoteForClaude() {
   const body  = document.getElementById('noteEditorContent').value.trim();
-  const dateVal = _noteEditorDate || fmtDate(new Date());
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood  = moodSel ? parseInt(moodSel) : null;
-  const dateLong = new Date(dateVal + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const dateLong = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
 
   const text = id => document.getElementById(id)?.textContent.trim() || '—';
-  const profile = getAthleteProfile();
-  const age = calcAge(profile.birthDate);
-  const maxHr = getHfZones().maxHr;
-  const athleteInfo = [
-    age != null ? `${age}J` : null,
-    profile.ftp ? `FTP ${profile.ftp}W` : null,
-    maxHr ? `Max-HF ${maxHr}` : null,
-  ].filter(Boolean).join(' | ');
+
+  const stepsOn = d => { const w = (_wellnessFull || []).find(x => x.id === fmtDate(d)); return w ? wellnessSteps(w) : null; };
+  const stepsYesterday = stepsOn(daysAgo(1));
+  const stepsDayBefore = stepsOn(daysAgo(2));
+
+  const todaySessions = getPlanSessionsFor(fmtDate(new Date()));
+  const todayPlan = todaySessions.length
+    ? todaySessions.map(s => s.type + (s.min ? ` (${s.min} min)` : '')).join(', ')
+    : 'Ruhetag';
+
   const lines = [
-    `# Morgen-Check — ${dateLong}`,
-    `Athlet: ${profile.name || 'Thomas Wagner'}` + (athleteInfo ? ` | ${athleteInfo}` : ''),
+    `Morgen-Check — ${dateLong}`,
     '',
-    '## Morgen-Check',
-    `HRV: ${text('cockpitHRV')} ms · Ruhepuls: ${text('cockpitRHF')} bpm · Gewicht: ${text('cockpitWeight')} kg · CTL/ATL/TSB: ${text('cockpitCTL')}/${text('cockpitATL')}/${text('cockpitFormTSB')}`,
+    `HRV: ${text('cockpitHRV')} · Ruhepuls: ${text('cockpitRHF')} · Schlaf: ${mood ? MOOD_OPTIONS.find(m=>m.v===mood)?.l : '—'}`,
+    `Reha: ${latestRehaStatusLine()}`,
+    `Job-Belastung gestern: ${stepsYesterday ?? '—'} (Vortag: ${stepsDayBefore ?? '—'})`,
+    `Heute geplant: ${todayPlan}`,
+    `Befinden: ${body || '—'}`,
   ];
-  const rehaLine = latestRehaStatusLine();
-  if (rehaLine) lines.push(rehaLine);
-  if (mood) lines.push(`Schlafqualität: ${MOOD_OPTIONS.find(m=>m.v===mood)?.l} (${mood}/5)`);
-  lines.push(body || '_Keine Notiz eingegeben._');
-
-  const dayLines = build7DayContextLines();
-  if (dayLines.length) lines.push('', '## Trainingseinheiten & Schritte der letzten 7 Tage', ...dayLines);
-
-  const planLines = buildNextDaysPlanLines();
-  if (planLines.length) lines.push('', '## Geplante Einheiten der nächsten Tage', ...planLines);
-
-  lines.push('', '## Trainingsplan-Kontext', currentUaPhaseText(), 'Bitte Athletenprofil.md und Events.md aus dem Projektwissen berücksichtigen.');
-
-  lines.push('', '---');
-  lines.push('_Kontext aus TrainIQ — bitte berücksichtigen._');
 
   const btn = document.getElementById('copyNoteBtn');
   try {
