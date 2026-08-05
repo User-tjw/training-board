@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260805a">
+  <link rel="stylesheet" href="style.css?v=20260805c">
 </head>
 <body>
 
@@ -101,14 +101,16 @@
    <div class="topnav-row">
     <!-- Logo (kleiner, 32px) — nutzt dasselbe zentrale #tb-logo Symbol wie oben -->
     <div class="logo" onclick="goToCockpit()" style="cursor:pointer">
-      <div class="logo-icon">
-        <svg width="32" height="32"><use href="#tb-logo"/></svg>
+      <div class="logo-row">
+        <div class="logo-icon">
+          <svg width="32" height="32"><use href="#tb-logo"/></svg>
+        </div>
+        <div class="logo-titles">
+          <span class="logo-text">TrainIQ</span>
+          <span class="logo-sub">Thomas Wagner</span>
+        </div>
       </div>
-      <div class="logo-titles">
-        <span class="logo-text">TrainIQ</span>
-        <span class="logo-sub">Thomas Wagner</span>
-        <span class="logo-version mono" id="appVersion"></span>
-      </div>
+      <span class="logo-version" id="appVersion"></span>
     </div>
 
     <!-- Hauptnavigation: data-section legt fest, welche <section id="section-*"> per JS eingeblendet wird -->
@@ -703,6 +705,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260805g"></script>
+<script src="app.js?v=20260805h"></script>
 </body>
 </html>

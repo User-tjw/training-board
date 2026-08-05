@@ -755,7 +755,8 @@ let charts = {};
 
 function init() {
   const scriptSrc = document.querySelector('script[src^="app.js"]')?.src || '';
-  document.getElementById('appVersion').textContent = scriptSrc.split('?v=')[1] || '';
+  const ver = scriptSrc.split('?v=')[1];
+  document.getElementById('appVersion').textContent = ver ? `Vers. ${ver}` : '';
   document.getElementById('dateLabel').textContent =
     `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   setupNav();
