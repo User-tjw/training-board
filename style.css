@@ -114,6 +114,7 @@
     .logo-titles { display: flex; flex-direction: column; gap: 1px; }
     .logo-text { font-size: 15px; font-weight: 700; line-height: 1.2; }
     .logo-sub { font-size: 9px; font-weight: 400; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; }
+    .logo-version { font-size: 8px; font-weight: 400; color: var(--text2); opacity: 0.55; }
     .topnav-items { display: flex; align-items: center; gap: 2px; flex: 1; overflow-x: auto; }
     .nav-item { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 8px; color: var(--text2); text-decoration: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .nav-item:hover { background: var(--bg3); color: var(--text); }
@@ -298,7 +299,7 @@
 
     /* Hinweis: Media Queries sind über 3 Stellen im File verstreut (hier, Zeile ~129 und ~167) statt an einer Stelle gebündelt */
     @media (max-width: 1000px) { .grid-2, .grid-3-1, .grid-2x2, .grid-3 { grid-template-columns: 1fr; } }
-    @media (max-width: 560px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub { display: none; } }
+    @media (max-width: 560px) { .kpi-grid, .kpi-grid-6 { grid-template-columns: repeat(2, 1fr); } .logo-sub, .logo-version { display: none; } }
     @media (max-width: 900px) { .week-cal { grid-template-columns: repeat(7, 1fr) !important; } .week-cal-summary-col, .week-cal-head-summary { display: none !important; } }
 
     /* Week-Cal: Trainingswoche-Kalender-Grid (7 Tage + Zusammenfassungs-Spalte) inkl. Soll-Ist-Balken (hbar-Klassen) */

@@ -452,8 +452,6 @@ function populateSettingsForm() {
   const days = getRestDays();
   for (let i = 0; i < 7; i++) document.getElementById('restDay'+i).checked = days.includes(i);
   applyAthleteProfileToInputs();
-  const scriptSrc = document.querySelector('script[src^="app.js"]')?.src || '';
-  document.getElementById('infoVersion').textContent = scriptSrc.split('?v=')[1] || '—';
 }
 
 // Plan-Seite (Trainingsziel + Trainings-Soll + Wettkämpfe/Periodisierung) — separat von den Einstellungen, siehe populateSettingsForm()
@@ -756,6 +754,8 @@ const CHART_TEXT = '#64748b';
 let charts = {};
 
 function init() {
+  const scriptSrc = document.querySelector('script[src^="app.js"]')?.src || '';
+  document.getElementById('appVersion').textContent = scriptSrc.split('?v=')[1] || '';
   document.getElementById('dateLabel').textContent =
     `KW${getWeek(new Date())} · ` + new Date().toLocaleDateString('de-DE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   setupNav();
