@@ -452,6 +452,8 @@ function populateSettingsForm() {
   const days = getRestDays();
   for (let i = 0; i < 7; i++) document.getElementById('restDay'+i).checked = days.includes(i);
   applyAthleteProfileToInputs();
+  const scriptSrc = document.querySelector('script[src^="app.js"]')?.src || '';
+  document.getElementById('infoVersion').textContent = scriptSrc.split('?v=')[1] || '—';
 }
 
 // Plan-Seite (Trainingsziel + Trainings-Soll + Wettkämpfe/Periodisierung) — separat von den Einstellungen, siehe populateSettingsForm()
