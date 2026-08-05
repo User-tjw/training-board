@@ -2523,7 +2523,11 @@ function latestRehaStatusLine() {
   const rehaNotes = (_notes || [])
     .filter(n => n.type === 'trainer-summary' && n.trainer === 'reha' && n.date)
     .sort((a,b) => b.date.localeCompare(a.date));
-  return rehaNotes.length ? rehaNotes[0].body : 'unverändert';
+  if (!rehaNotes.length) return 'unverändert';
+  // Sicherheitsnetz: nur die erste Zeile der Notiz, falls sie doch mal mehrzeilig verfasst wird —
+  // die Notiz selbst soll bereits als Ein-Satz-Status geschrieben werden (Details in skill-reha-management.md).
+  const firstLine = rehaNotes[0].body.split('\n').map(l => l.trim()).find(l => l);
+  return (firstLine || 'unverändert').replace(/\*\*/g, '').replace(/^[-•]\s*/, '');
 }
 
 async function copyNoteForClaude() {
