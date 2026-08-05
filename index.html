@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260805e">
+  <link rel="stylesheet" href="style.css?v=20260805g">
 </head>
 <body>
 
@@ -135,22 +135,39 @@
       <a class="nav-item" data-section="activities">Aktivitäten</a>
     </nav>
    </div>
-    <!-- Subbar: Seitentitel + Wochen-Navigation (nur Cockpit) + Zeitraum-Auswahl -->
+    <!-- Subbar: Datum/Woche + Zeitraum-Auswahl, darunter die Vitalwerte (aus der Cockpit-Kachel hierher verschoben) -->
     <div class="page-subbar">
-      <div class="page-subbar-title">
-        <span class="page-title" id="pageTitle">Dashboard</span>
+      <div class="page-subbar-top">
         <span class="breadcrumb" id="dateLabel"></span>
       </div>
-      <div class="page-subbar-controls">
-        <!-- data-keys legt fest, welche Bereiche (Zonen, Wellness, Übersicht, Cockpit-Load) den gewählten Zeitraum übernehmen -->
-        <select class="btn range-select" data-keys="zones,wellness,overview,cockpitLoad" data-default="14">
-          <option value="7">7 Tage</option>
-	  <option value="14">14 Tage</option>
-          <option value="30">30 Tage</option>
-          <option value="90">90 Tage</option>
-          <option value="365">Alle</option>
-        </select>
-        <button class="btn" onclick="openDayNoteEditor()" title="Morgen-Check / Schlafqualität">✎ Morgen-Check</button>
+      <!-- Kennzahlen: reine Datenanzeige (HRV, Ruhepuls, CTL/ATL/TSB, Gewicht, ...), keine automatische Bewertung —
+           Zeitraum-Auswahl/Morgen-Check-Button in derselben Zeile, rechtsbündig -->
+      <div class="page-subbar-vitals">
+        <div class="trend-kpi-row">
+          <div class="trend-kpi-item"><div class="trend-kpi-label">HRV</div><div class="trend-kpi-val" id="cockpitHRV">— <span class="trend-kpi-trend" id="cockpitHRVTrend"></span></div></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Ruhepuls</div><div class="trend-kpi-val" id="cockpitRHF">— <span class="trend-kpi-trend" id="cockpitRHFTrend"></span></div></div>
+          <div class="trend-kpi-sep"></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Fitness CTL</div><div class="trend-kpi-val" id="cockpitCTL">— <span class="trend-kpi-trend" id="cockpitCTLTrend"></span></div></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Fatigue ATL</div><div class="trend-kpi-val" id="cockpitATL">— <span class="trend-kpi-trend" id="cockpitATLTrend"></span></div></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Form TSB</div><div class="trend-kpi-val" id="cockpitFormTSB">— <span class="trend-kpi-trend" id="cockpitFormTSBTrend"></span></div></div>
+          <div class="trend-kpi-sep"></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Gewicht</div><div class="trend-kpi-val" id="cockpitWeight">— <span class="trend-kpi-trend" id="cockpitWeightTrend"></span></div></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Schlaf Ø</div><div class="trend-kpi-val" id="avgSleep">—</div></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Schlafqualität</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
+          <div class="trend-kpi-sep"></div>
+          <div class="trend-kpi-item"><div class="trend-kpi-label">Konditionstrend</div><div class="trend-kpi-val" id="cockpitEF">— <span class="trend-kpi-trend" id="cockpitEFTrend"></span></div></div>
+        </div>
+        <div class="page-subbar-controls">
+          <!-- data-keys legt fest, welche Bereiche (Zonen, Wellness, Übersicht, Cockpit-Load) den gewählten Zeitraum übernehmen -->
+          <select class="btn range-select" data-keys="zones,wellness,overview,cockpitLoad" data-default="14">
+            <option value="7">7 Tage</option>
+	    <option value="14">14 Tage</option>
+            <option value="30">30 Tage</option>
+            <option value="90">90 Tage</option>
+            <option value="365">Alle</option>
+          </select>
+          <button class="btn" onclick="openDayNoteEditor()" title="Morgen-Check / Schlafqualität">✎ Morgen-Check</button>
+        </div>
       </div>
     </div>
   </header>
@@ -164,23 +181,6 @@
     <!-- Cockpit: Dashboard-Startseite mit Tagesempfehlung, KPI-Kacheln, Trainingswoche-Kalender, Fitness-Chart und 80/20-Check -->
     <section id="section-cockpit" class="section active">
       <div class="content">
-        <!-- Kennzahlen-Kachel: reine Datenanzeige (HRV, Ruhepuls, CTL/ATL/TSB, Gewicht, ...), keine automatische Bewertung -->
-        <div class="trend-hero" style="flex-direction:column;align-items:stretch;gap:18px">
-          <div class="trend-kpi-row">
-            <div class="trend-kpi-item"><div class="trend-kpi-label">HRV</div><div class="trend-kpi-val" id="cockpitHRV">— <span class="trend-kpi-trend" id="cockpitHRVTrend"></span></div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Ruhepuls</div><div class="trend-kpi-val" id="cockpitRHF">— <span class="trend-kpi-trend" id="cockpitRHFTrend"></span></div></div>
-            <div class="trend-kpi-sep"></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Fitness CTL</div><div class="trend-kpi-val" id="cockpitCTL">— <span class="trend-kpi-trend" id="cockpitCTLTrend"></span></div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Fatigue ATL</div><div class="trend-kpi-val" id="cockpitATL">— <span class="trend-kpi-trend" id="cockpitATLTrend"></span></div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Form TSB</div><div class="trend-kpi-val" id="cockpitFormTSB">— <span class="trend-kpi-trend" id="cockpitFormTSBTrend"></span></div></div>
-            <div class="trend-kpi-sep"></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Gewicht</div><div class="trend-kpi-val" id="cockpitWeight">— <span class="trend-kpi-trend" id="cockpitWeightTrend"></span></div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Schlaf Ø</div><div class="trend-kpi-val" id="avgSleep">—</div></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Schlafqualität</div><div class="trend-kpi-val" id="cockpitMood">—</div></div>
-            <div class="trend-kpi-sep"></div>
-            <div class="trend-kpi-item"><div class="trend-kpi-label">Konditionstrend</div><div class="trend-kpi-val" id="cockpitEF">— <span class="trend-kpi-trend" id="cockpitEFTrend"></span></div></div>
-          </div>
-        </div>
         <!-- Trainingswoche-Kalender mit Soll-Ist-Balken -->
         <div class="card">
           <div class="card-header" style="align-items:flex-start">
@@ -707,6 +707,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260805h"></script>
+<script src="app.js?v=20260805i"></script>
 </body>
 </html>

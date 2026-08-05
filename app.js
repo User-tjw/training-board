@@ -803,7 +803,6 @@ function setupNav() {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelector('.nav-item[data-section="cockpit"]').classList.add('active');
   document.getElementById('section-cockpit').classList.add('active');
-  document.getElementById('pageTitle').textContent = 'Dashboard';
 
   if (lastSection) {
     const savedItem = document.querySelector(`.nav-item[data-section="${lastSection}"]`);
@@ -812,7 +811,6 @@ function setupNav() {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       savedItem.classList.add('active');
       document.getElementById(`section-${lastSection}`)?.classList.add('active');
-      document.getElementById('pageTitle').textContent = savedItem.textContent.trim();
     }
   }
 
@@ -824,7 +822,6 @@ function setupNav() {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       item.classList.add('active');
       document.getElementById(`section-${sec}`).classList.add('active');
-      document.getElementById('pageTitle').textContent = item.textContent.trim();
       sessionStorage.setItem('tb_active_section', sec);
     });
   });

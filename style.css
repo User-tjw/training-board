@@ -129,12 +129,11 @@
     .status-dot.error { background: var(--red); }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
     .main { flex: 1; overflow-y: auto; }
-    .page-subbar { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; flex-wrap: wrap; background: var(--bg2); border-bottom: 1px solid var(--border); }
-    .page-subbar::before { content: ''; position: absolute; left: 24px; right: 24px; top: 0; border-top: 1px solid var(--border); }
-    .page-subbar-title { display: flex; align-items: baseline; gap: 12px; }
+    .page-subbar { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 12px 24px; background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .page-subbar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .page-subbar-controls { display: flex; align-items: center; gap: 8px; }
     .page-subbar-controls .btn, .page-subbar-controls select { height: 32px; box-sizing: border-box; line-height: 1; }
-    .page-title { font-size: 15px; font-weight: 600; }
+    .page-subbar-vitals { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
     .breadcrumb { font-size: 12px; color: var(--text2); font-family: var(--mono); }
     .btn { padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); font-family: var(--font); }
     .btn:hover { background: var(--bg3); }
@@ -184,8 +183,7 @@
     .chart-box { position: relative; height: 160px; }
     .chart-box-sm { height: 70px; }
     .grid-2 .card, .grid-3-1 .card, .grid-2x2 .card, .grid-3 .card { margin-bottom: 14px; }
-    /* Trend-Hero: die Kennzahlen-Kachel oben im Cockpit (reine KPI-Reihe, keine Bewertung) */
-    .trend-hero { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    /* Kennzahlen-Reihe (reine KPI-Anzeige, keine Bewertung) — jetzt in der Top-Subbar statt eigener Kachel */
     .trend-kpi-row { display: flex; flex-wrap: wrap; gap: 24px; }
     .trend-kpi-item { text-align: center; }
     .trend-kpi-sep { width: 1px; background: var(--border); align-self: stretch; }
