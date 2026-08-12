@@ -1945,7 +1945,7 @@ async function loadJSONFromGH(ghPath) {
   }
 }
 
-async function saveJSONToGH(ghPath, data, message, _retry = true) {
+async function saveJSONToGH(ghPath, data, message, _retriesLeft = 2) {
   if (!ghToken || !ghRepo) return;
   try {
     const file = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`);
@@ -1960,9 +1960,12 @@ async function saveJSONToGH(ghPath, data, message, _retry = true) {
     const res = await ghFetch(`/repos/${ghRepo}/contents/${ghPath}`, { method:'PUT', body:JSON.stringify(payload) });
     _ghShaCache[ghPath] = res.content.sha;
   } catch(e) {
-    // Sha war veraltet, z.B. weil ein anderes Tab/Gerät zwischenzeitlich geschrieben hat.
-    // Einmal mit frischem Sha erneut versuchen, bevor der Fehler nach oben gereicht wird.
-    if (_retry && e.status === 409) return saveJSONToGH(ghPath, data, message, false);
+    // Sha war veraltet, z.B. weil ein anderes Tab/Gerät/der Head-Coach-Chat zwischenzeitlich geschrieben hat.
+    // Mit frischem Sha erneut versuchen, bevor der Fehler nach oben gereicht wird.
+    if (e.status === 409 && _retriesLeft > 0) return saveJSONToGH(ghPath, data, message, _retriesLeft - 1);
+    if (e.status === 409) {
+      throw new Error('Ein anderes Gerät (oder der Head-Coach-Chat) hat diese Datei gerade gleichzeitig gespeichert. Bitte die Seite neu laden und prüfen, ob deine Änderung übernommen wurde.');
+    }
     throw e;
   }
 }
