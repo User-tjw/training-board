@@ -252,7 +252,7 @@ async function syncSessionToICU(dateStr, session) {
       const created = await icuWrite(`/athlete/${athleteId}/events`, 'POST', body);
       session.icuEventId = created.id;
     }
-  } catch(e) { console.error('Intervals.icu-Sync fehlgeschlagen:', e); }
+  } catch(e) { console.error('Intervals.icu-Sync fehlgeschlagen:', e); session._icuSyncError = e.message; }
   return session;
 }
 function deleteSessionFromICU(session) {
@@ -2376,11 +2376,16 @@ async function confirmPlanImport() {
   await Promise.all(affectedDays.flatMap(day => (Array.isArray(data[day]) ? data[day] : []).map(deleteSessionFromICU)));
   affectedDays.forEach(day => { data[day] = []; });
   const newSessions = sessions.map(s => ({ id: 'p' + Date.now() + Math.random().toString(36).slice(2,6), type: s.type, min: s.min, note: s.note, date: s.date }));
-  await Promise.all(newSessions.map(s => syncSessionToICU(s.date, s)));
-  newSessions.forEach(s => { const { date, ...session } = s; data[date].push(session); });
+  // sequenziell statt parallel, um Intervals.icu-Rate-Limits bei vielen Einheiten auf einmal zu vermeiden
+  for (const s of newSessions) { await syncSessionToICU(s.date, s); }
+  const failed = newSessions.filter(s => s._icuSyncError);
+  newSessions.forEach(s => { const { date, _icuSyncError, ...session } = s; data[date].push(session); });
   savePlanSessions(data);
   closePlanImport();
   renderCockpitWeek();
+  if (failed.length) {
+    alert(`${failed.length} von ${newSessions.length} Einheiten konnten nicht zu Intervals.icu übertragen werden (z.B. „${failed[0]._icuSyncError}"). Sie sind lokal/GitHub gespeichert, erscheinen aber nicht in Intervals.icu oder Garmin Connect.`);
+  }
 }
 
 let _noteEditorLocalMode = false;
