@@ -2,12 +2,12 @@
 ## Rolle: UA-Methodik-Berater
 
 ### Zuständigkeit
-Uphill Athlete Philosophie, polarisiertes Training, AeT/AnT-Bestimmung, Zonenlogik, Periodisierung, Wochenstruktur, Sessionsaufbau für Laufen und Rad, mentale Trainingsaspekte. **Diese Datei ist die verbindliche Quelle für alle trainingsspezifischen Methodik-Inhalte** — Basisdaten (Name, Ausrüstung, Ziele etc.) bleiben in `athletenprofil.md`.
+Uphill Athlete Philosophie, polarisiertes Training, AeT/AnT-Bestimmung, Zonenlogik, Periodisierung, Wochenstruktur, Sessionsaufbau für Laufen und Rad, mentale Trainingsaspekte, Leistungstests. **Diese Datei ist die verbindliche Quelle für alle trainingsspezifischen Methodik-Inhalte** — Basisdaten (Name, Ausrüstung, Ziele etc.) bleiben in `athletenprofil.md`.
 
 ---
 
 ## Referenzwerte (Stand 14.08.2026)
-- **HF max:** 183 bpm ⚠️ *Klärungsbedarf: an anderer Stelle im Coaching-Kontext wurde auch 190 bpm genannt. Solange nicht geklärt, gilt hier 183 bpm als Basis für die untenstehende Zonentabelle — bitte mit Thomas verifizieren (z.B. Feldtest oder Herstellerangabe des Brustgurts/Uhr) und dann konsistent in beiden Dateien korrigieren.*
+- **HF max:** 190 bpm (Arbeitswert nach Thomas' Einschätzung) — bisheriger Repo-Wert war 183 bpm. **Noch nicht durch Test verifiziert**, siehe Abschnitt „HF-max-Test" unten. Sobald Testergebnis vorliegt: hier und in der Zonentabelle final aktualisieren.
 - **FTP (Rad):** 250 W
 
 ---
@@ -38,17 +38,58 @@ Die AeT ist die Schlüsselgröße. Alles darunter ist nachhaltiges Basistraining
 ---
 
 ## Herzfrequenzzonen (UA-5-Zonen-Modell)
-| Zone | Name | % HF max | bpm (Basis: 183 bpm ⚠️) |
+| Zone | Name | % HF max | bpm (Basis: 190 bpm, unverifiziert ⚠️) |
 |------|------|-----------|-----|
-| 1 | Recovery | < 60% | < 110 |
-| 2 | Aerobic (Basis) | 60–75% | 110–137 |
-| 3 | Aerobic (Tempo) | 75–85% | 137–156 |
-| 4 | Threshold | 85–92% | 156–168 |
-| 5 | VO₂max / Anaerob | > 92% | > 168 |
+| 1 | Recovery | < 60% | < 114 |
+| 2 | Aerobic (Basis) | 60–75% | 114–143 |
+| 3 | Aerobic (Tempo) | 75–85% | 143–162 |
+| 4 | Threshold | 85–92% | 162–175 |
+| 5 | VO₂max / Anaerob | > 92% | > 175 |
 
 > **UA-Kernregel:** 80% des Trainings in Zone 1–2 (unterhalb AeT), max. 20% in Zone 3–5.
 
-*Hinweis: bpm-Werte basieren auf HF max 183 bpm. Falls 190 bpm korrekt ist, verschieben sich alle bpm-Grenzen entsprechend nach oben — Tabelle dann neu berechnen.*
+*Hinweis: bpm-Werte basieren vorläufig auf HF max 190 bpm (Thomas' Einschätzung, Stand 14.08.2026). Verifizierung folgt über den HF-max-Test unten — danach Tabelle final fixieren.*
+
+---
+
+## HF-max-Test (Protokoll & Rhythmus)
+
+**Grund:** Bisheriger Wert (183 bpm) unsicher, Thomas vermutet 190 bpm — Klärung über Feldtest statt Annahme.
+
+**Testform:** Rad (nicht Laufen), solange Morton-Neurom-Gate nicht offen ist — beim Radfahren keine relevante Vorfuß-Stoßbelastung, HF-max-Wert ist sportartübergreifend weitgehend übertragbar.
+
+**Protokoll (Feldtest, Rad):**
+1. 15 min Einrollen Zone 1–2
+2. 3× 3 min zunehmend härter, dazwischen 2 min lockerer Zwischenspin
+3. Letzte 3 min: all-out bis zur maximal haltbaren Anstrengung
+4. Höchster gemessener Spitzenwert (nicht Durchschnitt) = HF max
+
+**Startbedingung:** frühestens nach Gate-Review 25.08.2026, nur bei Grün-Ampel und offenem/stabilem Gate-Status.
+
+**Laufspezifische Ergänzung (optional, später):** sobald Gate offen und Schuh-Thema gelöst — z.B. Bergsprint-Test, um sportartspezifische Abweichung zur Rad-HF-max zu prüfen.
+
+**Wiederholung:** alle 12 Wochen, oder ausgelöst durch Phasenwechsel (z.B. Start Spezifisch-Phase, nach Taper).
+
+---
+
+## Quartals-Leistungstest (Grundgerüst, Stand 14.08.2026)
+
+Eigenentwickelter kompakter Test zur Verlaufsmessung sportlicher/körperlicher Leistungsfähigkeit — funktionell und alltagsnah ausgerichtet (Trage-/Kraftfokus statt reinem Ausdauerfokus). **Wird sich weiterentwickeln — dies ist ein erster Entwurf, kein festes Protokoll.**
+
+| Baustein | Test | Was er misst |
+|---|---|---|
+| Kardio | HF-max-Test auf dem Rad (siehe oben) | Aktuelle HF-max, Basis für Zonen |
+| Kardio/aerob | 12-Min-Lauftest (Cooper-Test, flach) | Aerobe Kapazität im Verlauf, ohne Sprint-Stoßbelastung |
+| Kraft — Unterkörper | Max. Wdh. Air Squat in 2 Min (saubere volle Tiefe) | Kraftausdauer Beine, alltagsrelevant |
+| Kraft — Tragen | Farmer's Carry: feste Distanz (z.B. 40m) mit max. sauber getragenem Gewicht | Griffkraft, Rumpfstabilität, Lastentragen-Spezifität |
+| Rumpf | Plank Hold (max. Zeit, saubere Form) | Rumpfstabilität |
+| Mobilität | Sit-and-Reach oder tiefer Kniebeuge-Halt (Zeit) | Grundbeweglichkeit Hüfte/Rücken |
+
+**Rahmenbedingungen:**
+- **Rhythmus:** alle 12 Wochen, jeweils in einer Woche mit Grün-Ampel und ohne akute Reha-Restriktion
+- **Reha-Kopplung:** Lauf-Baustein (Cooper-Test) nur wenn Gate-Status es zulässt und auf erlaubtem Untergrund; bei aktivem Ausschluss Ersatz durch Rad-Zeitfahren
+- **Testtag-Reihenfolge:** Kraft/Rumpf zuerst (frisch), dann Kardio-Tests mit Pause dazwischen — ggf. auf 2 Tage verteilen, um Ermüdungseffekte zwischen Tests zu vermeiden
+- **Erster Durchlauf:** frühestens nach Gate-Review 25.08.2026, realistisch nach Hardy's Stadtlauf (03.10.2026) für sauberen Start ohne Wettkampf-Interferenz
 
 ---
 
