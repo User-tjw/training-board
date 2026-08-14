@@ -2,7 +2,13 @@
 ## Rolle: UA-Methodik-Berater
 
 ### Zuständigkeit
-Uphill Athlete Philosophie, polarisiertes Training, AeT/AnT-Bestimmung, Zonenlogik, Periodisierung, Sessionsaufbau für Laufen und Rad.
+Uphill Athlete Philosophie, polarisiertes Training, AeT/AnT-Bestimmung, Zonenlogik, Periodisierung, Wochenstruktur, Sessionsaufbau für Laufen und Rad, mentale Trainingsaspekte. **Diese Datei ist die verbindliche Quelle für alle trainingsspezifischen Methodik-Inhalte** — Basisdaten (Name, Ausrüstung, Ziele etc.) bleiben in `athletenprofil.md`.
+
+---
+
+## Referenzwerte (Stand 14.08.2026)
+- **HF max:** 183 bpm ⚠️ *Klärungsbedarf: an anderer Stelle im Coaching-Kontext wurde auch 190 bpm genannt. Solange nicht geklärt, gilt hier 183 bpm als Basis für die untenstehende Zonentabelle — bitte mit Thomas verifizieren (z.B. Feldtest oder Herstellerangabe des Brustgurts/Uhr) und dann konsistent in beiden Dateien korrigieren.*
+- **FTP (Rad):** 250 W
 
 ---
 
@@ -21,7 +27,7 @@ Die AeT ist die Schlüsselgröße. Alles darunter ist nachhaltiges Basistraining
 - **HR-Drift-Test (Pa:Hr-Test):** 60-minütiger Lauf bei konstanter Pace — Herzfrequenz darf nicht mehr als 5% driften. Wenn sie mehr driftet, liegt die AeT höher als diese Intensität.
 
 **Faustregel für Thomas:**
-- AeT ≈ 75–80% HF max → ca. 137–146 bpm
+- AeT ≈ 75–80% HF max
 - Wird durch Tests verfeinert
 
 ### Anaerobe Schwelle (AnT)
@@ -32,13 +38,26 @@ Die AeT ist die Schlüsselgröße. Alles darunter ist nachhaltiges Basistraining
 ---
 
 ## Herzfrequenzzonen (UA-5-Zonen-Modell)
-| Zone | % HF max | Beschreibung | Anteil/Woche |
-|------|-----------|--------------|--------------|
-| 1 | < 60% | Recovery | frei |
-| 2 | 60–75% | Aerobe Basis — Haupttrainingszone | 80% |
-| 3 | 75–85% | Tempo — sparsam einsetzen | < 5% |
-| 4 | 85–92% | Threshold | max. 10% |
-| 5 | > 92% | VO₂max / Anaerob | max. 5% |
+| Zone | Name | % HF max | bpm (Basis: 183 bpm ⚠️) |
+|------|------|-----------|-----|
+| 1 | Recovery | < 60% | < 110 |
+| 2 | Aerobic (Basis) | 60–75% | 110–137 |
+| 3 | Aerobic (Tempo) | 75–85% | 137–156 |
+| 4 | Threshold | 85–92% | 156–168 |
+| 5 | VO₂max / Anaerob | > 92% | > 168 |
+
+> **UA-Kernregel:** 80% des Trainings in Zone 1–2 (unterhalb AeT), max. 20% in Zone 3–5.
+
+*Hinweis: bpm-Werte basieren auf HF max 183 bpm. Falls 190 bpm korrekt ist, verschieben sich alle bpm-Grenzen entsprechend nach oben — Tabelle dann neu berechnen.*
+
+---
+
+## Wochenvolumen-Verteilung (aktualisiert 2026-07-16, übernommen aus athletenprofil.md)
+Ziel: ~6h/Woche
+- Laufen: 35%
+- Rad: 15%
+- Kraft: 25%
+- Mobilität: 25%
 
 ---
 
