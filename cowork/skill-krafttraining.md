@@ -14,20 +14,20 @@ Ganzkörper-Kraftprogramm für Ausdauersportler (Laufen + Rad), heimtauglich, 2�
 
 ---
 
-## Tatsächlich durchgeführte Routine (Stand: 04.08.2026, angepasst 19.08.2026)
+## Tatsächlich durchgeführte Routine (Stand: 04.08.2026, eskaliert 19.08.2026)
 
 Thomas hat sich selbst zwei Langhantel-Workouts zusammengestellt, die er nach Gefühl einsetzt ("wenn ich das Gefühl habe, dass es passt"). Vor jedem Workout: ca. 4 Min Aufwärmen/Mobilität. Übungen werden von Zeit zu Zeit angepasst — diese Version ist der aktuelle Stand, kein starres Protokoll.
 
-**⚠️ Anpassung seit 19.08.2026 (Reha Ellenbogen/Unterarm beidseitig, Gate 1):**
-- **Bizeps-Curl pausiert** — höchste isolierte Unterarm-/Ellenbogenbeuger-Belastung
-- **Umsetzen mit Ausstoßen:** Last reduzieren oder pausieren, hohe Griffbelastung beim Fangen
-- **Vorgebeugtes Rudern:** Last vorerst nicht steigern, Griff beobachten
+**⚠️ Eskalation 19.08.2026 (Reha Ellenbogen/Unterarm beidseitig, Gate 1 — Belastungsschmerz 7/10, Ruheschmerz 3/10 permanent):**
+- **Bizeps-Curl: vollständig pausiert**
+- **Umsetzen mit Ausstoßen: vollständig pausiert** (nicht mehr nur Last reduzieren — Griffbelastung beim Fangen bei diesem Schmerzniveau nicht vertretbar)
+- **Vorgebeugtes Rudern: vollständig pausiert** (nicht mehr nur Last halten — Zuggriff unter Last nicht vertretbar)
 - Back Squat, Ausfallschritt, Wadenheben, Fahrrad-Crunch, Cross-Body Bergsteiger: unverändert, keine relevante Grifflast
 
 ### Workout 1
 | Übung | Sätze × Wdh | Last | Status |
 |-------|-------------|------|--------|
-| Umsetzen mit Kniebeuge und Ausstoßen (Clean & Jerk-artig) | 4 × 3 | Langhantel 29 kg | Last reduzieren / Griff beobachten |
+| Umsetzen mit Kniebeuge und Ausstoßen (Clean & Jerk-artig) | 4 × 3 | Langhantel 29 kg | **pausiert (Reha)** |
 | Fahrrad-Crunch | 4 × 8 | Körpergewicht | unverändert |
 | Bizeps-Curl | — | Langhantel 19 kg | **pausiert (Reha)** |
 | Ausfallschritt | 4 × 8 | Langhantel 19 kg | unverändert |
@@ -37,8 +37,10 @@ Thomas hat sich selbst zwei Langhantel-Workouts zusammengestellt, die er nach Ge
 |-------|-------------|------|--------|
 | Kniebeuge hinten (Back Squat) | 4 × 6 | Langhantel 29 kg | unverändert |
 | Cross-Body Bergsteiger | 4 × 8 | Körpergewicht | unverändert |
-| Vorgebeugtes Rudern | 4 × 10 | Langhantel 29 kg | Last nicht steigern / Griff beobachten |
+| Vorgebeugtes Rudern | 4 × 10 | Langhantel 29 kg | **pausiert (Reha)** |
 | Stehendes Wadenheben | 4 × 20 | Langhantel 29 kg | unverändert (Vorfuß-Beobachtung separat, siehe Reha) |
+
+**Praktische Konsequenz:** Workout 1 besteht aktuell effektiv nur noch aus Fahrrad-Crunch und Ausfallschritt, Workout 2 aus Back Squat, Cross-Body Bergsteiger und Wadenheben. Beide Workouts sind damit deutlich unterbelastet für Oberkörper/Zug — bewusst in Kauf genommen, bis Ellenbogen-Gate Fortschritt zeigt. Kein Ersatz für die pausierten Übungen einbauen, der wieder Griff-/Zuglast erzeugt (z.B. keine Kompensations-Übungen mit Kurzhanteln o.ä.).
 
 **Einordnung Kraft-Trainer:**
 - Deutlich technischer/neuromuskulär anspruchsvoller als das ursprünglich skizzierte Heim-Programm (v.a. Umsetzen mit Ausstoßen) — Technik hat Priorität vor Last-Steigerung
@@ -50,16 +52,16 @@ Thomas hat sich selbst zwei Langhantel-Workouts zusammengestellt, die er nach Ge
 - Bei jeder Einheit kurz gezielt abfragen/beobachten, ob diese beiden Übungen speziell Taubheit oder Schmerz auslösen — nicht nur allgemeines Fuß-Feedback
 - Fließt in Gate-Bewertung zum 25.08.2026 mit ein
 
-**Koordination mit Reha (Ellenbogen/Unterarm beidseitig, Gate 1, NEU seit 19.08.2026):**
-- Bizeps-Curl pausiert, Umsetzen mit Ausstoßen und Vorgebeugtes Rudern mit reduzierter/gehaltener Last, Grifffeedback aktiv erfragen
-- Bei Zunahme der Symptome trotz Anpassung: weitere Übungen mit Griff-/Zuglast (auch Ausfallschritt-Halten der Hantel) mit einbeziehen
+**Koordination mit Reha (Ellenbogen/Unterarm beidseitig, Gate 1, eskaliert 19.08.2026):**
+- Bizeps-Curl, Umsetzen mit Ausstoßen, Vorgebeugtes Rudern vollständig pausiert
+- Bei weiterhin hohem Schmerzniveau nach 2 Wochen: Reha-Trainer spricht ärztliche Abklärung erneut an
 - Keine zusätzlichen isolierten Griffübungen (Farmer's Carry, Suitcase Carry) bis Gate offen
 
 ---
 
 ## Ursprünglich skizzierte Alternative (Referenz / Ergänzungspool)
 
-Die folgenden Einheiten dienen als Referenz bzw. Ergänzung, falls Thomas Abwechslung oder gezielt einbeinige/Home-Varianten möchte. **Hinweis seit 19.08.2026:** Bent-over Row und Overhead Press ebenfalls griff-/unterarmbelastend — bis Ellenbogen-Reha Gate offen ist, gleiche Vorsicht wie beim aktuellen Programm anwenden; Suitcase Carry ist aktuell ausgeschlossen (s.o.).
+Die folgenden Einheiten dienen als Referenz bzw. Ergänzung, falls Thomas Abwechslung oder gezielt einbeinige/Home-Varianten möchte. **Hinweis seit 19.08.2026:** Bent-over Row und Overhead Press ebenfalls griff-/unterarmbelastend — bis Ellenbogen-Reha Gate offen ist, ebenfalls ausgeschlossen; Suitcase Carry ist aktuell ausgeschlossen (s.o.).
 
 ### Einheit A — Posterior Chain & Zug
 *(z.B. Montag oder nach einem ruhigen Lauftag)*
@@ -69,8 +71,8 @@ Die folgenden Einheiten dienen als Referenz bzw. Ergänzung, falls Thomas Abwech
 | Kettlebell Swing | 3 × 15 | Hip Hinge betonen |
 | Single-Leg RDL | 3 × 10 je Seite | langsam, kontrolliert |
 | Banded Clamshell | 2 × 15 je Seite | Warm-Up / Aktivierung |
-| Bent-over Row | 3 × 10 | Schulterblätter zusammen |
-| Face Pull / Band Pull-Apart | 2 × 15 | Schultergesundheit |
+| Bent-over Row | 3 × 10 | **ausgeschlossen bis Ellenbogen-Gate offen** |
+| Face Pull / Band Pull-Apart | 2 × 15 | Schultergesundheit — leichte Bandspannung, bei Schmerz sofort abbrechen |
 | Dead Bug | 3 × 8 je Seite | Rumpf |
 | Exzentrischer Calf Raise | 3 × 12 | langsam runter (3 Sek.) |
 
@@ -81,7 +83,7 @@ Die folgenden Einheiten dienen als Referenz bzw. Ergänzung, falls Thomas Abwech
 |-------|-------------|---------|
 | Bulgarian Split Squat | 3 × 8 je Seite | Körpergewicht oder KB |
 | Step-Up | 3 × 10 je Seite | kontrolliertes Ablassen |
-| Overhead Press | 3 × 10 | stehend, Rumpf aktiviert |
+| Overhead Press | 3 × 10 | **ausgeschlossen bis Ellenbogen-Gate offen** |
 | Suitcase Carry | 3 × 20 m je Seite | **ausgeschlossen bis Ellenbogen-Gate offen** |
 | Plank / Side Plank | 2 × 30 Sek. | |
 | Plyometrie-Block* | — | *Gate-abhängig (Reha) |
