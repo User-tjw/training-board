@@ -7,7 +7,7 @@ Verletzungsmanagement, Prävention, Koordination von Reha-Programmen mit dem Lau
 ---
 
 ## Aktueller Status
-**3 aktive Reha-Programme: Morton-Neurom rechts (Gate 1), Morton-Neurom links — Frühstadium/Beobachtung (Gate 1), Ellenbogen/Unterarm beidseitig — V.a. Überlastungstendinopathie (Gate 1, NEU).** (Stand: 2026-08-19)
+**3 aktive Reha-Programme: Morton-Neurom rechts (Gate 1), Morton-Neurom links — Frühstadium/Beobachtung (Gate 1), Ellenbogen/Unterarm beidseitig — V.a. Überlastungstendinopathie (Gate 1, eskaliert 19.08.2026).** (Stand: 2026-08-19)
 
 ---
 
@@ -80,32 +80,43 @@ Nach ca. 25 Min GA1-Lauf auf leicht abschüssigem Feldweg deutliches Symptom bem
 
 ---
 
-### Ellenbogen/Unterarm-Sehnenansatz (beidseitig) — NEU, V.a. Überlastungstendinopathie
-**Diagnose:** Schmerzen beidseitig im Bereich der Unterarm-Muskel-Sehnenansätze am Ellenbogen, nicht eindeutig lateral oder medial lokalisierbar. Seit ca. 3 Wochen (gemeldet 19.08.2026), am stärksten bei Belastung (Heben, Greifen). Verdacht auf Überlastung durch wiederholtes Kistenheben im Job. Bisher keine ärztliche Abklärung. Schmerzintensität (0–10, Belastung/Ruhe) noch nicht quantifiziert.
+### Ellenbogen/Unterarm-Sehnenansatz (beidseitig) — V.a. Überlastungstendinopathie
+**Diagnose:** Schmerzen beidseitig im Bereich der Unterarm-Muskel-Sehnenansätze am Ellenbogen, nicht eindeutig lateral oder medial lokalisierbar. Seit ca. 3 Wochen. Verdacht auf Überlastung durch wiederholtes Kistenheben im Job. Bisher keine ärztliche Abklärung.
 
-**Phase:** Gate 1 — Lastreduktion + Beobachtung, kein kompletter Trainingsabbruch nötig bei aktuellem Kenntnisstand
+**Schmerzquantifizierung (Stand 19.08.2026):**
+- Belastungsschmerz: **7/10** (z.B. beim Kistenheben)
+- Ruheschmerz: **3/10**, permanent bei Bewegung vorhanden, nicht nur belastungsabhängig
+- Thomas: kann aktuell "nicht richtig belasten"
+
+**Einordnung gegen Silbernagel-Toleranzgrenzen:** Beide Werte liegen über den Grenzen der bestehenden Skala (Belastungsschmerz-Grenze ≤3/10 → hier 7/10, mehr als doppelt so hoch; Ruheschmerz permanent vorhanden statt abwesend). Das ist kein Grenzfall, sondern ein deutliches Überlastungssignal.
+
+**Vorgeschichte:** Thomas berichtet eine ähnliche Überlastung am rechten Arm in der Vergangenheit, die unbehandelt/ausgesessen rund ein Jahr bis zur vollen Belastbarkeit brauchte.
+
+**Phase:** Gate 1 — **eskaliert auf vollständige Lastreduktion** (nicht mehr nur "reduzieren"), da Schmerzwerte deutlich über Toleranzgrenze und Ruheschmerz permanent vorhanden
 
 **Gate-Kriterien für nächste Phase:**
-- Kein Belastungsschmerz > 2/10 über 4 Wochen (Start Zähler: 19.08.2026, wird bei Bedarf an tatsächlichen Beginn rückwirkend angepasst)
-- Keine Zunahme der Symptome trotz reduzierter Griff-/Zuglast im Krafttraining
-- Ausbleibende Besserung nach 2–3 Wochen konsequenter Lastreduktion → ärztliche/physiotherapeutische Abklärung empfohlen (bilaterales Auftreten + bereits 3 Wochen Persistenz sind ernstzunehmende Signale)
+- Belastungsschmerz auf ≤3/10 senken, danach 4 Wochen stabil halten (Zähler startet erst, wenn dieser Wert erstmals erreicht wird — aktuell 7/10, Fenster hat noch nicht begonnen)
+- Ruheschmerz auf 0/10 (aktuell 3/10 permanent — das allein ist bereits ein Warnsignal, das über reine Trainingssteuerung hinausgeht)
+
+**Reha-Trainer-Einschätzung zur Entscheidung "aussitzen, kein Arzt":**
+Thomas hat sich entschieden, nicht ärztlich abklären zu lassen, sondern vorsichtig zu umgehen und zu beobachten. Diese Entscheidung wird hier dokumentiert, aber **nicht als sinnvoll bewertet** — im Gegenteil: die eigene Vorgeschichte (ca. 1 Jahr bis zur vollen Belastbarkeit beim letzten Mal, unbehandelt) ist eher ein Argument *gegen* denselben Weg als dafür. Ein Jahr eingeschränkte Armbelastbarkeit bei einem Athleten mit Kraft- und Berufsalltag ist ein hoher Preis für eine Abklärung, die in der Regel wenig aufwendig ist (Anamnese, ggf. Ultraschall) und die Chance böte, die Ausfallzeit deutlich zu verkürzen — gerade weil diesmal beidseitig und mit 7/10 unter Belastung ein stärkeres Bild vorliegt als vermutlich beim letzten Mal. Die endgültige Entscheidung liegt bei Thomas; hier steht sie mit der Gegenposition dokumentiert, nicht bestätigt.
 
 **Übungen:**
-- Konkrete Reha-Übungen (z.B. gezielte isometrische/exzentrische Unterarm-Belastung) erst nach klarerer Lokalisation sinnvoll — aktuell Priorität: Lastreduktion, keine Zusatzbelastung
-- Bei Bedarf sanftes, schmerzfreies Unterarm-/Handgelenk-Dehnen mehrmals täglich
+- Keine gezielten Reha-Übungen bei aktuellem Schmerzniveau — Priorität ist vollständige Entlastung der betroffenen Strukturen, nicht Zusatzreiz
+- Sanftes, schmerzfreies Unterarm-/Handgelenk-Dehnen nur, wenn es den Ruheschmerz nicht triggert
 
 **Koordination mit Krafttraining:**
-- **Bizeps-Curl (Workout 1, 19kg) pausieren**, bis Symptome rückläufig sind — isolierte Unterarm-/Ellenbogenbeuger-Belastung, höchstes Risiko in aktueller Routine
-- **Umsetzen mit Ausstoßen (Workout 1, 29kg):** hohe Griffbelastung beim Fangen/Ausstoßen — Last reduzieren oder Übung vorerst pausieren
-- **Vorgebeugtes Rudern (Workout 2, 29kg):** Zuggriff belastet Unterarm mit — Last vorerst nicht steigern, Griff beobachten
-- Back Squat, Ausfallschritt, Wadenheben, Fahrrad-Crunch, Cross-Body Bergsteiger: keine relevante Grifflast, unverändert weiterführbar (Vorfuß-Ausschlüsse rechts bleiben davon unberührt und gelten separat)
-- Job-Ergonomie: wo möglich Grifftechnik/-position beim Kistenheben variieren, Last nicht immer identisch fassen
+- **Bizeps-Curl weiterhin pausiert**
+- **Umsetzen mit Ausstoßen: jetzt vollständig pausieren** (nicht mehr nur Last reduzieren) — Griffbelastung beim Fangen bei diesem Schmerzniveau nicht vertretbar
+- **Vorgebeugtes Rudern: jetzt vollständig pausieren** (nicht mehr nur Last halten) — Zuggriff unter Last bei 7/10 Belastungsschmerz nicht vertretbar
+- Back Squat, Ausfallschritt, Wadenheben, Fahrrad-Crunch, Cross-Body Bergsteiger: unverändert weiterführbar, keine relevante Grifflast
+- Job: Kistenheben ist der vermutete Haupttreiber und lässt sich nicht vollständig vermeiden — wo möglich Lastverteilung/Grifftechnik variieren, schwere Kisten wenn organisatorisch möglich delegieren/mit Hilfsmitteln heben
 
 **Ausschlüsse (solange Gate nicht offen):**
-- Kein zusätzliches isoliertes Grifftraining (Farmer's Carry, Suitcase Carry) — auch relevant für das geplante Quartals-Testprotokoll, dort vorerst aussetzen
-- Bizeps-Curl pausiert (s.o.)
+- Kein zusätzliches isoliertes Grifftraining (Farmer's Carry, Suitcase Carry)
+- Kein Bizeps-Curl, kein Umsetzen mit Ausstoßen, kein Vorgebeugtes Rudern
 
-**Nächstes Update:** beim nächsten Check-in — bitte Schmerzintensität (0–10, Belastung und Ruhe) einschätzen; sonst spätestens ca. 02.09.2026 gemeinsam mit Job-Belastungsmuster erneut bewerten
+**Nächstes Update:** beim nächsten Check-in aktiv nach Schmerzverlauf fragen (Belastung/Ruhe getrennt); bei weiterer Verschlechterung oder unverändert hohem Niveau nach 2 Wochen erneut die ärztliche Abklärung ansprechen
 
 ---
 
