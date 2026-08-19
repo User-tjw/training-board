@@ -81,7 +81,7 @@ Nach ca. 25 Min GA1-Lauf auf leicht abschüssigem Feldweg deutliches Symptom bem
 ---
 
 ### Ellenbogen/Unterarm-Sehnenansatz (beidseitig) — V.a. Überlastungstendinopathie
-**Diagnose:** Schmerzen beidseitig im Bereich der Unterarm-Muskel-Sehnenansätze am Ellenbogen, nicht eindeutig lateral oder medial lokalisierbar. Seit ca. 3 Wochen. Verdacht auf Überlastung durch wiederholtes Kistenheben im Job. Bisher keine ärztliche Abklärung.
+**Diagnose:** Schmerzen beidseitig im Bereich der Unterarm-Muskel-Sehnenansätze am Ellenbogen, nicht eindeutig lateral oder medial lokalisierbar. Seit ca. 3 Wochen. Verdacht auf Überlastung durch wiederholtes Kistenheben im Job.
 
 **Schmerzquantifizierung (Stand 19.08.2026):**
 - Belastungsschmerz: **7/10** (z.B. beim Kistenheben)
@@ -92,23 +92,26 @@ Nach ca. 25 Min GA1-Lauf auf leicht abschüssigem Feldweg deutliches Symptom bem
 
 **Vorgeschichte:** Thomas berichtet eine ähnliche Überlastung am rechten Arm in der Vergangenheit, die unbehandelt/ausgesessen rund ein Jahr bis zur vollen Belastbarkeit brauchte.
 
+**Ärztliche Abklärung (Update 19.08.2026):** Thomas war entgegen der ursprünglichen Notiz vom 19.08. tatsächlich bereits beim Arzt — Rückmeldung des Arztes: "kann da auch nicht viel machen". Keine strukturelle Diagnose/Bildgebungsergebnis bekannt, die die weitere Steuerung beeinflussen würde. Konservative Selbststeuerung (Gate-System, Lastreduktion, Eigenübungen) bleibt damit der Weg — ärztlich nicht widersprochen, aber auch keine gezielte Therapieempfehlung erhalten. Bei Verschlechterung bleibt eine Physiotherapie-Überweisung (statt nur Hausarzt) eine sinnvolle Eskalationsoption, falls das noch nicht abgeklärt wurde.
+
 **Phase:** Gate 1 — **eskaliert auf vollständige Lastreduktion** (nicht mehr nur "reduzieren"), da Schmerzwerte deutlich über Toleranzgrenze und Ruheschmerz permanent vorhanden
 
 **Gate-Kriterien für nächste Phase:**
 - Belastungsschmerz auf ≤3/10 senken, danach 4 Wochen stabil halten (Zähler startet erst, wenn dieser Wert erstmals erreicht wird — aktuell 7/10, Fenster hat noch nicht begonnen)
 - Ruheschmerz auf 0/10 (aktuell 3/10 permanent — das allein ist bereits ein Warnsignal, das über reine Trainingssteuerung hinausgeht)
 
-**Reha-Trainer-Einschätzung zur Entscheidung "aussitzen, kein Arzt":**
-Thomas hat sich entschieden, nicht ärztlich abklären zu lassen, sondern vorsichtig zu umgehen und zu beobachten. Diese Entscheidung wird hier dokumentiert, aber **nicht als sinnvoll bewertet** — im Gegenteil: die eigene Vorgeschichte (ca. 1 Jahr bis zur vollen Belastbarkeit beim letzten Mal, unbehandelt) ist eher ein Argument *gegen* denselben Weg als dafür. Ein Jahr eingeschränkte Armbelastbarkeit bei einem Athleten mit Kraft- und Berufsalltag ist ein hoher Preis für eine Abklärung, die in der Regel wenig aufwendig ist (Anamnese, ggf. Ultraschall) und die Chance böte, die Ausfallzeit deutlich zu verkürzen — gerade weil diesmal beidseitig und mit 7/10 unter Belastung ein stärkeres Bild vorliegt als vermutlich beim letzten Mal. Die endgültige Entscheidung liegt bei Thomas; hier steht sie mit der Gegenposition dokumentiert, nicht bestätigt.
+**Übungsprotokoll (ab 19.08.2026, evidenzbasiert für Unterarm-Sehnenansatz-Tendinopathie):**
+Ziel in Gate 1 ist kontrollierte, schmerzarme Belastung — nicht Nulllast, nicht Ausreizen. Isometrische Belastung ist bei Sehnenansatz-Reizungen gut belegt (kurzfristig schmerzlindernd, geringe Gewebebelastung) und der sinnvolle Einstieg vor exzentrischem Aufbau.
 
-**Übungen:**
-- Keine gezielten Reha-Übungen bei aktuellem Schmerzniveau — Priorität ist vollständige Entlastung der betroffenen Strukturen, nicht Zusatzreiz
-- Sanftes, schmerzfreies Unterarm-/Handgelenk-Dehnen nur, wenn es den Ruheschmerz nicht triggert
+1. **Isometrische Handgelenk-Halts (täglich, 1×):** Unterarm auf Tischkante, Handfläche nach oben (Flexoren) bzw. nach unten (Extensoren), mit der Gegenhand leichten Widerstand geben, 5× 30–45 Sek. Halten pro Richtung, Intensität nur bis in den spürbaren, nicht schmerzhaften Bereich (max. 3/10 während der Übung)
+2. **Leichte Griff-Isometrie:** Weichen Ball/zusammengerolltes Handtuch 5–10 Sek. sanft greifen und wieder lösen, 10 Wdh., nur wenn schmerzfrei möglich
+3. **Steigerung erst nach Rückgang auf Belastungsschmerz ≤3/10:** dann exzentrisches Handgelenk-Curl (Flexoren) bzw. Reverse Wrist Curl (Extensoren) mit sehr leichtem Gewicht (0,5–1 kg), langsam ablassen (3–4 Sek.), 3×10–15, beidseitig
+4. **Nicht vor Ablauf von mind. 1–2 Wochen unter Punkt 1–2 auf Punkt 3 wechseln**, unabhängig vom subjektiven Gefühl — Sehnengewebe passt sich langsamer an als Muskulatur
+- Jede Übung sofort abbrechen, wenn sie den Ruheschmerz am selben oder Folgetag erhöht
+- Sanftes, schmerzfreies Unterarm-/Handgelenk-Dehnen ergänzend, nur wenn es den Ruheschmerz nicht triggert
 
 **Koordination mit Krafttraining:**
-- **Bizeps-Curl weiterhin pausiert**
-- **Umsetzen mit Ausstoßen: jetzt vollständig pausieren** (nicht mehr nur Last reduzieren) — Griffbelastung beim Fangen bei diesem Schmerzniveau nicht vertretbar
-- **Vorgebeugtes Rudern: jetzt vollständig pausieren** (nicht mehr nur Last halten) — Zuggriff unter Last bei 7/10 Belastungsschmerz nicht vertretbar
+- **Bizeps-Curl, Umsetzen mit Ausstoßen, Vorgebeugtes Rudern:** vollständig pausiert — Griff-/Zuglast bei diesem Schmerzniveau nicht vertretbar
 - Back Squat, Ausfallschritt, Wadenheben, Fahrrad-Crunch, Cross-Body Bergsteiger: unverändert weiterführbar, keine relevante Grifflast
 - Job: Kistenheben ist der vermutete Haupttreiber und lässt sich nicht vollständig vermeiden — wo möglich Lastverteilung/Grifftechnik variieren, schwere Kisten wenn organisatorisch möglich delegieren/mit Hilfsmitteln heben
 
@@ -116,7 +119,7 @@ Thomas hat sich entschieden, nicht ärztlich abklären zu lassen, sondern vorsic
 - Kein zusätzliches isoliertes Grifftraining (Farmer's Carry, Suitcase Carry)
 - Kein Bizeps-Curl, kein Umsetzen mit Ausstoßen, kein Vorgebeugtes Rudern
 
-**Nächstes Update:** beim nächsten Check-in aktiv nach Schmerzverlauf fragen (Belastung/Ruhe getrennt); bei weiterer Verschlechterung oder unverändert hohem Niveau nach 2 Wochen erneut die ärztliche Abklärung ansprechen
+**Nächstes Update:** beim nächsten Check-in aktiv nach Schmerzverlauf fragen (Belastung/Ruhe getrennt) und nach Verträglichkeit des Übungsprotokolls; bei weiterer Verschlechterung oder unverändert hohem Niveau nach 2 Wochen Physiotherapie-Überweisung ansprechen
 
 ---
 
