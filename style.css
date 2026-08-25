@@ -215,6 +215,16 @@
     .modal-settings-header h3 { margin-bottom:0; }
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
+
+    /* Team-Chat: Nachrichten-Bubbles je Rolle (user rechtsbündig neutral, trainer linksbündig mit Persona-Farbe als linker Rand) */
+    .chat-msg { max-width:82%; border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; background:var(--bg2); }
+    .chat-msg.chat-msg-user { align-self:flex-end; background:var(--accent-light); border-color:transparent; }
+    .chat-msg.chat-msg-trainer { align-self:flex-start; border-left-width:3px; }
+    .chat-msg-meta { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text2); font-family:var(--mono); margin-bottom:4px; }
+    .chat-msg-pin-btn { border:none; background:none; cursor:pointer; padding:0; font-size:13px; color:var(--border); line-height:1; margin-left:auto; }
+    .chat-msg-pin-btn.pinned { color:#eab308; }
+    #chatPinFilterBtn.active { color:#eab308; border-color:#eab308; }
+    .chat-msg-text { font-size:13px; line-height:1.5; white-space:pre-wrap; }
     /* Schlaf- UND Trainingsbefinden-Picker teilen sich diese Smiley-Optik */
     .mood-picker, .feel-picker { display:flex; gap:8px; }
     .mood-btn, .feel-btn { flex:1; padding:9px 0; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text2); cursor:pointer; text-align:center; font-family:var(--font); display:flex; flex-direction:column; align-items:center; }

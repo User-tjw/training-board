@@ -35,6 +35,7 @@ function renderFromCache() {
   renderOverviewGroup();
   renderZonesGroup();
   renderWellnessGroup();
+  renderChatMessages();
 }
 
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
@@ -449,6 +450,7 @@ function populateSettingsForm() {
   document.getElementById('settingsApiKey').value = apiKey;
   document.getElementById('settingsGhToken').value = ghToken;
   document.getElementById('settingsGhRepo').value = ghRepo;
+  document.getElementById('settingsChatProxyUrl').value = chatProxyUrl;
   const days = getRestDays();
   for (let i = 0; i < 7; i++) document.getElementById('restDay'+i).checked = days.includes(i);
   applyAthleteProfileToInputs();
@@ -687,11 +689,14 @@ function saveApiSettings() {
   apiKey    = document.getElementById('settingsApiKey').value.trim();
   ghToken   = document.getElementById('settingsGhToken').value.trim();
   ghRepo    = document.getElementById('settingsGhRepo').value.trim();
+  chatProxyUrl = document.getElementById('settingsChatProxyUrl').value.trim();
   localStorage.setItem('icu_athlete_id', athleteId);
   localStorage.setItem('icu_api_key', apiKey);
   localStorage.setItem('gh_token', ghToken);
   localStorage.setItem('gh_repo', ghRepo);
+  localStorage.setItem('chat_proxy_url', chatProxyUrl);
 
+  loadChatInBackground();
   syncTrainingPlanFromGH();
   syncManualRespirationFromGH();
   syncActivityMetaFromGH();
@@ -867,6 +872,7 @@ async function loadAll() {
     if (ghToken && ghRepo) {
       if (_notes.length === 0) loadNotesInBackground();
       else loadOlderNotesInBackground();
+      if (_chatMonthsLoaded.length === 0) loadChatInBackground();
     }
   } catch(err) {
     console.error(err);
@@ -1993,6 +1999,261 @@ function saveRestDaysToGH(data) { return saveJSONToGH(GH_REST_DAYS_FILE, data, '
 function syncRestDaysFromGH() { return syncJSONFromGH(GH_REST_DAYS_FILE, 'rest_days', getRestDaysData, () => { populateSettingsForm(); renderCockpitWeek(); }); }
 function saveAthleteProfileToGH(profile) { return saveJSONToGH(GH_PROFILE_FILE, profile, 'Update Athletenprofil'); }
 function syncAthleteProfileFromGH() { return syncJSONFromGH(GH_PROFILE_FILE, 'athlete_profile', getAthleteProfile, applyAthleteProfileToInputs); }
+
+// ─── Team-Chat (GitHub-Sync, monatsweise gebündelt) ────────────────────────────
+// Statt einer Datei pro Nachricht (wie notes/, siehe loadNotes()) wird der Team-Chat
+// monatsweise in chat/JJJJ-MM.json gebündelt — vermeidet das Datei-pro-Notiz-
+// Skalierungsproblem bei potenziell vielen Chat-Nachrichten pro Tag.
+
+const GH_CHAT_DIR = 'chat';
+const _chatShaCache = {};
+let _chatMessages = {};      // monthKey -> Array<message>
+let _chatMonthsLoaded = [];  // geladene monthKeys, neueste zuerst
+
+function chatMsgId() { return `${Date.now()}-${Math.random().toString(36).slice(2,8)}`; }
+function chatMonthKey(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function chatMonthPath(monthKey) { return `${GH_CHAT_DIR}/${monthKey}.json`; }
+function shiftMonthKey(monthKey, delta) {
+  const [y, m] = monthKey.split('-').map(Number);
+  return chatMonthKey(new Date(y, m - 1 + delta, 1));
+}
+
+async function loadChatMonthRaw(monthKey) {
+  const path = chatMonthPath(monthKey);
+  try {
+    const file = await ghFetch(`/repos/${ghRepo}/contents/${path}`);
+    _chatShaCache[monthKey] = file.sha;
+    return JSON.parse(b64dec(file.content));
+  } catch(e) {
+    if (e.message.includes('404') || e.message.includes('Not Found')) {
+      _chatShaCache[monthKey] = null;
+      return { messages: [], updatedAt: 0 };
+    }
+    console.error(`GitHub ${path}:`, e);
+    showGhSyncError(e.message);
+    throw e;
+  }
+}
+
+// Read-modify-write mit Konflikt-Merge: anders als saveJSONToGH (das bei einem 409 nur das sha
+// auffrischt und dieselben `data` erneut schreibt) muss hier bei einem Konflikt der frische
+// Remote-Stand erneut durch mutatorFn laufen — mehrere Geräte können gleichzeitig an dieselbe
+// Monatsdatei anhängen oder pinnen, ein simples Überschreiben würde die zwischenzeitliche
+// Änderung des anderen Schreibers verlieren.
+async function updateChatMonth(monthKey, mutatorFn, commitMsg, _retriesLeft = 3) {
+  if (!ghToken || !ghRepo) return null;
+  const current = await loadChatMonthRaw(monthKey);
+  const updated = mutatorFn(current.messages.slice());
+  const payload = { messages: updated, updatedAt: Date.now() };
+  const path = chatMonthPath(monthKey);
+  const body = { message: commitMsg, content: b64enc(JSON.stringify(payload, null, 2)) };
+  if (_chatShaCache[monthKey]) body.sha = _chatShaCache[monthKey];
+  try {
+    const res = await ghFetch(`/repos/${ghRepo}/contents/${path}`, { method:'PUT', body:JSON.stringify(body) });
+    _chatShaCache[monthKey] = res.content.sha;
+    _chatMessages[monthKey] = updated;
+    return updated;
+  } catch(e) {
+    if (e.status === 409 && _retriesLeft > 0) return updateChatMonth(monthKey, mutatorFn, commitMsg, _retriesLeft - 1);
+    if (e.status === 409) {
+      throw new Error('Ein anderes Gerät hat den Chat gerade gleichzeitig geändert. Bitte die Seite neu laden und erneut versuchen.');
+    }
+    throw e;
+  }
+}
+
+function appendChatMessages(newMsgs) {
+  const monthKey = chatMonthKey(new Date());
+  return updateChatMonth(monthKey, msgs => msgs.concat(newMsgs), 'Chat: neue Nachricht(en)');
+}
+
+function toggleChatPin(monthKey, messageId) {
+  return updateChatMonth(monthKey, msgs => msgs.map(m => m.id === messageId ? { ...m, pinned: !m.pinned } : m), 'Chat: Markierung geändert');
+}
+
+// Lädt aktuellen + vorherigen Monat eager (meiste Aktivität ist aktuell), ältere Monate nur auf
+// Anfrage — analog zum recent/older-Split bei loadNotes()/loadOlderNotesInBackground().
+async function loadRecentChatMonths() {
+  if (!ghToken || !ghRepo) return;
+  const thisMonth = chatMonthKey(new Date());
+  const prevMonth = shiftMonthKey(thisMonth, -1);
+  for (const mk of [thisMonth, prevMonth]) {
+    const data = await loadChatMonthRaw(mk);
+    _chatMessages[mk] = data.messages;
+    if (!_chatMonthsLoaded.includes(mk)) _chatMonthsLoaded.push(mk);
+  }
+  _chatMonthsLoaded.sort().reverse();
+}
+
+async function loadOlderChatMonth() {
+  const oldest = _chatMonthsLoaded[_chatMonthsLoaded.length - 1] || chatMonthKey(new Date());
+  const older = shiftMonthKey(oldest, -1);
+  if (_chatMonthsLoaded.includes(older)) return null;
+  const data = await loadChatMonthRaw(older);
+  _chatMessages[older] = data.messages;
+  _chatMonthsLoaded.push(older);
+  _chatMonthsLoaded.sort().reverse();
+  return older;
+}
+
+function allLoadedChatMessages() {
+  return _chatMonthsLoaded
+    .flatMap(mk => (_chatMessages[mk] || []).map(m => ({ ...m, _monthKey: mk })))
+    .sort((a,b) => a.ts.localeCompare(b.ts));
+}
+
+function pinnedChatMessages() {
+  return allLoadedChatMessages().filter(m => m.pinned);
+}
+
+const TRAINER_COLORS = {
+  'head-coach': '#6366f1',
+  reha: '#ef4444',
+  kraft: '#f59e0b',
+  ernaehrung: '#10b981',
+  methodik: '#0ea5e9',
+  mobilitaet: '#a855f7',
+};
+
+let chatProxyUrl = localStorage.getItem('chat_proxy_url') || '';
+let _chatPinFilterActive = false;
+
+function populateChatPersonaSelect() {
+  const sel = document.getElementById('chatPersonaSelect');
+  if (!sel || sel.dataset.filled) return;
+  sel.innerHTML = TRAINER_OPTIONS.map(t => `<option value="${t.v}">${escHtml(t.l)}</option>`).join('');
+  sel.dataset.filled = '1';
+}
+
+function chatMessageHtml(m) {
+  const isUser = m.role === 'user';
+  const trainerLabel = !isUser ? (TRAINER_OPTIONS.find(t => t.v === m.trainer)?.l || m.trainer) : null;
+  const color = !isUser ? (TRAINER_COLORS[m.trainer] || 'var(--accent)') : null;
+  const time = new Date(m.ts).toLocaleString('de-DE', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+  return `
+    <div class="chat-msg ${isUser ? 'chat-msg-user' : 'chat-msg-trainer'}"${!isUser ? ` style="border-left-color:${color}"` : ''}>
+      <div class="chat-msg-meta">
+        <span>${isUser ? 'Du' : escHtml(trainerLabel)}</span>
+        <span>· ${time}</span>
+        <button class="chat-msg-pin-btn ${m.pinned ? 'pinned' : ''}" title="${m.pinned ? 'Markierung entfernen' : 'Als wichtig markieren'}" onclick="handleChatPinClick('${m._monthKey}','${m.id}')">★</button>
+      </div>
+      <div class="chat-msg-text">${escHtml(m.text)}</div>
+    </div>`;
+}
+
+function renderChatMessages() {
+  const listEl = document.getElementById('chatMessageList');
+  if (!listEl) return;
+  populateChatPersonaSelect();
+
+  document.getElementById('chatGhSetupBanner').style.display = (ghToken && ghRepo) ? 'none' : 'block';
+  document.getElementById('chatProxySetupBanner').style.display = chatProxyUrl ? 'none' : 'block';
+
+  const msgs = _chatPinFilterActive ? pinnedChatMessages() : allLoadedChatMessages();
+  listEl.innerHTML = msgs.length
+    ? msgs.map(chatMessageHtml).join('')
+    : `<div class="loading">${_chatPinFilterActive ? 'Keine markierten Beiträge.' : 'Noch keine Nachrichten.'}</div>`;
+  listEl.scrollTop = listEl.scrollHeight;
+}
+
+function toggleChatPinFilter() {
+  _chatPinFilterActive = !_chatPinFilterActive;
+  document.getElementById('chatPinFilterBtn').classList.toggle('active', _chatPinFilterActive);
+  renderChatMessages();
+}
+
+async function handleChatPinClick(monthKey, messageId) {
+  try {
+    await toggleChatPin(monthKey, messageId);
+    renderChatMessages();
+  } catch(e) {
+    alert('Markierung fehlgeschlagen: ' + e.message);
+  }
+}
+
+async function loadOlderChatMonthAndRender() {
+  try {
+    const added = await loadOlderChatMonth();
+    if (!added) { alert('Keine älteren Monate mehr vorhanden.'); return; }
+    renderChatMessages();
+  } catch(e) {
+    alert('Laden fehlgeschlagen: ' + e.message);
+  }
+}
+
+// Lädt aktuellen + vorherigen Monat im Hintergrund nach (wie loadNotesInBackground) — blockiert
+// nicht den ersten Render der Seite.
+async function loadChatInBackground() {
+  if (!ghToken || !ghRepo) { renderChatMessages(); return; }
+  try {
+    await loadRecentChatMonths();
+    renderChatMessages();
+  } catch(e) {
+    console.error('Chat-Hintergrund-Ladung fehlgeschlagen:', e);
+  }
+}
+
+// Kompakter Live-Kontext fürs System-Prompt des Proxys — dieselben Datenpunkte wie
+// copyNoteForClaude() (weiter unten), aber als kurzer Textblock statt Klartext-Vorlage.
+function buildChatContextText() {
+  const text = id => document.getElementById(id)?.textContent.trim() || '—';
+  const todaySessions = getPlanSessionsFor(fmtDate(new Date()));
+  const todayPlan = todaySessions.length
+    ? todaySessions.map(s => s.type + (s.min ? ` (${s.min} min)` : '')).join(', ')
+    : 'Ruhetag';
+  return [
+    `HRV: ${text('cockpitHRV')} · Ruhepuls: ${text('cockpitRHF')}`,
+    `Fitness CTL: ${text('cockpitCTL')} · Fatigue ATL: ${text('cockpitATL')} · Form TSB: ${text('cockpitFormTSB')}`,
+    `Reha-Status: ${latestRehaStatusLine()}`,
+    `Heute geplant: ${todayPlan}`,
+  ].join('\n');
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInputText');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!chatProxyUrl) { alert('Bitte erst die Chat-Proxy-URL in den Einstellungen eintragen.'); return; }
+  if (!ghToken || !ghRepo) { alert('Bitte erst GitHub-Token/-Repo in den Einstellungen eintragen.'); return; }
+
+  const persona = document.getElementById('chatPersonaSelect').value;
+  const sendBtn = document.getElementById('chatSendBtn');
+  const errEl = document.getElementById('chatSendError');
+  errEl.style.display = 'none';
+  sendBtn.disabled = true;
+  sendBtn.textContent = '…';
+
+  try {
+    const history = allLoadedChatMessages().slice(-10).map(m => ({
+      role: m.role === 'trainer' ? 'trainer' : 'user',
+      text: m.text,
+    }));
+
+    const res = await fetch(chatProxyUrl.replace(/\/$/, '') + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ persona, context: buildChatContextText(), history, message: text }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+    const userMsg = { id: chatMsgId(), ts: new Date().toISOString(), role: 'user', trainer: null, text, pinned: false };
+    const trainerMsg = { id: chatMsgId(), ts: new Date().toISOString(), role: 'trainer', trainer: persona, text: data.text, pinned: false };
+    await appendChatMessages([userMsg, trainerMsg]);
+
+    input.value = '';
+    renderChatMessages();
+  } catch(e) {
+    errEl.textContent = 'Fehler: ' + e.message;
+    errEl.style.display = 'block';
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Senden';
+  }
+}
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
