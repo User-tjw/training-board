@@ -1,0 +1,16 @@
+{
+  "name": "trainiq-chat-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Serverless-Proxy für den TrainIQ In-App-KI-Trainer-Chat (hält den Anthropic-API-Key serverseitig)",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
+  }
+}
