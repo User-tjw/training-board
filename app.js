@@ -2196,17 +2196,46 @@ async function loadChatInBackground() {
   }
 }
 
+// Geplante Einheiten der letzten `days` Tage (vor heute), zu denen an dem Tag keine passende
+// Aktivität geloggt ist — für den Chat-Kontext, verschwinden sonst nach visiblePlanSessionsFor()
+// (buildWeekCalendar) unbemerkt aus dem Kalender.
+function recentMissedSessions(days = 7) {
+  const missed = [];
+  const today = new Date();
+  for (let i = 1; i <= days; i++) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const dStr = fmtDate(d);
+    const planned = getPlanSessionsFor(dStr);
+    if (!planned.length) continue;
+    const actualTypes = new Set(
+      _cockpitActivitiesFull
+        .filter(a => fmtDate(new Date(a.start_date_local)) === dStr)
+        .map(a => normalizeType(a.type))
+    );
+    planned.forEach(s => { if (!actualTypes.has(s.type)) missed.push(`${dStr} ${s.type}`); });
+  }
+  return missed;
+}
+
 // Kompakter Live-Kontext fürs System-Prompt des Proxys — dieselben Datenpunkte wie
 // copyNoteForClaude() (weiter unten), aber als kurzer Textblock statt Klartext-Vorlage.
+// Bewusst mit Trend-Datenpunkten (Konditionstrend, verpasste Einheiten), die der Head Coach
+// laut Systemprompt für die Einschätzung nutzt, aber nicht in jeder Antwort aufzählt.
 function buildChatContextText() {
   const text = id => document.getElementById(id)?.textContent.trim() || '—';
   const todaySessions = getPlanSessionsFor(fmtDate(new Date()));
   const todayPlan = todaySessions.length
     ? todaySessions.map(s => s.type + (s.min ? ` (${s.min} min)` : '')).join(', ')
     : 'Ruhetag';
+  const now = new Date();
+  const nowLabel = now.toLocaleString('de-DE', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
+  const missed = recentMissedSessions(7);
   return [
+    `Aktuelle Zeit: ${nowLabel} Uhr`,
     `HRV: ${text('cockpitHRV')} · Ruhepuls: ${text('cockpitRHF')}`,
     `Fitness CTL: ${text('cockpitCTL')} · Fatigue ATL: ${text('cockpitATL')} · Form TSB: ${text('cockpitFormTSB')}`,
+    `Konditionstrend (Efficiency Factor): ${text('cockpitEF')}`,
+    `Verpasste geplante Einheiten (letzte 7 Tage): ${missed.length ? missed.join(', ') : 'keine'}`,
     `Reha-Status: ${latestRehaStatusLine()}`,
     `Heute geplant: ${todayPlan}`,
   ].join('\n');
