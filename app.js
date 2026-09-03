@@ -2042,9 +2042,13 @@ function saveEquipment(data) {
 }
 
 // Summiert Distanz/Zeit je Ausrüstungsteil aus allen Aktivitäten mit passender Zuordnung neu auf.
-// pushToGH=false (z.B. bei jedem renderFromCache()) hält das nur lokal aktuell; erst eine echte
-// Zuordnungsänderung im Aktivitäts-Modal (saveActivityModal) schreibt die neuen Totals nach GitHub —
-// sonst würde jeder Render/Zeitraumwechsel unnötig einen GitHub-Write auslösen.
+// pushToGH=false (z.B. bei jedem renderFromCache()) hält das nur lokal aktuell und darf dabei
+// bewusst NICHT `updatedAt` verändern — sonst „altert" der lokale Zeitstempel bei jedem Rendern
+// künstlich weiter und syncJSONFromGH() hält den lokalen Stand fälschlich für neuer als GitHub,
+// wodurch z.B. eine auf einem anderen Gerät gelöschte Ausrüstung nie übernommen wird (siehe Bug
+// vom 2026-09-03: Löschung auf dem PC kam nie am iPad an). Erst eine echte Änderung (Anlegen/
+// Bearbeiten/Aussortieren/Reaktivieren/Löschen/Zuordnungsänderung im Aktivitäts-Modal) bumpt
+// `updatedAt` und schreibt nach GitHub.
 function recomputeEquipmentTotals(pushToGH) {
   const eq = getEquipment();
   if (!eq.items || !eq.items.length) return eq;
@@ -2068,9 +2072,13 @@ function recomputeEquipmentTotals(pushToGH) {
     it.totalHours = Math.round(((it.baselineHours || 0) + t.sec / 3600) * 10) / 10;
     it.totalActivities = t.n;
   });
-  saveEquipmentLocal(eq);
-  if (pushToGH && ghToken && ghRepo) {
-    saveEquipmentToGH(eq).catch(e => console.error('Ausrüstungs-Totals GitHub-Sync fehlgeschlagen:', e));
+  if (pushToGH) {
+    saveEquipmentLocal(eq); // bumpt updatedAt — nur hier gerechtfertigt, da eine echte Änderung vorliegt
+    if (ghToken && ghRepo) {
+      saveEquipmentToGH(eq).catch(e => console.error('Ausrüstungs-Totals GitHub-Sync fehlgeschlagen:', e));
+    }
+  } else {
+    localStorage.setItem('equipment', JSON.stringify(eq)); // nur Anzeige-Cache, updatedAt bleibt unverändert
   }
   return eq;
 }
@@ -2686,6 +2694,7 @@ function deleteActivityModal() {
 
 async function saveActivityModal() {
   if (!_activityModalId) return;
+  const equipmentIdBefore = getActivityMetaFor(_activityModalId).equipmentId || '';
   const rpeSel  = document.getElementById('rpePicker').dataset.selected;
   const feelSel = document.getElementById('feelPicker').dataset.selected;
   const rpe  = rpeSel  ? parseInt(rpeSel)  : null;
@@ -2708,7 +2717,9 @@ async function saveActivityModal() {
   closeActivityModal();
   refreshCockpitMoodTile();
   renderFromCache();
-  recomputeEquipmentTotals(true); // Zuordnung kann sich geändert haben — Totals neu berechnen und nach GitHub pushen
+  // Nur bei tatsächlicher Zuordnungsänderung nach GitHub pushen — sonst würde jede Aktivitäts-
+  // Bearbeitung (RPE, Notiz, ...) unnötig einen Schreibzugriff auf equipment.json auslösen.
+  if (equipmentId !== equipmentIdBefore) recomputeEquipmentTotals(true);
 }
 
 // Kopiert die geöffnete Aktivität (inkl. RPE/Befinden/Atmung/Notiz/Temperatur/Witterung/
