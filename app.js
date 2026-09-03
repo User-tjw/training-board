@@ -2141,6 +2141,7 @@ function openEquipmentModal(id) {
   } else {
     retireBtn.style.display = 'none';
   }
+  document.getElementById('equipmentDeleteBtn').style.display = (it && it.retired) ? 'block' : 'none';
   document.getElementById('equipmentModal').style.display = 'flex';
 }
 function closeEquipmentModal() {
@@ -2189,6 +2190,17 @@ function reactivateEquipmentModal() {
   const eq = getEquipment();
   const it = (eq.items || []).find(x => x.id === _equipmentModalId);
   if (it) it.retired = false;
+  saveEquipment(eq);
+  closeEquipmentModal();
+  renderEquipmentSection();
+}
+
+// Nur aus dem Aussortiert-Tab erreichbar (siehe openEquipmentModal) — im Gegensatz zu
+// retireEquipmentModal() ohne Rückweg, entfernt den Eintrag endgültig aus equipment.json.
+function deleteEquipmentModal() {
+  if (!_equipmentModalId) return;
+  const eq = getEquipment();
+  eq.items = (eq.items || []).filter(x => x.id !== _equipmentModalId);
   saveEquipment(eq);
   closeEquipmentModal();
   renderEquipmentSection();

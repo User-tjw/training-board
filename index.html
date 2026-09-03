@@ -701,6 +701,8 @@
     </div>
     <!-- Text/Farbe/Klick-Handler werden in openEquipmentModal() dynamisch gesetzt (Aussortieren vs. Reaktivieren) -->
     <button class="btn" id="equipmentRetireBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px"></button>
+    <!-- Nur sichtbar bei bereits aussortierten Gegenständen, siehe openEquipmentModal()/deleteEquipmentModal() -->
+    <button class="btn" id="equipmentDeleteBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red);display:none" onclick="deleteEquipmentModal()">✕ Endgültig löschen</button>
   </div>
 </div>
 
@@ -835,6 +837,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260903c"></script>
+<script src="app.js?v=20260903d"></script>
 </body>
 </html>
