@@ -36,6 +36,8 @@ function renderFromCache() {
   renderZonesGroup();
   renderWellnessGroup();
   renderChatMessages();
+  recomputeEquipmentTotals(false);
+  renderEquipmentSection();
 }
 
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
@@ -705,6 +707,7 @@ function saveApiSettings() {
   syncHfZonesFromGH();
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
+  syncEquipmentFromGH();
   loadAll();
   closeSettingsModal();
 }
@@ -777,6 +780,7 @@ function init() {
   syncHfZonesFromGH();
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
+  syncEquipmentFromGH();
   loadAll();
 }
 
@@ -1799,6 +1803,7 @@ const GH_PLAN_SESSIONS_FILE = 'settings/plan-sessions.json';
 const GH_HIDDEN_ACTIVITIES_FILE = 'settings/hidden-activities.json';
 const GH_REST_DAYS_FILE = 'settings/rest-days.json';
 const GH_PROFILE_FILE = 'settings/athlete-profile.json';
+const GH_EQUIPMENT_FILE = 'settings/equipment.json';
 let _notes = [];
 let _editingNote = null;
 
@@ -1999,6 +2004,185 @@ function saveRestDaysToGH(data) { return saveJSONToGH(GH_REST_DAYS_FILE, data, '
 function syncRestDaysFromGH() { return syncJSONFromGH(GH_REST_DAYS_FILE, 'rest_days', getRestDaysData, () => { populateSettingsForm(); renderCockpitWeek(); }); }
 function saveAthleteProfileToGH(profile) { return saveJSONToGH(GH_PROFILE_FILE, profile, 'Update Athletenprofil'); }
 function syncAthleteProfileFromGH() { return syncJSONFromGH(GH_PROFILE_FILE, 'athlete_profile', getAthleteProfile, applyAthleteProfileToInputs); }
+function saveEquipmentToGH(data) { return saveJSONToGH(GH_EQUIPMENT_FILE, data, 'Update Ausrüstung'); }
+function syncEquipmentFromGH() { return syncJSONFromGH(GH_EQUIPMENT_FILE, 'equipment', getEquipment, () => { recomputeEquipmentTotals(false); renderEquipmentSection(); }); }
+
+// ─── Ausrüstung: frei anlegbare Räder/Schuhe/Ausrüstung, Laufleistung/Kettenkilometer aus den
+// per Aktivitäts-Modal zugeordneten Aktivitäten (activity_meta.equipmentId, siehe saveActivityModal()).
+// Kategorie legt fest, welche intervals.icu-Rohtypen (act.type) beim Zuordnen zur Auswahl stehen —
+// bewusst feiner als normalizeType() (Rennrad/MTB getrennt, Wandern eigenständig statt "Mobilität").
+const EQUIPMENT_CATEGORIES = [
+  { label: 'Rennrad', activityTypes: ['Ride'] },
+  { label: 'Mountainbike', activityTypes: ['MountainBikeRide'] },
+  { label: 'Laufschuhe', activityTypes: ['Run'] },
+  { label: 'Wanderausrüstung', activityTypes: ['Hike', 'Walk'] },
+  { label: 'Sonstiges (alle Aktivitäten)', activityTypes: [] },
+];
+
+function equipmentCategoryColor(category) {
+  if (category === 'Rennrad' || category === 'Mountainbike') return TYPE_COLORS.Rad;
+  if (category === 'Laufschuhe') return TYPE_COLORS.Laufen;
+  if (category === 'Wanderausrüstung') return TYPE_COLORS.Mobilität;
+  return '#94a3b8';
+}
+
+function getEquipment() {
+  try { return JSON.parse(localStorage.getItem('equipment') || '{}'); } catch(e) { return {}; }
+}
+function saveEquipmentLocal(data) {
+  data.updatedAt = Date.now();
+  localStorage.setItem('equipment', JSON.stringify(data));
+  return data;
+}
+function saveEquipment(data) {
+  saveEquipmentLocal(data);
+  if (ghToken && ghRepo) {
+    saveEquipmentToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
+}
+
+// Summiert Distanz/Zeit je Ausrüstungsteil aus allen Aktivitäten mit passender Zuordnung neu auf.
+// pushToGH=false (z.B. bei jedem renderFromCache()) hält das nur lokal aktuell; erst eine echte
+// Zuordnungsänderung im Aktivitäts-Modal (saveActivityModal) schreibt die neuen Totals nach GitHub —
+// sonst würde jeder Render/Zeitraumwechsel unnötig einen GitHub-Write auslösen.
+function recomputeEquipmentTotals(pushToGH) {
+  const eq = getEquipment();
+  if (!eq.items || !eq.items.length) return eq;
+  const meta = getActivityMeta();
+  const totals = {};
+  eq.items.forEach(it => { totals[it.id] = { km: 0, sec: 0, n: 0 }; });
+  _activitiesFull.forEach(act => {
+    const m = meta[act.id];
+    const eqId = m && m.equipmentId;
+    if (!eqId || !totals[eqId]) return;
+    totals[eqId].km += (act.distance || 0) / 1000;
+    totals[eqId].sec += act.moving_time || 0;
+    totals[eqId].n += 1;
+  });
+  eq.items.forEach(it => {
+    const t = totals[it.id];
+    it.totalKm = Math.round(t.km * 10) / 10;
+    it.totalHours = Math.round(t.sec / 3600 * 10) / 10;
+    it.totalActivities = t.n;
+  });
+  saveEquipmentLocal(eq);
+  if (pushToGH && ghToken && ghRepo) {
+    saveEquipmentToGH(eq).catch(e => console.error('Ausrüstungs-Totals GitHub-Sync fehlgeschlagen:', e));
+  }
+  return eq;
+}
+
+// Aktiv/Aussortiert-Umschalter oberhalb des Grids (siehe index.html #equipmentTabs) — aussortierte
+// Gegenstände bleiben in equipment.json erhalten (retireEquipmentModal setzt nur retired:true) und
+// sind über diesen Tab weiterhin einsehbar/reaktivierbar.
+let _equipmentTab = 'active';
+function setEquipmentTab(tab) {
+  _equipmentTab = tab;
+  document.querySelectorAll('#equipmentTabs .equipment-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  renderEquipmentSection();
+}
+
+function renderEquipmentSection() {
+  const grid = document.getElementById('equipmentGrid');
+  if (!grid) return;
+  const eq = getEquipment();
+  const items = (eq.items || []).filter(it => _equipmentTab === 'retired' ? it.retired : !it.retired);
+  if (!items.length) {
+    grid.innerHTML = `<div class="setup-hint">${_equipmentTab === 'retired' ? 'Keine aussortierte Ausrüstung.' : 'Noch keine Ausrüstung angelegt.'}</div>`;
+    return;
+  }
+  grid.innerHTML = items.map(it => {
+    const color = equipmentCategoryColor(it.category);
+    const totalKm = it.totalKm || 0;
+    const hasLimit = it.maxKm > 0;
+    const pct = hasLimit ? Math.min(100, totalKm / it.maxKm * 100) : 0;
+    const overLimit = hasLimit && totalKm > it.maxKm;
+    const barColor = overLimit ? 'var(--red)' : (hasLimit && pct > 80 ? 'var(--orange)' : color);
+    const bar = hasLimit
+      ? `<div class="week-cal-hbar-track" style="background:${barColor}30;margin-top:8px">
+           <div class="week-cal-hbar-fill" style="width:${pct}%;background:${barColor}"></div>
+         </div>
+         <div class="week-cal-hbar-hours" style="margin-top:3px">${totalKm.toFixed(1)} von ${it.maxKm} km${overLimit ? ' · Grenze überschritten' : ''}</div>`
+      : `<div class="week-cal-hbar-hours" style="margin-top:8px">${totalKm.toFixed(1)} km</div>`;
+    return `<div class="card equipment-card${it.retired ? ' equipment-card-retired' : ''}" onclick="openEquipmentModal('${it.id}')">
+      <span class="tag" style="background:${color}20;color:${color}">${it.category}</span>
+      <div class="equipment-card-name">${it.name}</div>
+      <div class="setup-hint">${it.totalActivities || 0} Aktivitäten · ${(it.totalHours || 0).toFixed(1)} Std.</div>
+      ${bar}
+    </div>`;
+  }).join('');
+}
+
+let _equipmentModalId = null;
+function openEquipmentModal(id) {
+  _equipmentModalId = id || null;
+  const eq = getEquipment();
+  const it = id ? (eq.items || []).find(x => x.id === id) : null;
+  document.getElementById('equipmentModalHeading').textContent = it ? 'Ausrüstung bearbeiten' : 'Ausrüstung anlegen';
+  document.getElementById('equipmentName').value = it ? it.name : '';
+  const catSel = document.getElementById('equipmentCategory');
+  catSel.innerHTML = EQUIPMENT_CATEGORIES.map(c => `<option value="${c.label}">${c.label}</option>`).join('');
+  catSel.value = it ? it.category : EQUIPMENT_CATEGORIES[0].label;
+  document.getElementById('equipmentMaxKm').value = it && it.maxKm ? it.maxKm : '';
+  document.getElementById('equipmentAdded').value = it && it.addedAt ? it.addedAt : fmtDate(new Date());
+  document.getElementById('equipmentNote').value = it ? (it.note || '') : '';
+  const retireBtn = document.getElementById('equipmentRetireBtn');
+  if (it) {
+    retireBtn.style.display = 'block';
+    retireBtn.textContent = it.retired ? '↺ Reaktivieren' : '✕ Aussortieren';
+    retireBtn.style.color = it.retired ? '' : 'var(--red)';
+    retireBtn.style.borderColor = it.retired ? '' : 'var(--red)';
+    retireBtn.onclick = it.retired ? reactivateEquipmentModal : retireEquipmentModal;
+  } else {
+    retireBtn.style.display = 'none';
+  }
+  document.getElementById('equipmentModal').style.display = 'flex';
+}
+function closeEquipmentModal() {
+  document.getElementById('equipmentModal').style.display = 'none';
+  _equipmentModalId = null;
+}
+function saveEquipmentModal() {
+  const name = document.getElementById('equipmentName').value.trim();
+  if (!name) { alert('Bitte einen Namen eingeben.'); return; }
+  const categoryLabel = document.getElementById('equipmentCategory').value;
+  const category = EQUIPMENT_CATEGORIES.find(c => c.label === categoryLabel) || EQUIPMENT_CATEGORIES[EQUIPMENT_CATEGORIES.length - 1];
+  const maxKmRaw = document.getElementById('equipmentMaxKm').value.trim();
+  const maxKm = maxKmRaw ? parseFloat(maxKmRaw.replace(',', '.')) : null;
+  const addedAt = document.getElementById('equipmentAdded').value || fmtDate(new Date());
+  const note = document.getElementById('equipmentNote').value.trim();
+  const eq = getEquipment();
+  eq.items = eq.items || [];
+  let it = _equipmentModalId ? eq.items.find(x => x.id === _equipmentModalId) : null;
+  if (!it) {
+    it = { id: 'eq_' + Date.now(), totalKm: 0, totalHours: 0, totalActivities: 0, retired: false };
+    eq.items.push(it);
+  }
+  Object.assign(it, { name, category: category.label, activityTypes: category.activityTypes, maxKm, addedAt, note });
+  saveEquipment(eq);
+  closeEquipmentModal();
+  renderEquipmentSection();
+}
+function retireEquipmentModal() {
+  if (!_equipmentModalId) return;
+  if (!confirm('Diese Ausrüstung aussortieren? Sie bleibt in den Daten erhalten, taucht aber nicht mehr in der aktiven Liste oder Zuordnung auf — einsehbar/reaktivierbar über den Tab "Aussortiert".')) return;
+  const eq = getEquipment();
+  const it = (eq.items || []).find(x => x.id === _equipmentModalId);
+  if (it) it.retired = true;
+  saveEquipment(eq);
+  closeEquipmentModal();
+  renderEquipmentSection();
+}
+
+function reactivateEquipmentModal() {
+  if (!_equipmentModalId) return;
+  const eq = getEquipment();
+  const it = (eq.items || []).find(x => x.id === _equipmentModalId);
+  if (it) it.retired = false;
+  saveEquipment(eq);
+  closeEquipmentModal();
+  renderEquipmentSection();
+}
 
 // ─── Team-Chat (GitHub-Sync, monatsweise gebündelt) ────────────────────────────
 // Statt einer Datei pro Nachricht (wie notes/, siehe loadNotes()) wird der Team-Chat
@@ -2432,6 +2616,16 @@ function openActivityModal(actId) {
   const effectSel = document.getElementById('actTrainingEffect');
   effectSel.innerHTML = '<option value="">– wählen –</option>' + EFFECT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
   effectSel.value = meta.effectCategory || suggestEffectCategory(act, type) || '';
+  const eqSel = document.getElementById('actEquipment');
+  const eqField = eqSel.closest('.setup-field');
+  if (isNoteOnlyId) {
+    eqField.style.display = 'none';
+  } else {
+    const eqItems = (getEquipment().items || []).filter(it => !it.retired && (!it.activityTypes || !it.activityTypes.length || it.activityTypes.includes(act.type)));
+    eqField.style.display = eqItems.length ? '' : 'none';
+    eqSel.innerHTML = '<option value="">– keine –</option>' + eqItems.map(it => `<option value="${it.id}">${it.name}</option>`).join('');
+    eqSel.value = meta.equipmentId || '';
+  }
   document.getElementById('actTemp').value = meta.temp != null ? meta.temp : '';
   document.getElementById('actWeather').value = meta.weather || '';
   const resp = getManualRespiration()[act.id];
@@ -2476,6 +2670,7 @@ async function saveActivityModal() {
   const feel = feelSel ? parseInt(feelSel) : null;
   const note = document.getElementById('actNote').value.trim();
   const effectCategory = document.getElementById('actTrainingEffect').value;
+  const equipmentId = document.getElementById('actEquipment').value;
   const tempRaw = document.getElementById('actTemp').value.trim();
   const temp = tempRaw ? parseFloat(tempRaw) : null;
   const weather = document.getElementById('actWeather').value.trim();
@@ -2485,12 +2680,13 @@ async function saveActivityModal() {
     const num = parseFloat(raw);
     statPatch[inp.dataset.statKey] = raw && !isNaN(num) ? num : null;
   });
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, temp, weather, ...statPatch });
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, equipmentId, temp, weather, ...statPatch });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   closeActivityModal();
   refreshCockpitMoodTile();
   renderFromCache();
+  recomputeEquipmentTotals(true); // Zuordnung kann sich geändert haben — Totals neu berechnen und nach GitHub pushen
 }
 
 // Kopiert die geöffnete Aktivität (inkl. RPE/Befinden/Atmung/Notiz/Temperatur/Witterung/

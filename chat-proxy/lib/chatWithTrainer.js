@@ -33,7 +33,49 @@ Beantworte allgemeine oder gemischte Themen selbst. Geht es klar überwiegend um
   },
 };
 
-const SHARED_RULES = `Sprache: Deutsch. Dialog kurz, aber eindeutig — direkt, klar, kein unnötiges Fachkauderwelsch. Empfehlungen immer mit kurzer Begründung, aber keine langen Abhandlungen: Antworte in maximal 3-4 kurzen Sätzen oder einer knappen Stichpunktliste, außer Thomas fragt explizit nach mehr Detail. Thomas trifft die finalen Entscheidungen. Du kennst das Athletenprofil und den aktuellen Trainingskontext aus dem folgenden Block — nutze ihn, ohne ihn zu wiederholen. Das gilt besonders für Konditionstrend, verpasste Einheiten und Wellness-Trends (Pfeile ↑↓→): die behältst du im Blick und lässt sie in deine Einschätzung einfließen, zählst sie aber nicht routinemäßig auf — nur wenn sie für die konkrete Frage direkt relevant sind oder eine auffällige Veränderung eine kurze Erwähnung wert ist. Der Kontext-Block enthält "Aktuelle Zeit" (Wochentag + Uhrzeit) — berücksichtige sie bei deinen Einschätzungen und Empfehlungen (z.B. ob für heute noch realistisch Zeit für eine Einheit ist, ob eine Frage sich auf den bereits gelaufenen oder den noch bevorstehenden Tag bezieht), unabhängig vom Ton früherer Nachrichten im Verlauf. Die Begrüßungsfloskel selbst ist zweitrangig — entscheidend ist, dass der inhaltliche Rat zur Tageszeit passt.`;
+const SHARED_RULES = `Sprache: Deutsch. Dialog kurz, aber eindeutig — direkt, klar, kein unnötiges Fachkauderwelsch. Empfehlungen immer mit kurzer Begründung, aber keine langen Abhandlungen: Antworte in maximal 3-4 kurzen Sätzen oder einer knappen Stichpunktliste, außer Thomas fragt explizit nach mehr Detail. Thomas trifft die finalen Entscheidungen. Du kennst das Athletenprofil und den aktuellen Trainingskontext aus dem folgenden Block — nutze ihn, ohne ihn zu wiederholen. Das gilt besonders für Konditionstrend, verpasste Einheiten und Wellness-Trends (Pfeile ↑↓→): die behältst du im Blick und lässt sie in deine Einschätzung einfließen, zählst sie aber nicht routinemäßig auf — nur wenn sie für die konkrete Frage direkt relevant sind oder eine auffällige Veränderung eine kurze Erwähnung wert ist. Der Kontext-Block enthält "Aktuelle Zeit" (Wochentag + Uhrzeit) — berücksichtige sie bei deinen Einschätzungen und Empfehlungen (z.B. ob für heute noch realistisch Zeit für eine Einheit ist, ob eine Frage sich auf den bereits gelaufenen oder den noch bevorstehenden Tag bezieht), unabhängig vom Ton früherer Nachrichten im Verlauf. Die Begrüßungsfloskel selbst ist zweitrangig — entscheidend ist, dass der inhaltliche Rat zur Tageszeit passt. Für Fragen zu Rädern, Schuhen oder Verschleißteilen steht dir das Tool get_equipment_status zur Verfügung — ruf es nur auf, wenn die Frage das tatsächlich betrifft.`;
+
+// Ausrüstungsdaten kommen nicht mit jeder Anfrage im Kontext-Block mit (tokensparsam), sondern
+// werden nur bei Bedarf per Tool-Use live aus training-notes/settings/equipment.json gezogen —
+// dieselbe Datei, die die App über saveEquipmentToGH()/syncEquipmentFromGH() pflegt (siehe app.js).
+const TOOLS = [{
+  name: 'get_equipment_status',
+  description: 'Liefert Thomas\' aktuelle Sportausrüstung (Räder, Schuhe, Verschleißteile) inkl. bisheriger Laufleistung, Kettenkilometer und Nutzungsdauer. Nur aufrufen, wenn die Frage sich konkret auf Ausrüstung, Material, Verschleiß, Wartung oder Rotation bezieht.',
+  input_schema: { type: 'object', properties: {}, required: [] },
+}];
+
+async function fetchEquipmentFromGitHub() {
+  const repo = process.env.GH_EQUIPMENT_REPO;
+  const token = process.env.GH_TOKEN;
+  if (!repo || !token) return 'Ausrüstungsdaten sind serverseitig nicht konfiguriert (GH_TOKEN/GH_EQUIPMENT_REPO fehlt).';
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/contents/settings/equipment.json`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (res.status === 404) return 'Noch keine Ausrüstung angelegt.';
+    if (!res.ok) return `Ausrüstungsdaten konnten nicht geladen werden (GitHub ${res.status}).`;
+    const file = await res.json();
+    const data = JSON.parse(Buffer.from(file.content, 'base64').toString('utf8'));
+    const items = (data.items || []).filter(it => !it.retired);
+    if (!items.length) return 'Noch keine Ausrüstung angelegt.';
+    return JSON.stringify(items.map(it => ({
+      name: it.name,
+      kategorie: it.category,
+      km: it.totalKm || 0,
+      stunden: it.totalHours || 0,
+      aktivitaeten: it.totalActivities || 0,
+      wartungsgrenzeKm: it.maxKm || null,
+      ersteNutzung: it.addedAt || null,
+      notiz: it.note || '',
+    })));
+  } catch (e) {
+    return `Ausrüstungsdaten konnten nicht geladen werden (${e.message}).`;
+  }
+}
 
 function buildSystemPrompt(personaSlug, contextBlock) {
   const persona = PERSONAS[personaSlug];
@@ -73,15 +115,32 @@ async function chatWithTrainer({ persona, context, history, message, apiKey }) {
   }
 
   const client = new Anthropic({ apiKey });
+  const system = [
+    { type: 'text', text: buildSystemPrompt(persona, context), cache_control: { type: 'ephemeral' } },
+  ];
+  const messages = buildMessages(history, message);
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-5',
-    max_tokens: 700,
-    system: [
-      { type: 'text', text: buildSystemPrompt(persona, context), cache_control: { type: 'ephemeral' } },
-    ],
-    messages: buildMessages(history, message),
+  let response = await client.messages.create({
+    model: 'claude-sonnet-5', max_tokens: 700, system, tools: TOOLS, messages,
   });
+
+  // Höchstens eine Tool-Use-Runde: reicht für get_equipment_status, hält Kosten/Latenz begrenzt
+  // und vermeidet Endlosschleifen, falls das Modell wiederholt nach Tools verlangt.
+  if (response.stop_reason === 'tool_use') {
+    messages.push({ role: 'assistant', content: response.content });
+    const toolResults = [];
+    for (const block of response.content) {
+      if (block.type !== 'tool_use') continue;
+      const result = block.name === 'get_equipment_status'
+        ? await fetchEquipmentFromGitHub()
+        : `Unbekanntes Tool: ${block.name}`;
+      toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
+    }
+    messages.push({ role: 'user', content: toolResults });
+    response = await client.messages.create({
+      model: 'claude-sonnet-5', max_tokens: 700, system, messages,
+    });
+  }
 
   const textBlock = response.content.find(block => block.type === 'text');
   if (!textBlock) {

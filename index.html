@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260825a">
+  <link rel="stylesheet" href="style.css?v=20260903b">
 </head>
 <body>
 
@@ -133,6 +133,7 @@
       <a class="nav-item" data-section="zones">HF-Zonen</a>
       <a class="nav-item" data-section="wellness">Wellness</a>
       <a class="nav-item" data-section="activities">Aktivitäten</a>
+      <a class="nav-item" data-section="equipment">Ausrüstung</a>
       <a class="nav-item" data-section="chat">Team-Chat</a>
     </nav>
    </div>
@@ -303,6 +304,25 @@
         <!-- Hinweis: diese Zeile ist als sehr langer Einzeiler geschrieben (Card mit Header, Aktivitäten-Mix und Liste) — schwer manuell zu editieren, ggf. Suche nach eindeutigen IDs statt Lesen im Fließtext.
              💬/Historie/↻-Buttons sitzen jetzt in der Trainingswoche-Kachel im Dashboard (dort öfter im Blick). -->
         <div class="card"><div class="card-header"><span class="card-title">Aktivitäten <span id="journalCount" class="mono" style="font-size:11px;font-weight:500;color:var(--text2)"></span></span></div><div id="activitiesMix" style="padding:16px 20px"></div><div id="allActivities"></div></div>
+      </div>
+    </section>
+
+    <!-- Ausrüstung: frei anlegbare Räder/Schuhe/Ausrüstung, Laufleistung aus zugeordneten Aktivitäten (siehe openActivityModal/saveActivityModal) -->
+    <section id="section-equipment" class="section">
+      <div class="content">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Ausrüstung</span>
+            <button class="setup-btn setup-btn-sm" onclick="openEquipmentModal()">+ Ausrüstung hinzufügen</button>
+          </div>
+          <!-- Aussortierte Gegenstände bleiben in equipment.json erhalten (siehe retireEquipmentModal()), werden aber
+               standardmäßig ausgeblendet — dieser Tab macht sie wieder sicht- und reaktivierbar. -->
+          <div class="equipment-tabs" id="equipmentTabs">
+            <button class="equipment-tab active" data-tab="active" onclick="setEquipmentTab('active')">Aktiv</button>
+            <button class="equipment-tab" data-tab="retired" onclick="setEquipmentTab('retired')">Aussortiert</button>
+          </div>
+          <div id="equipmentGrid" class="equipment-grid"></div>
+        </div>
       </div>
     </section>
 
@@ -587,6 +607,11 @@
       <select class="setup-input" id="actTrainingEffect"></select>
       <div class="setup-hint">Automatisch vorgeschlagen anhand Ø-HF · nachträglich änderbar</div>
     </div>
+    <!-- Ausrüstungs-Zuordnung: Optionen gefiltert auf zur Aktivität passende Ausrüstung, siehe openActivityModal() -->
+    <div class="setup-field" style="margin-top:10px">
+      <label class="setup-label">Ausrüstung</label>
+      <select class="setup-input" id="actEquipment"></select>
+    </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <div class="note-editor-grid2">
       <div class="setup-field">
@@ -625,6 +650,44 @@
     <!-- Blendet die Einheit nur auf diesem Dashboard aus — bei intervals.icu bleibt sie unangetastet -->
     <button class="btn" id="activityModalHideBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red)" onclick="deleteActivityModal()">✕ Aus diesem Dashboard ausblenden</button>
     <div class="setup-error" id="activityModalError">Fehler beim Speichern.</div>
+  </div>
+</div>
+
+<!-- Ausrüstungs-Modal: Anlegen/Bearbeiten eines Ausrüstungsteils, siehe openEquipmentModal()/saveEquipmentModal() -->
+<div class="modal-overlay" id="equipmentModal" style="display:none" onclick="if(event.target===this)closeEquipmentModal()">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div id="equipmentModalHeading" style="font-size:17px;font-weight:600;color:var(--text)"></div>
+      <button class="btn" onclick="closeEquipmentModal()">✕</button>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Name</label>
+      <input class="setup-input" id="equipmentName" type="text" placeholder="z.B. Orbea Orca">
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Kategorie</label>
+      <select class="setup-input" id="equipmentCategory"></select>
+    </div>
+    <div class="note-editor-grid2">
+      <div class="setup-field">
+        <label class="setup-label">Wartungsgrenze km (optional)</label>
+        <input class="setup-input" id="equipmentMaxKm" type="number" min="0" step="1" placeholder="z.B. 2000">
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Erste Nutzung</label>
+        <input class="setup-input" id="equipmentAdded" type="date">
+      </div>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Notiz (optional)</label>
+      <input class="setup-input" id="equipmentNote" type="text" placeholder="z.B. Übersetzung, Reifen, Modelljahr">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveEquipmentModal()">Speichern</button>
+      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeEquipmentModal()">Abbrechen</button>
+    </div>
+    <!-- Text/Farbe/Klick-Handler werden in openEquipmentModal() dynamisch gesetzt (Aussortieren vs. Reaktivieren) -->
+    <button class="btn" id="equipmentRetireBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px"></button>
   </div>
 </div>
 
@@ -759,6 +822,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260902b"></script>
+<script src="app.js?v=20260903b"></script>
 </body>
 </html>
