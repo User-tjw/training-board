@@ -2061,8 +2061,11 @@ function recomputeEquipmentTotals(pushToGH) {
   });
   eq.items.forEach(it => {
     const t = totals[it.id];
-    it.totalKm = Math.round(t.km * 10) / 10;
-    it.totalHours = Math.round(t.sec / 3600 * 10) / 10;
+    // baselineKm/-Hours: beim Import bestehender Ausrüstung (z.B. aus Garmin Connect) einmalig
+    // eingetragene Vorlaufwerte, siehe saveEquipmentModal() — zählen zusätzlich zu allem, was
+    // innerhalb von TrainIQ per Aktivitäts-Zuordnung dazukommt.
+    it.totalKm = Math.round(((it.baselineKm || 0) + t.km) * 10) / 10;
+    it.totalHours = Math.round(((it.baselineHours || 0) + t.sec / 3600) * 10) / 10;
     it.totalActivities = t.n;
   });
   saveEquipmentLocal(eq);
@@ -2125,6 +2128,8 @@ function openEquipmentModal(id) {
   catSel.value = it ? it.category : EQUIPMENT_CATEGORIES[0].label;
   document.getElementById('equipmentMaxKm').value = it && it.maxKm ? it.maxKm : '';
   document.getElementById('equipmentAdded').value = it && it.addedAt ? it.addedAt : fmtDate(new Date());
+  document.getElementById('equipmentBaselineKm').value = it && it.baselineKm ? it.baselineKm : '';
+  document.getElementById('equipmentBaselineHours').value = it && it.baselineHours ? it.baselineHours : '';
   document.getElementById('equipmentNote').value = it ? (it.note || '') : '';
   const retireBtn = document.getElementById('equipmentRetireBtn');
   if (it) {
@@ -2150,6 +2155,10 @@ function saveEquipmentModal() {
   const maxKmRaw = document.getElementById('equipmentMaxKm').value.trim();
   const maxKm = maxKmRaw ? parseFloat(maxKmRaw.replace(',', '.')) : null;
   const addedAt = document.getElementById('equipmentAdded').value || fmtDate(new Date());
+  const baselineKmRaw = document.getElementById('equipmentBaselineKm').value.trim();
+  const baselineKm = baselineKmRaw ? parseFloat(baselineKmRaw.replace(',', '.')) : 0;
+  const baselineHoursRaw = document.getElementById('equipmentBaselineHours').value.trim();
+  const baselineHours = baselineHoursRaw ? parseFloat(baselineHoursRaw.replace(',', '.')) : 0;
   const note = document.getElementById('equipmentNote').value.trim();
   const eq = getEquipment();
   eq.items = eq.items || [];
@@ -2158,8 +2167,9 @@ function saveEquipmentModal() {
     it = { id: 'eq_' + Date.now(), totalKm: 0, totalHours: 0, totalActivities: 0, retired: false };
     eq.items.push(it);
   }
-  Object.assign(it, { name, category: category.label, activityTypes: category.activityTypes, maxKm, addedAt, note });
+  Object.assign(it, { name, category: category.label, activityTypes: category.activityTypes, maxKm, addedAt, baselineKm, baselineHours, note });
   saveEquipment(eq);
+  recomputeEquipmentTotals(true); // Start-km/-Stunden fließen sofort in die angezeigten Totals ein
   closeEquipmentModal();
   renderEquipmentSection();
 }

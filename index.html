@@ -678,6 +678,19 @@
         <input class="setup-input" id="equipmentAdded" type="date">
       </div>
     </div>
+    <!-- Für den Import bestehender Ausrüstung (z.B. aus Garmin Connect): bereits gefahrene/gelaufene
+         km/Std. vor der Nutzung in TrainIQ, siehe recomputeEquipmentTotals() in app.js -->
+    <div class="note-editor-grid2">
+      <div class="setup-field">
+        <label class="setup-label">Start-km (optional)</label>
+        <input class="setup-input" id="equipmentBaselineKm" type="number" min="0" step="0.1" placeholder="z.B. 1980">
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">Start-Stunden (optional)</label>
+        <input class="setup-input" id="equipmentBaselineHours" type="number" min="0" step="0.1" placeholder="z.B. 80">
+      </div>
+    </div>
+    <div class="setup-hint" style="margin-top:-6px;margin-bottom:18px">Bereits vorhandene Laufleistung z.B. aus Garmin Connect — wird zu den in TrainIQ zugeordneten Aktivitäten dazugerechnet.</div>
     <div class="setup-field">
       <label class="setup-label">Notiz (optional)</label>
       <input class="setup-input" id="equipmentNote" type="text" placeholder="z.B. Übersetzung, Reifen, Modelljahr">
@@ -822,6 +835,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260903b"></script>
+<script src="app.js?v=20260903c"></script>
 </body>
 </html>
