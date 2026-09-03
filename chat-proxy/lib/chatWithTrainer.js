@@ -48,23 +48,33 @@ async function fetchEquipmentFromGitHub() {
   const repo = process.env.GH_EQUIPMENT_REPO;
   const token = process.env.GH_TOKEN;
   if (!repo || !token) return 'Ausrüstungsdaten sind serverseitig nicht konfiguriert (GH_TOKEN/GH_EQUIPMENT_REPO fehlt).';
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
   try {
-    const res = await fetch(`https://api.github.com/repos/${repo}/contents/settings/equipment.json`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    });
-    if (res.status === 404) return 'Noch keine Ausrüstung angelegt.';
-    if (!res.ok) return `Ausrüstungsdaten konnten nicht geladen werden (GitHub ${res.status}).`;
-    const file = await res.json();
-    const data = JSON.parse(Buffer.from(file.content, 'base64').toString('utf8'));
-    const items = (data.items || []).filter(it => !it.retired);
+    // Aktivitätsarten (settings/activity-kinds.json) werden nur für die Klartext-Labels dazugeladen —
+    // schlägt der Abruf fehl, wird einfach mit den rohen IDs weitergemacht statt ganz abzubrechen.
+    const [eqRes, kindsRes] = await Promise.all([
+      fetch(`https://api.github.com/repos/${repo}/contents/settings/equipment.json`, { headers }),
+      fetch(`https://api.github.com/repos/${repo}/contents/settings/activity-kinds.json`, { headers }),
+    ]);
+    if (eqRes.status === 404) return 'Noch keine Ausrüstung angelegt.';
+    if (!eqRes.ok) return `Ausrüstungsdaten konnten nicht geladen werden (GitHub ${eqRes.status}).`;
+    const eqFile = await eqRes.json();
+    const eqData = JSON.parse(Buffer.from(eqFile.content, 'base64').toString('utf8'));
+    const kindLabelById = {};
+    if (kindsRes.ok) {
+      const kindsFile = await kindsRes.json();
+      const kindsData = JSON.parse(Buffer.from(kindsFile.content, 'base64').toString('utf8'));
+      (kindsData.items || []).forEach(k => { kindLabelById[k.id] = k.label; });
+    }
+    const items = (eqData.items || []).filter(it => !it.retired);
     if (!items.length) return 'Noch keine Ausrüstung angelegt.';
     return JSON.stringify(items.map(it => ({
       name: it.name,
-      kategorie: it.category,
+      aktivitaetsarten: (it.activityKindIds || []).map(id => kindLabelById[id] || id).join(', ') || 'alle Aktivitäten',
       km: it.totalKm || 0,
       stunden: it.totalHours || 0,
       aktivitaeten: it.totalActivities || 0,

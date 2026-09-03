@@ -445,6 +445,7 @@ function closeSettingsModal() {
 function selectSettingsPane(name) {
   document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.pane === name));
   document.querySelectorAll('.settings-pane').forEach(p => p.style.display = (p.id === 'pane-' + name) ? 'block' : 'none');
+  if (name === 'activitykinds') renderActivityKindsList();
 }
 
 function populateSettingsForm() {
@@ -707,6 +708,7 @@ function saveApiSettings() {
   syncHfZonesFromGH();
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
+  syncActivityKindsFromGH();
   syncEquipmentFromGH();
   loadAll();
   closeSettingsModal();
@@ -780,6 +782,7 @@ function init() {
   syncHfZonesFromGH();
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
+  syncActivityKindsFromGH();
   syncEquipmentFromGH();
   loadAll();
 }
@@ -1804,6 +1807,7 @@ const GH_HIDDEN_ACTIVITIES_FILE = 'settings/hidden-activities.json';
 const GH_REST_DAYS_FILE = 'settings/rest-days.json';
 const GH_PROFILE_FILE = 'settings/athlete-profile.json';
 const GH_EQUIPMENT_FILE = 'settings/equipment.json';
+const GH_ACTIVITY_KINDS_FILE = 'settings/activity-kinds.json';
 let _notes = [];
 let _editingNote = null;
 
@@ -2006,24 +2010,109 @@ function saveAthleteProfileToGH(profile) { return saveJSONToGH(GH_PROFILE_FILE, 
 function syncAthleteProfileFromGH() { return syncJSONFromGH(GH_PROFILE_FILE, 'athlete_profile', getAthleteProfile, applyAthleteProfileToInputs); }
 function saveEquipmentToGH(data) { return saveJSONToGH(GH_EQUIPMENT_FILE, data, 'Update Ausrüstung'); }
 function syncEquipmentFromGH() { return syncJSONFromGH(GH_EQUIPMENT_FILE, 'equipment', getEquipment, () => { recomputeEquipmentTotals(false); renderEquipmentSection(); }); }
+function saveActivityKindsToGH(data) { return saveJSONToGH(GH_ACTIVITY_KINDS_FILE, data, 'Update Aktivitätsarten'); }
+function syncActivityKindsFromGH() { return syncJSONFromGH(GH_ACTIVITY_KINDS_FILE, 'activity_kinds', getActivityKinds, () => { renderEquipmentSection(); }); }
 
-// ─── Ausrüstung: frei anlegbare Räder/Schuhe/Ausrüstung, Laufleistung/Kettenkilometer aus den
-// per Aktivitäts-Modal zugeordneten Aktivitäten (activity_meta.equipmentId, siehe saveActivityModal()).
-// Kategorie legt fest, welche intervals.icu-Rohtypen (act.type) beim Zuordnen zur Auswahl stehen —
-// bewusst feiner als normalizeType() (Rennrad/MTB getrennt, Wandern eigenständig statt "Mobilität").
-const EQUIPMENT_CATEGORIES = [
-  { label: 'Rennrad', activityTypes: ['Ride'] },
-  { label: 'Mountainbike', activityTypes: ['MountainBikeRide'] },
-  { label: 'Laufschuhe', activityTypes: ['Run'] },
-  { label: 'Wanderausrüstung', activityTypes: ['Hike', 'Walk'] },
-  { label: 'Sonstiges (alle Aktivitäten)', activityTypes: [] },
+// ─── Aktivitätsarten: frei anlegbare Labels (Rennrad/MTB/Arbeit/Laufen/Wandern/...), verwaltet über
+// den Reiter "Aktivitätsarten" in den Einstellungen (openActivityKindsSettings). Ersetzen das frühere feste "Kategorie"-
+// Dropdown der Ausrüstung: eine Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden (z.B. ein
+// Rad für Rennrad UND Arbeit), und jede echte Aktivität bekommt eine Aktivitätsart zugewiesen (auto-
+// vorgeschlagen wo eindeutig anhand des intervals.icu-Rohtyps, siehe suggestActivityKind()).
+const DEFAULT_ACTIVITY_KINDS = [
+  { label: 'Rennrad', icuTypes: ['Ride'] },
+  { label: 'MTB', icuTypes: ['MountainBikeRide'] },
+  { label: 'Arbeit', icuTypes: [] }, // bewusst kein Auto-Match: teilt sich den Rohtyp "Ride" mit Rennrad, daher nur manuell wählbar
+  { label: 'Laufen', icuTypes: ['Run'] },
+  { label: 'Wandern', icuTypes: ['Hike', 'Walk'] },
 ];
+const ACTIVITY_KIND_COLOR_PALETTE = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#06b6d4', '#ef4444', '#84cc16'];
 
-function equipmentCategoryColor(category) {
-  if (category === 'Rennrad' || category === 'Mountainbike') return TYPE_COLORS.Rad;
-  if (category === 'Laufschuhe') return TYPE_COLORS.Laufen;
-  if (category === 'Wanderausrüstung') return TYPE_COLORS.Mobilität;
-  return '#94a3b8';
+// Legacy-Zuordnung für Ausrüstung, die noch mit dem alten festen "Kategorie"-Feld angelegt wurde
+// (vor Einführung der frei anlegbaren Aktivitätsarten) — rein lesend, keine Persistierung nötig.
+const LEGACY_EQUIPMENT_CATEGORY_TO_KIND_LABEL = { 'Rennrad': 'Rennrad', 'Mountainbike': 'MTB', 'Laufschuhe': 'Laufen', 'Wanderausrüstung': 'Wandern' };
+
+function getActivityKinds() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem('activity_kinds') || 'null'); } catch(e) { data = null; }
+  if (!data || !Array.isArray(data.items)) {
+    data = { items: DEFAULT_ACTIVITY_KINDS.map((d, i) => ({ id: 'ak_default_' + i, label: d.label, icuTypes: d.icuTypes })), updatedAt: 0 };
+    localStorage.setItem('activity_kinds', JSON.stringify(data));
+  }
+  return data;
+}
+function saveActivityKindsLocal(data) {
+  data.updatedAt = Date.now();
+  localStorage.setItem('activity_kinds', JSON.stringify(data));
+  return data;
+}
+function saveActivityKinds(data) {
+  saveActivityKindsLocal(data);
+  if (ghToken && ghRepo) {
+    saveActivityKindsToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
+}
+
+// Ausrüstung ohne activityKindIds (noch mit altem Kategorie-Feld angelegt) auf Basis des Namens
+// gegen die aktuellen Aktivitätsarten auflösen — ohne das Ausrüstungsteil dabei zu verändern.
+function equipmentActivityKindIds(it) {
+  if (Array.isArray(it.activityKindIds)) return it.activityKindIds;
+  const wantLabel = LEGACY_EQUIPMENT_CATEGORY_TO_KIND_LABEL[it.category];
+  if (!wantLabel) return [];
+  const match = (getActivityKinds().items || []).find(k => k.label === wantLabel);
+  return match ? [match.id] : [];
+}
+
+function activityKindColor(kindId) {
+  const idx = (getActivityKinds().items || []).findIndex(k => k.id === kindId);
+  return ACTIVITY_KIND_COLOR_PALETTE[idx >= 0 ? idx % ACTIVITY_KIND_COLOR_PALETTE.length : 0];
+}
+
+// Schlägt eine Aktivitätsart anhand des intervals.icu-Rohtyps vor — nur wenn genau eine Aktivitätsart
+// passt (z.B. "Ride" bei Rennrad UND Arbeit wäre mehrdeutig und bleibt daher manuell zu wählen).
+function suggestActivityKind(act) {
+  if (!act || !act.type) return null;
+  const matches = (getActivityKinds().items || []).filter(k => (k.icuTypes || []).includes(act.type));
+  return matches.length === 1 ? matches[0].id : null;
+}
+
+// Aufgerufen über den Link im Ausrüstungs-Modal — schließt es (Einstellungen sind ein eigenes,
+// gleichrangiges Overlay, kein Stapeln von Modals) und springt direkt in den passenden Reiter.
+function openActivityKindsSettings() {
+  closeEquipmentModal();
+  openSettingsModal();
+  selectSettingsPane('activitykinds');
+}
+function renderActivityKindsList() {
+  const el = document.getElementById('activityKindsList');
+  const kinds = getActivityKinds().items || [];
+  el.innerHTML = kinds.map(k => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <input class="setup-input" style="flex:1" value="${escHtml(k.label)}" onchange="renameActivityKind('${k.id}', this.value)">
+    <button class="btn" style="padding:6px 10px" onclick="deleteActivityKind('${k.id}')">✕</button>
+  </div>`).join('') || '<div class="setup-hint">Noch keine Aktivitätsarten.</div>';
+}
+function addActivityKind() {
+  const input = document.getElementById('newActivityKindName');
+  const label = input.value.trim();
+  if (!label) return;
+  const data = getActivityKinds();
+  data.items.push({ id: 'ak_' + Date.now(), label, icuTypes: [] });
+  saveActivityKinds(data);
+  input.value = '';
+  renderActivityKindsList();
+}
+function renameActivityKind(id, label) {
+  label = label.trim();
+  if (!label) return;
+  const data = getActivityKinds();
+  const k = data.items.find(x => x.id === id);
+  if (k) k.label = label;
+  saveActivityKinds(data);
+}
+function deleteActivityKind(id) {
+  const data = getActivityKinds();
+  data.items = data.items.filter(x => x.id !== id);
+  saveActivityKinds(data);
+  renderActivityKindsList();
 }
 
 function getEquipment() {
@@ -2102,13 +2191,23 @@ function renderEquipmentSection() {
     grid.innerHTML = `<div class="setup-hint">${_equipmentTab === 'retired' ? 'Keine aussortierte Ausrüstung.' : 'Noch keine Ausrüstung angelegt.'}</div>`;
     return;
   }
+  const kinds = getActivityKinds().items || [];
   grid.innerHTML = items.map(it => {
-    const color = equipmentCategoryColor(it.category);
+    const kindIds = equipmentActivityKindIds(it);
+    const kindTags = kindIds.length
+      ? kindIds.map(kid => {
+          const k = kinds.find(x => x.id === kid);
+          if (!k) return '';
+          const c = activityKindColor(kid);
+          return `<span class="tag" style="background:${c}20;color:${c};margin-right:4px">${k.label}</span>`;
+        }).join('')
+      : `<span class="tag" style="background:#94a3b820;color:#94a3b8">alle Aktivitäten</span>`;
+    const barBaseColor = kindIds.length ? activityKindColor(kindIds[0]) : '#94a3b8';
     const totalKm = it.totalKm || 0;
     const hasLimit = it.maxKm > 0;
     const pct = hasLimit ? Math.min(100, totalKm / it.maxKm * 100) : 0;
     const overLimit = hasLimit && totalKm > it.maxKm;
-    const barColor = overLimit ? 'var(--red)' : (hasLimit && pct > 80 ? 'var(--orange)' : color);
+    const barColor = overLimit ? 'var(--red)' : (hasLimit && pct > 80 ? 'var(--orange)' : barBaseColor);
     const bar = hasLimit
       ? `<div class="week-cal-hbar-track" style="background:${barColor}30;margin-top:8px">
            <div class="week-cal-hbar-fill" style="width:${pct}%;background:${barColor}"></div>
@@ -2116,12 +2215,25 @@ function renderEquipmentSection() {
          <div class="week-cal-hbar-hours" style="margin-top:3px">${totalKm.toFixed(1)} von ${it.maxKm} km${overLimit ? ' · Grenze überschritten' : ''}</div>`
       : `<div class="week-cal-hbar-hours" style="margin-top:8px">${totalKm.toFixed(1)} km</div>`;
     return `<div class="card equipment-card${it.retired ? ' equipment-card-retired' : ''}" onclick="openEquipmentModal('${it.id}')">
-      <span class="tag" style="background:${color}20;color:${color}">${it.category}</span>
+      <div>${kindTags}</div>
       <div class="equipment-card-name">${it.name}</div>
       <div class="setup-hint">${it.totalActivities || 0} Aktivitäten · ${(it.totalHours || 0).toFixed(1)} Std.</div>
       ${bar}
     </div>`;
   }).join('');
+}
+
+// Rendert die Checkbox-Gruppe im Ausrüstungs-Modal neu — separate Funktion, weil sie sowohl beim
+// Öffnen des Modals als auch nach Änderungen im Aktivitätsarten-Verwaltungsdialog aufgerufen wird.
+function renderEquipmentKindCheckboxes() {
+  const container = document.getElementById('equipmentKindCheckboxes');
+  const kinds = getActivityKinds().items || [];
+  const eq = getEquipment();
+  const it = _equipmentModalId ? (eq.items || []).find(x => x.id === _equipmentModalId) : null;
+  const checked = it ? equipmentActivityKindIds(it) : [];
+  container.innerHTML = kinds.map(k => `<label class="equipment-kind-checkbox">
+    <input type="checkbox" value="${k.id}"${checked.includes(k.id) ? ' checked' : ''}>${k.label}</label>`).join('')
+    || '<div class="setup-hint">Noch keine Aktivitätsarten angelegt.</div>';
 }
 
 let _equipmentModalId = null;
@@ -2131,9 +2243,7 @@ function openEquipmentModal(id) {
   const it = id ? (eq.items || []).find(x => x.id === id) : null;
   document.getElementById('equipmentModalHeading').textContent = it ? 'Ausrüstung bearbeiten' : 'Ausrüstung anlegen';
   document.getElementById('equipmentName').value = it ? it.name : '';
-  const catSel = document.getElementById('equipmentCategory');
-  catSel.innerHTML = EQUIPMENT_CATEGORIES.map(c => `<option value="${c.label}">${c.label}</option>`).join('');
-  catSel.value = it ? it.category : EQUIPMENT_CATEGORIES[0].label;
+  renderEquipmentKindCheckboxes();
   document.getElementById('equipmentMaxKm').value = it && it.maxKm ? it.maxKm : '';
   document.getElementById('equipmentAdded').value = it && it.addedAt ? it.addedAt : fmtDate(new Date());
   document.getElementById('equipmentBaselineKm').value = it && it.baselineKm ? it.baselineKm : '';
@@ -2159,8 +2269,7 @@ function closeEquipmentModal() {
 function saveEquipmentModal() {
   const name = document.getElementById('equipmentName').value.trim();
   if (!name) { alert('Bitte einen Namen eingeben.'); return; }
-  const categoryLabel = document.getElementById('equipmentCategory').value;
-  const category = EQUIPMENT_CATEGORIES.find(c => c.label === categoryLabel) || EQUIPMENT_CATEGORIES[EQUIPMENT_CATEGORIES.length - 1];
+  const activityKindIds = Array.from(document.querySelectorAll('#equipmentKindCheckboxes input:checked')).map(el => el.value);
   const maxKmRaw = document.getElementById('equipmentMaxKm').value.trim();
   const maxKm = maxKmRaw ? parseFloat(maxKmRaw.replace(',', '.')) : null;
   const addedAt = document.getElementById('equipmentAdded').value || fmtDate(new Date());
@@ -2176,7 +2285,7 @@ function saveEquipmentModal() {
     it = { id: 'eq_' + Date.now(), totalKm: 0, totalHours: 0, totalActivities: 0, retired: false };
     eq.items.push(it);
   }
-  Object.assign(it, { name, category: category.label, activityTypes: category.activityTypes, maxKm, addedAt, baselineKm, baselineHours, note });
+  Object.assign(it, { name, activityKindIds, maxKm, addedAt, baselineKm, baselineHours, note });
   saveEquipment(eq);
   recomputeEquipmentTotals(true); // Start-km/-Stunden fließen sofort in die angezeigten Totals ein
   closeEquipmentModal();
@@ -2564,6 +2673,7 @@ function selectFeel(v) {
 
 // ─── Aktivitäten-Modal (Trainingsbewertung pro Einheit) ───────────────────────
 let _activityModalId = null;
+let _activityModalAct = null; // für refreshActEquipmentOptions() beim Wechsel der Aktivitätsart, ohne act neu zu laden
 
 function findActivityById(id) {
   return (_activitiesFull || []).find(a => String(a.id) === String(id))
@@ -2602,6 +2712,26 @@ function effectiveActivityStats(act, meta) {
   return { auto, eff };
 }
 
+// Baut die Ausrüstungs-Auswahl im Aktivitäts-Modal neu auf, gefiltert auf die aktuell gewählte
+// Aktivitätsart (#actActivityKind) — läuft sowohl beim Öffnen des Modals (initialEquipmentId aus
+// activity_meta) als auch bei dessen onchange (dann ohne Argument: bisherige Auswahl bleibt
+// erhalten, falls sie zur neuen Aktivitätsart noch passt, sonst wird sie zurückgesetzt).
+function refreshActEquipmentOptions(initialEquipmentId) {
+  const eqSel = document.getElementById('actEquipment');
+  const eqField = eqSel.closest('.setup-field');
+  if (!_activityModalAct) { eqField.style.display = 'none'; return; }
+  const selectedKindId = document.getElementById('actActivityKind').value;
+  const prevValue = initialEquipmentId !== undefined ? initialEquipmentId : eqSel.value;
+  const eqItems = (getEquipment().items || []).filter(it => {
+    if (it.retired) return false;
+    const kindIds = equipmentActivityKindIds(it);
+    return !selectedKindId || kindIds.length === 0 || kindIds.includes(selectedKindId);
+  });
+  eqField.style.display = eqItems.length ? '' : 'none';
+  eqSel.innerHTML = '<option value="">– keine –</option>' + eqItems.map(it => `<option value="${it.id}">${it.name}</option>`).join('');
+  eqSel.value = eqItems.some(it => it.id === prevValue) ? prevValue : '';
+}
+
 // Ruhetage ohne echte Intervals.icu-Aktivität (id "note-<Datum>", siehe renderOverviewGroup) haben
 // kein Objekt in _activitiesFull — synthetisches Fallback-Objekt, damit RPE/Befinden/Bemerkung auch
 // für sie unter derselben (stabilen) id gespeichert werden können wie für echte Aktivitäten.
@@ -2612,6 +2742,7 @@ function openActivityModal(actId) {
     : findActivityById(actId);
   if (!act) return;
   _activityModalId = act.id;
+  _activityModalAct = isNoteOnlyId ? null : act;
   const type = isNoteOnlyId ? 'Ruhetag' : normalizeType(act.type);
   const color = isNoteOnlyId ? PLAN_EXTRA_COLORS.Ruhetag : (TYPE_COLORS[type] || '#94a3b8');
   document.getElementById('activityModalType').innerHTML = `<span class="tag" style="background:${color}20;color:${color}">${type}</span>`;
@@ -2646,15 +2777,17 @@ function openActivityModal(actId) {
   const effectSel = document.getElementById('actTrainingEffect');
   effectSel.innerHTML = '<option value="">– wählen –</option>' + EFFECT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
   effectSel.value = meta.effectCategory || suggestEffectCategory(act, type) || '';
-  const eqSel = document.getElementById('actEquipment');
-  const eqField = eqSel.closest('.setup-field');
+  const kindSel = document.getElementById('actActivityKind');
+  const kindField = kindSel.closest('.setup-field');
   if (isNoteOnlyId) {
-    eqField.style.display = 'none';
+    kindField.style.display = 'none';
+    document.getElementById('actEquipment').closest('.setup-field').style.display = 'none';
   } else {
-    const eqItems = (getEquipment().items || []).filter(it => !it.retired && (!it.activityTypes || !it.activityTypes.length || it.activityTypes.includes(act.type)));
-    eqField.style.display = eqItems.length ? '' : 'none';
-    eqSel.innerHTML = '<option value="">– keine –</option>' + eqItems.map(it => `<option value="${it.id}">${it.name}</option>`).join('');
-    eqSel.value = meta.equipmentId || '';
+    kindField.style.display = '';
+    const kinds = getActivityKinds().items || [];
+    kindSel.innerHTML = '<option value="">– wählen –</option>' + kinds.map(k => `<option value="${k.id}">${k.label}</option>`).join('');
+    kindSel.value = meta.activityKindId || suggestActivityKind(act) || '';
+    refreshActEquipmentOptions(meta.equipmentId || '');
   }
   document.getElementById('actTemp').value = meta.temp != null ? meta.temp : '';
   document.getElementById('actWeather').value = meta.weather || '';
@@ -2679,6 +2812,7 @@ function openActivityModal(actId) {
 function closeActivityModal() {
   document.getElementById('activityModal').style.display = 'none';
   _activityModalId = null;
+  _activityModalAct = null;
 }
 
 function deleteActivityModal() {
@@ -2701,6 +2835,7 @@ async function saveActivityModal() {
   const feel = feelSel ? parseInt(feelSel) : null;
   const note = document.getElementById('actNote').value.trim();
   const effectCategory = document.getElementById('actTrainingEffect').value;
+  const activityKindId = document.getElementById('actActivityKind').value;
   const equipmentId = document.getElementById('actEquipment').value;
   const tempRaw = document.getElementById('actTemp').value.trim();
   const temp = tempRaw ? parseFloat(tempRaw) : null;
@@ -2711,7 +2846,7 @@ async function saveActivityModal() {
     const num = parseFloat(raw);
     statPatch[inp.dataset.statKey] = raw && !isNaN(num) ? num : null;
   });
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, equipmentId, temp, weather, ...statPatch });
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, activityKindId, equipmentId, temp, weather, ...statPatch });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   closeActivityModal();

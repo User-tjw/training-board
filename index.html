@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260903b">
+  <link rel="stylesheet" href="style.css?v=20260903c">
 </head>
 <body>
 
@@ -497,6 +497,10 @@
           <div class="settings-nav-title">Persönliche Daten</div>
           <div class="settings-nav-desc">Name, Geburtstag, FTP</div>
         </div>
+        <div class="settings-nav-item" data-pane="activitykinds" onclick="selectSettingsPane('activitykinds')">
+          <div class="settings-nav-title">Aktivitätsarten</div>
+          <div class="settings-nav-desc">Für Ausrüstungs-Zuordnung</div>
+        </div>
       </div>
 
       <div class="settings-detail">
@@ -581,6 +585,18 @@
             <span id="profileSaved" style="display:none;font-size:12px;color:var(--green)">✓ Gespeichert</span>
           </div>
         </div>
+
+        <!-- Aktivitätsarten: frei anlegbare Labels (Standard: Rennrad/MTB/Arbeit/Laufen/Wandern), steuern die
+             Mehrfachauswahl im Ausrüstungs-Modal und die Aktivitätsart-Zuordnung im Aktivitäts-Modal -->
+        <div class="settings-pane" id="pane-activitykinds" style="display:none">
+          <div class="settings-group-title">Aktivitätsarten</div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht — jede Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden.</div>
+          <div id="activityKindsList" style="margin-bottom:14px"></div>
+          <div style="display:flex;gap:8px">
+            <input class="setup-input" id="newActivityKindName" type="text" placeholder="z.B. Skitour" onkeydown="if(event.key==='Enter')addActivityKind()">
+            <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addActivityKind()">+ Hinzufügen</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -607,7 +623,13 @@
       <select class="setup-input" id="actTrainingEffect"></select>
       <div class="setup-hint">Automatisch vorgeschlagen anhand Ø-HF · nachträglich änderbar</div>
     </div>
-    <!-- Ausrüstungs-Zuordnung: Optionen gefiltert auf zur Aktivität passende Ausrüstung, siehe openActivityModal() -->
+    <!-- Aktivitätsart: automatisch vorgeschlagen wo eindeutig (siehe suggestActivityKind()), sonst manuell
+         wählbar — steuert, welche Ausrüstung im Feld darunter zur Auswahl steht -->
+    <div class="setup-field" style="margin-top:10px">
+      <label class="setup-label">Aktivitätsart</label>
+      <select class="setup-input" id="actActivityKind" onchange="refreshActEquipmentOptions()"></select>
+    </div>
+    <!-- Ausrüstungs-Zuordnung: Optionen gefiltert auf zur gewählten Aktivitätsart passende Ausrüstung -->
     <div class="setup-field" style="margin-top:10px">
       <label class="setup-label">Ausrüstung</label>
       <select class="setup-input" id="actEquipment"></select>
@@ -664,9 +686,12 @@
       <label class="setup-label">Name</label>
       <input class="setup-input" id="equipmentName" type="text" placeholder="z.B. Orbea Orca">
     </div>
+    <!-- Mehrfachauswahl statt festem Kategorie-Dropdown: eine Ausrüstung kann für mehrere Aktivitätsarten
+         gelten (z.B. ein Rad für Rennrad UND Arbeit) — steuert die Filterung im Aktivitäts-Modal -->
     <div class="setup-field">
-      <label class="setup-label">Kategorie</label>
-      <select class="setup-input" id="equipmentCategory"></select>
+      <label class="setup-label">Aktivitätsarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(keine Auswahl = für alle nutzbar)</span></label>
+      <div id="equipmentKindCheckboxes" class="equipment-kind-checkboxes"></div>
+      <button type="button" class="trainer-link" onclick="openActivityKindsSettings()">⚙ Aktivitätsarten verwalten →</button>
     </div>
     <div class="note-editor-grid2">
       <div class="setup-field">
@@ -837,6 +862,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260903e"></script>
+<script src="app.js?v=20260903g"></script>
 </body>
 </html>
