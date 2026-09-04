@@ -586,26 +586,14 @@
           </div>
         </div>
 
-        <!-- Aktivitätsarten: frei anlegbare Labels (Standard: Rennrad/MTB/Arbeit/Laufen/Wandern), steuern die
-             Mehrfachauswahl im Ausrüstungs-Modal und die Aktivitätsart-Zuordnung im Aktivitäts-Modal -->
+        <!-- Aktivitätsarten: frei anlegbare Kategorien (Standard: Rennrad/MTB/Arbeit/Laufen/Wandern), steuern die
+             Mehrfachauswahl im Ausrüstungs-Modal. Anlegen/Bearbeiten (Name + Unterarten zur automatischen
+             Erkennung) läuft über ein eigenes Modal, siehe openActivityKindModal() in app.js -->
         <div class="settings-pane" id="pane-activitykinds" style="display:none">
           <div class="settings-group-title">Aktivitätsarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht — jede Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden. Welche Sportart zu welcher Aktivitätsart automatisch erkannt wird, stellst du unten bei „Sportarten" ein.</div>
-          <div id="activityKindsList" style="margin-bottom:14px"></div>
-          <div style="display:flex;gap:8px">
-            <input class="setup-input" id="newActivityKindName" type="text" placeholder="z.B. Skitour" onkeydown="if(event.key==='Enter')addActivityKind()">
-            <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addActivityKind()">+ Hinzufügen</button>
-          </div>
-
-          <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
-          <div class="settings-group-title">Sportarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Jede Sportart per Dropdown genau einer Aktivitätsart zuordnen (oder „– keine Zuordnung –") — Zuweisen entfernt sie automatisch von jeder anderen Aktivitätsart, ein Konflikt ist damit ausgeschlossen. Bezeichnung frei änderbar, ✕ löscht eine Sportart (auch vordefinierte). Neue eigene Sportart unten anlegen — dafür den technischen Rohtyp-Namen von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
-          <div id="customIcuTypesList" style="margin-bottom:14px"></div>
-          <div style="display:flex;gap:8px">
-            <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Rennrad / Rad" style="flex:1">
-            <input class="setup-input" id="newIcuTypeRaw" type="text" placeholder="Rohtyp, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabel()">
-            <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabel()">+ Hinzufügen</button>
-          </div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht. Zum Bearbeiten (Name, automatische Erkennung anhand der Unterarten von Garmin/Intervals.icu) auf eine Karte klicken.</div>
+          <div id="activityKindsGrid" class="equipment-grid" style="margin-bottom:14px"></div>
+          <button class="setup-btn setup-btn-sm" onclick="openActivityKindModal()">+ Neu anlegen</button>
         </div>
       </div>
     </div>
@@ -743,6 +731,40 @@
   </div>
 </div>
 
+<!-- Aktivitätsart-Modal: Anlegen/Bearbeiten einer Aktivitätsart inkl. automatischer Erkennung über
+     Unterarten (wie Garmin/Intervals.icu die importierte Aktivität technisch benennt), siehe
+     openActivityKindModal()/saveActivityKindModal() -->
+<div class="modal-overlay" id="activityKindModal" style="display:none" onclick="if(event.target===this)closeActivityKindModal()">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div id="activityKindModalHeading" style="font-size:17px;font-weight:600;color:var(--text)"></div>
+      <button class="btn" onclick="closeActivityKindModal()">✕</button>
+    </div>
+    <div class="setup-field">
+      <label class="setup-label">Name</label>
+      <input class="setup-input" id="activityKindName" type="text" placeholder="z.B. Rennrad">
+    </div>
+    <!-- Unterarten: wie Garmin/Intervals.icu die importierte Aktivität technisch benennt (z.B. "Ride").
+         Mehrfachauswahl per Checkbox, gilt erst nach "Speichern" — Ankreuzen entfernt eine Unterart beim
+         Speichern automatisch von jeder anderen Aktivitätsart (siehe saveActivityKindModal() in app.js) -->
+    <div class="setup-field">
+      <label class="setup-label">Unterarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(zur automatischen Erkennung)</span></label>
+      <div id="activityKindTypeCheckboxes" class="equipment-kind-checkboxes"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input class="setup-input" id="newIcuTypeLabelModal" type="text" placeholder="Eigene Unterart, z.B. Rennrad / Rad" style="flex:1">
+        <input class="setup-input" id="newIcuTypeRawModal" type="text" placeholder="Rohtyp, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabelModal()">
+        <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabelModal()">+</button>
+      </div>
+      <div class="setup-hint" style="margin-top:6px">Kennt Intervals.icu eine Unterart, die hier fehlt? Technischen Rohtyp-Namen eintragen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityKindModal()">Speichern</button>
+      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeActivityKindModal()">Abbrechen</button>
+    </div>
+    <button class="btn" id="activityKindDeleteBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red);display:none" onclick="deleteActivityKindModal()">✕ Löschen</button>
+  </div>
+</div>
+
 <!-- Plan-Modal: geplante Trainingseinheit im Wochenkalender anlegen/bearbeiten -->
 <div class="modal-overlay" id="planModal" style="display:none" onclick="if(event.target===this)closePlanModal()">
   <div class="modal">
@@ -874,6 +896,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904g"></script>
+<script src="app.js?v=20260904i"></script>
 </body>
 </html>
