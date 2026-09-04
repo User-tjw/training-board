@@ -589,16 +589,19 @@
         <!-- Unterarten: wie Garmin/Intervals.icu eine Aktivität technisch benennt (Code, z.B. "Ride", ggf.
              kombiniert mit sub_type wie "Ride:COMMUTE" für Pendelfahrten) — steuert einzig, welche
              Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird, siehe equipmentForActivity()
-             in app.js. Keine Aktivitätsart-Ebene mehr darüber (bewusst am 04.09.2026 wieder entfernt). -->
+             in app.js. Keine Aktivitätsart-Ebene mehr darüber (bewusst am 04.09.2026 wieder entfernt).
+             Neue Unterart: statt einen Code einzutippen, wird eine bekannte Aktivität aus der Historie
+             gewählt — der Code wird automatisch daraus abgelesen (addCustomIcuTypeLabel() in app.js). -->
         <div class="settings-pane" id="pane-subtypes" style="display:none">
           <div class="settings-group-title">Unterarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuert, welche Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird. Bezeichnung frei änderbar, ✕ löscht eine Unterart (auch vordefinierte). Neue eigene Unterart unten anlegen — dafür den technischen Code von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuert, welche Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird. Bezeichnung frei änderbar, ✕ löscht eine Unterart (auch vordefinierte).</div>
           <div id="icuTypesList" style="margin-bottom:14px"></div>
           <div style="display:flex;gap:8px">
-            <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Rennrad / Rad" style="flex:1">
-            <input class="setup-input" id="newIcuTypeRaw" type="text" placeholder="Code, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabel()">
+            <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Rennrad" style="flex:1">
+            <select class="setup-input" id="newIcuTypeActivity" style="flex:1"></select>
             <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabel()">+ Hinzufügen</button>
           </div>
+          <div class="setup-hint" style="margin-top:6px">Wähle eine Aktivität aus deiner Historie, die zu dieser Bezeichnung passt — anhand ihrer technischen Daten wird sie künftig automatisch erkannt.</div>
         </div>
       </div>
     </div>
@@ -862,6 +865,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904l"></script>
+<script src="app.js?v=20260904m"></script>
 </body>
 </html>

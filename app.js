@@ -471,7 +471,7 @@ function closeSettingsModal() {
 function selectSettingsPane(name) {
   document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.pane === name));
   document.querySelectorAll('.settings-pane').forEach(p => p.style.display = (p.id === 'pane-' + name) ? 'block' : 'none');
-  if (name === 'subtypes') renderIcuTypesList();
+  if (name === 'subtypes') { renderIcuTypesList(); renderNewIcuTypeActivityOptions(); }
 }
 
 function populateSettingsForm() {
@@ -2173,14 +2173,31 @@ function hideIcuTypeLabel(type) {
     renderIcuTypesList();
   }
 }
+// Füllt die Auswahl im Anlegen-Formular mit den geladenen Aktivitäten (neueste zuerst) — Thomas wählt
+// eine ihm bekannte Aktivität statt einen technischen Code einzutippen, siehe addCustomIcuTypeLabel().
+function renderNewIcuTypeActivityOptions() {
+  const sel = document.getElementById('newIcuTypeActivity');
+  if (!sel) return;
+  const acts = (_activitiesFull || []).slice().sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
+  sel.innerHTML = acts.map(a => {
+    const d = new Date(a.start_date_local);
+    const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return `<option value="${a.id}">${dateStr} — ${escHtml(a.name || a.type)}</option>`;
+  }).join('') || '<option value="">Keine Aktivitäten geladen</option>';
+}
+// Legt eine neue Unterart an, ohne dass Thomas einen technischen Code kennen muss — er wählt stattdessen
+// eine ihm bekannte Aktivität aus seiner Historie aus, der Code (Rohtyp, ggf. kombiniert mit sub_type
+// wie bei "Ride:COMMUTE" für Pendelfahrten) wird automatisch aus deren echten Daten abgelesen.
 function addCustomIcuTypeLabel() {
-  const typeInput = document.getElementById('newIcuTypeRaw');
   const labelInput = document.getElementById('newIcuTypeLabel');
-  const type = typeInput.value.trim();
+  const actSel = document.getElementById('newIcuTypeActivity');
   const label = labelInput.value.trim();
-  if (!type || !label) return;
+  const actId = actSel.value;
+  if (!label || !actId) return;
+  const act = (_activitiesFull || []).find(a => String(a.id) === String(actId));
+  if (!act) return;
+  const type = (act.sub_type && act.sub_type !== 'NONE') ? `${act.type}:${act.sub_type}` : act.type;
   upsertIcuTypeOverride(type, { label, hidden: undefined });
-  typeInput.value = '';
   labelInput.value = '';
 }
 // Aufgerufen über den Link im Ausrüstungs-Modal — schließt es (Einstellungen sind ein eigenes,
