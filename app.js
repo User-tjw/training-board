@@ -2286,10 +2286,13 @@ function renderActivityKindTypeCheckboxes(checkedOverride) {
   const k = _activityKindModalId ? kinds.find(x => x.id === _activityKindModalId) : null;
   const checked = checkedOverride !== undefined ? checkedOverride : (k ? (k.icuTypes || []) : []);
   const entries = allIcuTypeEntries();
-  container.innerHTML = entries.map(e => `<label class="equipment-kind-checkbox">
-    <input type="checkbox" value="${e.type}"${checked.includes(e.type) ? ' checked' : ''}>${escHtml(e.label)}
-    <span onclick="event.preventDefault();event.stopPropagation();removeIcuTypeInModal('${e.type}')" style="opacity:0.5;margin-left:2px" title="Unterart löschen">✕</span>
-  </label>`).join('')
+  // Kein <label>-Wrapper (der würde Klicks auf Textfeld/✕ zusätzlich als Checkbox-Toggle interpretieren) —
+  // Checkbox, editierbares Label und Löschen-Button sind daher unabhängige Geschwister-Elemente.
+  container.innerHTML = entries.map(e => `<span class="equipment-kind-checkbox">
+    <input type="checkbox" value="${e.type}"${checked.includes(e.type) ? ' checked' : ''}>
+    <input type="text" value="${escHtml(e.label)}" style="border:none;background:transparent;color:inherit;font:inherit;width:${Math.max(6, e.label.length + 1)}ch;padding:0" onchange="updateIcuTypeLabelInModal('${e.type}', this.value)">
+    <span onclick="removeIcuTypeInModal('${e.type}')" style="opacity:0.5;cursor:pointer" title="Unterart löschen">✕</span>
+  </span>`).join('')
     || '<div class="setup-hint">Noch keine Unterarten angelegt.</div>';
 }
 // Löscht eine Unterart direkt aus dem Modal heraus (siehe hideIcuTypeLabel()) und rendert die
@@ -2297,6 +2300,14 @@ function renderActivityKindTypeCheckboxes(checkedOverride) {
 function removeIcuTypeInModal(type) {
   const checkedNow = Array.from(document.querySelectorAll('#activityKindTypeCheckboxes input:checked')).map(el => el.value).filter(t => t !== type);
   hideIcuTypeLabel(type);
+  renderActivityKindTypeCheckboxes(checkedNow);
+}
+// Benennt eine Unterart direkt im Modal um (siehe upsertIcuTypeOverride()) und rendert die
+// Checkbox-Liste mit der bisherigen, noch ungespeicherten Auswahl neu.
+function updateIcuTypeLabelInModal(type, value) {
+  const label = value.trim();
+  const checkedNow = Array.from(document.querySelectorAll('#activityKindTypeCheckboxes input:checked')).map(el => el.value);
+  if (label) upsertIcuTypeOverride(type, { label });
   renderActivityKindTypeCheckboxes(checkedNow);
 }
 // Legt eine neue Unterart (Rohtyp + Bezeichnung) an und hakt sie direkt für die gerade im Modal
