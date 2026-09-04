@@ -498,7 +498,7 @@
           <div class="settings-nav-desc">Name, Geburtstag, FTP</div>
         </div>
         <div class="settings-nav-item" data-pane="subtypes" onclick="selectSettingsPane('subtypes')">
-          <div class="settings-nav-title">Unterarten</div>
+          <div class="settings-nav-title">Aktivitäten</div>
           <div class="settings-nav-desc">Für Ausrüstungs-Zuordnung</div>
         </div>
       </div>
@@ -587,21 +587,14 @@
         </div>
 
         <!-- Unterarten: wie Garmin/Intervals.icu eine Aktivität technisch benennt (Code, z.B. "Ride", ggf.
-             kombiniert mit sub_type wie "Ride:COMMUTE" für Pendelfahrten) — steuert einzig, welche
-             Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird, siehe equipmentForActivity()
-             in app.js. Keine Aktivitätsart-Ebene mehr darüber (bewusst am 04.09.2026 wieder entfernt).
-             Neue Unterart: statt einen Code einzutippen, wird eine bekannte Aktivität aus der Historie
-             gewählt — der Code wird automatisch daraus abgelesen (addCustomIcuTypeLabel() in app.js). -->
+             kombiniert mit sub_type wie "Ride:COMMUTE" für Pendelfahrten) — hier nur noch Bezeichnungen
+             umbenennen/ausblenden. Die Zuordnung zur Ausrüstung läuft seit 04.09.2026 direkt im
+             Ausrüstungs-Modal über eine Mehrfachauswahl an Standardaktivitäten, siehe
+             renderEquipmentKindCheckboxes()/distinctActivityKinds() in app.js. -->
         <div class="settings-pane" id="pane-subtypes" style="display:none">
-          <div class="settings-group-title">Unterarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuert, welche Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird. Bezeichnung frei änderbar, ✕ löscht eine Unterart (auch vordefinierte).</div>
+          <div class="settings-group-title">Aktivitäten</div>
+          <div class="setup-hint" style="margin-bottom:12px">Bezeichnungen für die Standardaktivitäten-Auswahl im Ausrüstungs-Modal. Frei änderbar, ✕ löscht eine Aktivität (auch vordefinierte).</div>
           <div id="icuTypesList" style="margin-bottom:14px"></div>
-          <div style="display:flex;gap:8px">
-            <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Rennrad" style="flex:1">
-            <select class="setup-input" id="newIcuTypeActivity" style="flex:1"></select>
-            <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabel()">+ Hinzufügen</button>
-          </div>
-          <div class="setup-hint" style="margin-top:6px">Wähle eine Aktivität aus deiner Historie, die zu dieser Bezeichnung passt — anhand ihrer technischen Daten wird sie künftig automatisch erkannt.</div>
         </div>
       </div>
     </div>
@@ -688,13 +681,13 @@
       <label class="setup-label">Name</label>
       <input class="setup-input" id="equipmentName" type="text" placeholder="z.B. Orbea Orca">
     </div>
-    <!-- Mehrfachauswahl statt festem Kategorie-Dropdown: eine Ausrüstung kann für mehrere Unterarten
-         (Codes wie Garmin/Intervals.icu die Aktivität benennt) gelten, z.B. ein Rad für Rennrad-Fahrten
-         UND Pendelfahrten — hängt direkt an den echten Aktivitätsdaten, siehe equipmentForActivity() in app.js -->
+    <!-- Mehrfachauswahl direkt aus der Aktivitäts-Historie (distinctActivityKinds() in app.js): eine
+         Ausrüstung kann für mehrere Standardaktivitäten gelten, z.B. ein Rad für Rennrad-Fahrten UND
+         Pendelfahrten — hängt direkt an den echten Aktivitätsdaten, siehe equipmentForActivity() in app.js -->
     <div class="setup-field">
-      <label class="setup-label">Unterarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(keine Auswahl = für alle nutzbar)</span></label>
+      <label class="setup-label">Standardaktivitäten <span style="text-transform:none;font-weight:400;color:var(--text2)">(keine Auswahl = für alle nutzbar)</span></label>
       <div id="equipmentKindCheckboxes" class="equipment-kind-checkboxes"></div>
-      <button type="button" class="trainer-link" onclick="openIcuTypesSettings()">⚙ Unterarten verwalten →</button>
+      <button type="button" class="trainer-link" onclick="openIcuTypesSettings()">⚙ Bezeichnungen verwalten →</button>
     </div>
     <div class="note-editor-grid2">
       <div class="setup-field">
@@ -865,6 +858,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904m"></script>
+<script src="app.js?v=20260905a"></script>
 </body>
 </html>

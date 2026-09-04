@@ -471,7 +471,7 @@ function closeSettingsModal() {
 function selectSettingsPane(name) {
   document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.pane === name));
   document.querySelectorAll('.settings-pane').forEach(p => p.style.display = (p.id === 'pane-' + name) ? 'block' : 'none');
-  if (name === 'subtypes') { renderIcuTypesList(); renderNewIcuTypeActivityOptions(); }
+  if (name === 'subtypes') { renderIcuTypesList(); }
 }
 
 function populateSettingsForm() {
@@ -2052,13 +2052,11 @@ function activityEquipmentIds(meta) {
 function equipmentIcuTypes(it) {
   return Array.isArray(it.icuTypes) ? it.icuTypes : [];
 }
-// Nicht aussortierte Ausrüstung, deren Unterarten zur Aktivität passen — zuerst die genauere
+// Nicht aussortierte Ausrüstung, deren Standardaktivitäten zur Aktivität passen — zuerst die genauere
 // Rohtyp:sub_type-Kombination (z.B. "Ride:COMMUTE"), sonst der reine Rohtyp; leere icuTypes = zu jeder
 // Aktivität passend. Hängt direkt an den echten Intervals.icu-Daten der Aktivität, keine weitere
-// Kategorisierungsebene dazwischen (Aktivitätsarten wurden am 04.09.2026 wieder entfernt — brachten
-// keinen Mehrwert mehr, nachdem die Ausrüstungs-Zuordnung auf Unterarten umgestellt wurde). Gemeinsame
-// Filterlogik für die Checkbox-Auswahl im Aktivitäts-Modal (refreshActEquipmentOptions()) und die
-// automatische Hintergrund-Zuordnung (autoAssignEquipment()).
+// Kategorisierungsebene dazwischen. Gemeinsame Filterlogik für die Checkbox-Auswahl im Aktivitäts-Modal
+// (refreshActEquipmentOptions()) und die automatische Hintergrund-Zuordnung (autoAssignEquipment()).
 function equipmentForActivity(act) {
   const keys = [];
   if (act && act.sub_type && act.sub_type !== 'NONE') keys.push(`${act.type}:${act.sub_type}`);
@@ -2141,6 +2139,35 @@ function allIcuTypeLabels() {
   allIcuTypeEntries().forEach(e => { obj[e.type] = e.label; });
   return obj;
 }
+// Lesbare Ersatzbezeichnung für Rohtypen ohne hinterlegtes Label (z.B. ein bei Intervals.icu
+// vorkommender Typ, der nicht in ICU_TYPE_LABELS steht und auch nicht in den Einstellungen
+// umbenannt wurde) — wird u.a. in der Standardaktivitäten-Auswahl im Ausrüstungs-Modal gebraucht,
+// da dort jeder in der Historie vorkommende Rohtyp wählbar ist, nicht nur die vordefinierten.
+function prettifyIcuType(type) {
+  const [base, sub] = type.split(':');
+  const words = base.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  return sub ? `${words} (${sub})` : words;
+}
+// Ein Eintrag je in der Historie vorkommender Rohtyp/sub_type-Kombination, mit Label (vordefiniert/
+// umbenannt oder sonst prettifyIcuType()-Fallback) — Basis für die Standardaktivitäten-Mehrfachauswahl
+// im Ausrüstungs-Modal (renderEquipmentKindCheckboxes()). Ersetzt seit 04.09.2026 die vorige zweistufige
+// Zuordnung über separat angelegte "Unterarten", da Thomas die zur Ausrüstung passenden Aktivitätsarten
+// lieber direkt beim Ausrüstungsteil auswählt statt vorher eine Bezeichnung dafür anzulegen.
+function distinctActivityKinds() {
+  const seen = new Set();
+  const keys = [];
+  (_activitiesFull || []).forEach(act => {
+    if (!act || !act.type) return;
+    const key = (act.sub_type && act.sub_type !== 'NONE') ? `${act.type}:${act.sub_type}` : act.type;
+    if (seen.has(key)) return;
+    seen.add(key);
+    keys.push(key);
+  });
+  const labels = allIcuTypeLabels();
+  return keys
+    .map(type => ({ type, label: labels[type] || prettifyIcuType(type) }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'de'));
+}
 // Erstellt/ändert den Override-Eintrag für einen Rohtyp und räumt ihn wieder auf, sobald er nichts
 // mehr bewirkt (kein Label-Override, nicht ausgeblendet) — bei vordefinierten Typen bedeutet das
 // „zurück auf Standard", bei rein eigenen Typen ohne Vorgabe verschwindet der Eintrag dann ganz.
@@ -2160,9 +2187,8 @@ function updateIcuTypeLabel(type, value) {
   upsertIcuTypeOverride(type, { label: label || undefined });
 }
 // Löscht eine Unterart dauerhaft. Bei vordefinierten Typen (fest in ICU_TYPE_LABELS hinterlegt)
-// technisch nur per „hidden"-Override, wirkt aber dauerhaft — Wiederherstellen geht bei Bedarf über
-// das Anlegen-Formular mit demselben Code. Rein eigene Unterart ohne Vorgabe wird direkt aus den
-// Overrides entfernt.
+// technisch nur per „hidden"-Override, wirkt aber dauerhaft. Rein eigene (umbenannte) Unterart wird
+// direkt aus den Overrides entfernt.
 function hideIcuTypeLabel(type) {
   if (ICU_TYPE_LABELS[type] !== undefined) {
     upsertIcuTypeOverride(type, { hidden: true });
@@ -2173,33 +2199,6 @@ function hideIcuTypeLabel(type) {
     renderIcuTypesList();
   }
 }
-// Füllt die Auswahl im Anlegen-Formular mit den geladenen Aktivitäten (neueste zuerst) — Thomas wählt
-// eine ihm bekannte Aktivität statt einen technischen Code einzutippen, siehe addCustomIcuTypeLabel().
-function renderNewIcuTypeActivityOptions() {
-  const sel = document.getElementById('newIcuTypeActivity');
-  if (!sel) return;
-  const acts = (_activitiesFull || []).slice().sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
-  sel.innerHTML = acts.map(a => {
-    const d = new Date(a.start_date_local);
-    const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    return `<option value="${a.id}">${dateStr} — ${escHtml(a.name || a.type)}</option>`;
-  }).join('') || '<option value="">Keine Aktivitäten geladen</option>';
-}
-// Legt eine neue Unterart an, ohne dass Thomas einen technischen Code kennen muss — er wählt stattdessen
-// eine ihm bekannte Aktivität aus seiner Historie aus, der Code (Rohtyp, ggf. kombiniert mit sub_type
-// wie bei "Ride:COMMUTE" für Pendelfahrten) wird automatisch aus deren echten Daten abgelesen.
-function addCustomIcuTypeLabel() {
-  const labelInput = document.getElementById('newIcuTypeLabel');
-  const actSel = document.getElementById('newIcuTypeActivity');
-  const label = labelInput.value.trim();
-  const actId = actSel.value;
-  if (!label || !actId) return;
-  const act = (_activitiesFull || []).find(a => String(a.id) === String(actId));
-  if (!act) return;
-  const type = (act.sub_type && act.sub_type !== 'NONE') ? `${act.type}:${act.sub_type}` : act.type;
-  upsertIcuTypeOverride(type, { label, hidden: undefined });
-  labelInput.value = '';
-}
 // Aufgerufen über den Link im Ausrüstungs-Modal — schließt es (Einstellungen sind ein eigenes,
 // gleichrangiges Overlay, kein Stapeln von Modals) und springt direkt in den passenden Reiter.
 function openIcuTypesSettings() {
@@ -2207,15 +2206,18 @@ function openIcuTypesSettings() {
   openSettingsModal();
   selectSettingsPane('subtypes');
 }
-// Flache Liste in den Einstellungen — jede Unterart mit editierbarer Bezeichnung + Löschen-Button,
-// keine weitere Zuordnungsebene mehr (Aktivitätsarten am 04.09.2026 wieder entfernt).
+// Flache Liste in den Einstellungen — jede Aktivität mit editierbarer Bezeichnung + Löschen-Button,
+// keine weitere Zuordnungsebene mehr (Aktivitätsarten am 04.09.2026 wieder entfernt). Der technische
+// Code (z.B. "Ride:COMMUTE") steht als kleine Caption über dem Namensfeld statt daneben.
 function renderIcuTypesList() {
   const el = document.getElementById('icuTypesList');
   if (!el) return;
   const entries = allIcuTypeEntries();
-  el.innerHTML = entries.map(e => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-    <input class="setup-input" style="flex:1" value="${escHtml(e.label)}" onchange="updateIcuTypeLabel('${e.type}', this.value)">
-    <span class="setup-hint" style="flex-shrink:0">${escHtml(e.type)}</span>
+  el.innerHTML = entries.map(e => `<div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:6px">
+    <div style="flex:1">
+      <div class="setup-hint" style="font-size:10px;margin-bottom:2px">${escHtml(e.type)}</div>
+      <input class="setup-input" style="width:100%" value="${escHtml(e.label)}" onchange="updateIcuTypeLabel('${e.type}', this.value)">
+    </div>
     <button class="btn" style="padding:6px 10px" onclick="hideIcuTypeLabel('${e.type}')">✕</button>
   </div>`).join('') || '<div class="setup-hint">Keine Unterarten vorhanden.</div>';
 }
@@ -2300,7 +2302,7 @@ function renderEquipmentSection() {
   const typeLabels = allIcuTypeLabels();
   grid.innerHTML = items.map(it => {
     const types = equipmentIcuTypes(it);
-    const tagLabels = types.map(t => typeLabels[t]).filter(Boolean);
+    const tagLabels = types.map(t => typeLabels[t] || prettifyIcuType(t));
     const kindTags = tagLabels.length
       ? tagLabels.map(l => `<span class="tag" style="background:#64748b20;color:#64748b;margin-right:4px">${escHtml(l)}</span>`).join('')
       : `<span class="tag" style="background:#94a3b820;color:#94a3b8">alle Aktivitäten</span>`;
@@ -2325,19 +2327,18 @@ function renderEquipmentSection() {
   }).join('');
 }
 
-// Rendert die Checkbox-Gruppe im Ausrüstungs-Modal neu — Unterarten (Rohtypen) statt Aktivitätsarten,
-// damit die Zuordnung direkt an den echten Intervals.icu-Daten hängt statt an der (ggf. mehrdeutigen)
-// Aktivitätsart. Separate Funktion, weil sie sowohl beim Öffnen des Modals als auch nach Änderungen
-// im Aktivitätsarten-Verwaltungsdialog (dort werden auch Unterarten verwaltet) aufgerufen wird.
+// Rendert die Checkbox-Gruppe im Ausrüstungs-Modal neu — eine Checkbox je in der Historie
+// vorkommender Rohtyp/sub_type-Kombination (distinctActivityKinds()), damit die Zuordnung direkt an
+// den echten Intervals.icu-Daten hängt statt an einer vorher separat anzulegenden Bezeichnung.
 function renderEquipmentKindCheckboxes() {
   const container = document.getElementById('equipmentKindCheckboxes');
   const eq = getEquipment();
   const it = _equipmentModalId ? (eq.items || []).find(x => x.id === _equipmentModalId) : null;
   const checked = it ? equipmentIcuTypes(it) : [];
-  const entries = allIcuTypeEntries();
-  container.innerHTML = entries.map(e => `<label class="equipment-kind-checkbox">
-    <input type="checkbox" value="${e.type}"${checked.includes(e.type) ? ' checked' : ''}>${escHtml(e.label)}</label>`).join('')
-    || '<div class="setup-hint">Noch keine Unterarten angelegt.</div>';
+  const kinds = distinctActivityKinds();
+  container.innerHTML = kinds.map(k => `<label class="equipment-kind-checkbox">
+    <input type="checkbox" value="${k.type}"${checked.includes(k.type) ? ' checked' : ''}>${escHtml(k.label)}</label>`).join('')
+    || '<div class="setup-hint">Noch keine Aktivitäten geladen.</div>';
 }
 
 let _equipmentModalId = null;
@@ -3538,6 +3539,7 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
   if(!list.length){el.innerHTML='<div class="loading">Keine Aktivitäten</div>';return;}
 
   let lastYear = null;
+  const typeLabels = allIcuTypeLabels();
   el.innerHTML = list.map(a => {
     const isNoteOnly = a._noteOnly === true;
     const activityDate = new Date(a.start_date_local);
@@ -3556,9 +3558,10 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
     const respVal=isNoteOnly?'—':(resp!=null?Math.round(resp)+'/min':'—');
     const elev=a.total_elevation_gain?Math.round(a.total_elevation_gain)+' m':'—';
     const nameVal = isNoteOnly ? '<span style="color:var(--text2)">Ruhetag</span>' : escHtml(a.name||normalizeType(a.type));
-    const typName = normalizeType(a.type);
-    const typColor = TYPE_COLORS[typName] || '#94a3b8';
-    const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${typName}</span>`;
+    const typColor = TYPE_COLORS[normalizeType(a.type)] || '#94a3b8';
+    const typKey = (a.sub_type && a.sub_type !== 'NONE') ? `${a.type}:${a.sub_type}` : a.type;
+    const typLabel = typeLabels[typKey] || prettifyIcuType(typKey || '');
+    const typVal = isNoteOnly ? '<span style="color:var(--text2)">—</span>' : `<span class="tag" style="background:${typColor}20;color:${typColor}">${escHtml(typLabel)}</span>`;
     const dayKey = fmtDate(new Date(a.start_date_local));
 
     // Trainer-Zusammenfassungen sind separate Notizen, unabhängig von der Tagesnotiz (die jetzt
@@ -3582,13 +3585,12 @@ function renderActivityTable(activities, containerId, limit=null, journalByDate=
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
         <span class="mono" style="font-size:12px">${date}</span>
       </div>
-      <div style="display:flex;flex-direction:column;width:150px;flex-shrink:0">
-        <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Aktivität</span>
+      <div style="display:flex;flex-direction:column;width:150px;flex-shrink:0;justify-content:center">
         <span style="font-size:12px;font-weight:600;min-height:18px;line-height:1.3;word-break:break-word">${nameVal}</span>
         ${remark?`<span style="font-size:10px;color:var(--text2);line-height:1.3;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${remark}">✎ ${remark}</span>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:60px">
-        <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Typ</span>
+        <span style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:0.04em">Aktivität</span>
         <span style="display:flex;align-items:center;min-height:18px">${typVal}</span>
       </div>
       ${statChip('Distanz', km)}
