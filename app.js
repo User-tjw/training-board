@@ -36,8 +36,36 @@ function renderFromCache() {
   renderZonesGroup();
   renderWellnessGroup();
   renderChatMessages();
+  autoAssignEquipment();
   recomputeEquipmentTotals(false);
   renderEquipmentSection();
+}
+
+// Ordnet Aktivitäten, die noch nie eine Ausrüstungs-Zuordnung hatten, im Hintergrund automatisch alle
+// zur (ggf. automatisch vorgeschlagenen) Aktivitätsart passenden Ausrüstungsteile zu — läuft bei
+// jedem renderFromCache() mit, schreibt aber nur bei tatsächlich neuen Zuordnungen. Sobald einmal
+// gesetzt (automatisch oder manuell im Aktivitäts-Modal), fasst die Automatik equipmentIds nie wieder
+// an — siehe activityEquipmentIds().
+function autoAssignEquipment() {
+  if (!_activitiesFull.length) return;
+  const data = getActivityMeta();
+  let changed = false;
+  _activitiesFull.forEach(act => {
+    const cur = (data[act.id] && typeof data[act.id] === 'object') ? data[act.id] : {};
+    if (activityEquipmentIds(cur) !== null) return;
+    const kindId = cur.activityKindId || suggestActivityKind(act);
+    if (!kindId) return;
+    const matches = equipmentForKind(kindId).map(it => it.id);
+    if (!matches.length) return;
+    data[act.id] = { ...cur, equipmentIds: matches };
+    changed = true;
+  });
+  if (!changed) return;
+  data.updatedAt = Date.now();
+  localStorage.setItem('activity_meta', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    saveActivityMetaToGH(data).catch(e => console.error('Auto-Zuordnung Ausrüstung: GitHub-Sync fehlgeschlagen:', e));
+  }
 }
 
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
@@ -709,6 +737,7 @@ function saveApiSettings() {
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
   syncActivityKindsFromGH();
+  syncIcuTypeLabelsFromGH();
   syncEquipmentFromGH();
   loadAll();
   closeSettingsModal();
@@ -783,6 +812,7 @@ function init() {
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
   syncActivityKindsFromGH();
+  syncIcuTypeLabelsFromGH();
   syncEquipmentFromGH();
   loadAll();
 }
@@ -1808,6 +1838,7 @@ const GH_REST_DAYS_FILE = 'settings/rest-days.json';
 const GH_PROFILE_FILE = 'settings/athlete-profile.json';
 const GH_EQUIPMENT_FILE = 'settings/equipment.json';
 const GH_ACTIVITY_KINDS_FILE = 'settings/activity-kinds.json';
+const GH_ICU_TYPE_LABELS_FILE = 'settings/icu-type-labels.json';
 let _notes = [];
 let _editingNote = null;
 
@@ -2012,6 +2043,8 @@ function saveEquipmentToGH(data) { return saveJSONToGH(GH_EQUIPMENT_FILE, data, 
 function syncEquipmentFromGH() { return syncJSONFromGH(GH_EQUIPMENT_FILE, 'equipment', getEquipment, () => { recomputeEquipmentTotals(false); renderEquipmentSection(); }); }
 function saveActivityKindsToGH(data) { return saveJSONToGH(GH_ACTIVITY_KINDS_FILE, data, 'Update Aktivitätsarten'); }
 function syncActivityKindsFromGH() { return syncJSONFromGH(GH_ACTIVITY_KINDS_FILE, 'activity_kinds', getActivityKinds, () => { renderEquipmentSection(); }); }
+function saveIcuTypeLabelsToGH(data) { return saveJSONToGH(GH_ICU_TYPE_LABELS_FILE, data, 'Update Sportarten-Liste'); }
+function syncIcuTypeLabelsFromGH() { return syncJSONFromGH(GH_ICU_TYPE_LABELS_FILE, 'icu_type_labels', getCustomIcuTypeLabels, renderActivityKindsList); }
 
 // ─── Aktivitätsarten: frei anlegbare Labels (Rennrad/MTB/Arbeit/Laufen/Wandern/...), verwaltet über
 // den Reiter "Aktivitätsarten" in den Einstellungen (openActivityKindsSettings). Ersetzen das frühere feste "Kategorie"-
@@ -2062,6 +2095,27 @@ function equipmentActivityKindIds(it) {
   return match ? [match.id] : [];
 }
 
+// Liest die Ausrüstungs-Zuordnung einer Aktivität aus activity_meta — liefert null, wenn noch nie
+// zugeordnet wurde (weder automatisch noch manuell), sonst ein Array (ggf. leer, wenn im Modal
+// bewusst alles abgehakt wurde). Liest auch das alte einzelne "equipmentId"-Feld (vor Mehrfachauswahl).
+function activityEquipmentIds(meta) {
+  if (!meta) return null;
+  if (Array.isArray(meta.equipmentIds)) return meta.equipmentIds;
+  if (meta.equipmentId) return [meta.equipmentId];
+  return null;
+}
+
+// Nicht aussortierte Ausrüstung, die zur gegebenen Aktivitätsart passt (keine activityKindIds = zu
+// jeder Aktivitätsart passend) — gemeinsame Filterlogik für die Checkbox-Auswahl im Aktivitäts-Modal
+// und die automatische Hintergrund-Zuordnung (autoAssignEquipment()).
+function equipmentForKind(kindId) {
+  return (getEquipment().items || []).filter(it => {
+    if (it.retired) return false;
+    const kindIds = equipmentActivityKindIds(it);
+    return !kindId || kindIds.length === 0 || kindIds.includes(kindId);
+  });
+}
+
 function activityKindColor(kindId) {
   const idx = (getActivityKinds().items || []).findIndex(k => k.id === kindId);
   return ACTIVITY_KIND_COLOR_PALETTE[idx >= 0 ? idx % ACTIVITY_KIND_COLOR_PALETTE.length : 0];
@@ -2082,13 +2136,166 @@ function openActivityKindsSettings() {
   openSettingsModal();
   selectSettingsPane('activitykinds');
 }
+// Bekannte Intervals.icu-Rohtypen mit deutscher Bezeichnung, zur Auswahl in renderActivityKindsList()
+// statt technischer Freitext-Eingabe — deckt die bei Intervals.icu/Strava gängigen Sportarten ab.
+// Über getCustomIcuTypeLabels()/addCustomIcuTypeLabel() kann Thomas selbst weitere Rohtypen mit
+// eigener Bezeichnung ergänzen (z.B. für bei Intervals.icu vorkommende Typen, die hier fehlen) — dazu
+// muss er den technischen Rohtyp-Namen kennen, das kann diese Liste ihm nicht abnehmen.
+const ICU_TYPE_LABELS = {
+  Ride: 'Rennrad / Rad',
+  VirtualRide: 'Rad Indoor (Zwift o.ä.)',
+  MountainBikeRide: 'Mountainbike',
+  GravelRide: 'Gravel',
+  EBikeRide: 'E-Bike',
+  Run: 'Laufen',
+  TrailRun: 'Trailrunning',
+  VirtualRun: 'Laufband',
+  Walk: 'Spazieren',
+  Hike: 'Wandern',
+  Swim: 'Schwimmen',
+  WeightTraining: 'Krafttraining',
+  Workout: 'Workout (allgemein)',
+  Rowing: 'Rudern',
+  NordicSki: 'Langlauf',
+  AlpineSki: 'Skifahren',
+};
+
+function getCustomIcuTypeLabels() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem('icu_type_labels') || 'null'); } catch(e) { data = null; }
+  if (!data || !Array.isArray(data.items)) data = { items: [], updatedAt: 0 };
+  return data;
+}
+function saveCustomIcuTypeLabelsLocal(data) {
+  data.updatedAt = Date.now();
+  localStorage.setItem('icu_type_labels', JSON.stringify(data));
+  return data;
+}
+function saveCustomIcuTypeLabels(data) {
+  saveCustomIcuTypeLabelsLocal(data);
+  if (ghToken && ghRepo) {
+    saveIcuTypeLabelsToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
+  }
+}
+// Vordefinierte + selbst angelegte/überschriebene Sportarten zusammengeführt — ein Override-Eintrag
+// pro Rohtyp kann die Bezeichnung eines vordefinierten Typs ändern und/oder ihn ausblenden (hidden),
+// oder (wenn der Rohtyp nicht vordefiniert ist) eine ganz neue Sportart mit eigener Bezeichnung anlegen.
+function allIcuTypeEntries() {
+  const overrides = {};
+  getCustomIcuTypeLabels().items.forEach(it => { overrides[it.type] = it; });
+  const result = [];
+  Object.entries(ICU_TYPE_LABELS).forEach(([type, defLabel]) => {
+    const ov = overrides[type];
+    if (ov && ov.hidden) return;
+    result.push({ type, label: (ov && ov.label) || defLabel, builtin: true });
+  });
+  Object.values(overrides).forEach(ov => {
+    if (ICU_TYPE_LABELS[ov.type] !== undefined || ov.hidden || !ov.label) return;
+    result.push({ type: ov.type, label: ov.label, builtin: false });
+  });
+  return result;
+}
+function allIcuTypeLabels() {
+  const obj = {};
+  allIcuTypeEntries().forEach(e => { obj[e.type] = e.label; });
+  return obj;
+}
+function hiddenBuiltinIcuTypes() {
+  const overrides = {};
+  getCustomIcuTypeLabels().items.forEach(it => { overrides[it.type] = it; });
+  return Object.keys(ICU_TYPE_LABELS)
+    .filter(type => overrides[type] && overrides[type].hidden)
+    .map(type => ({ type, label: overrides[type].label || ICU_TYPE_LABELS[type] }));
+}
+// Erstellt/ändert den Override-Eintrag für einen Rohtyp und räumt ihn wieder auf, sobald er nichts
+// mehr bewirkt (kein Label-Override, nicht ausgeblendet) — bei vordefinierten Typen bedeutet das
+// „zurück auf Standard", bei rein eigenen Typen ohne Vorgabe verschwindet der Eintrag dann ganz.
+function upsertIcuTypeOverride(type, patch) {
+  const data = getCustomIcuTypeLabels();
+  let entry = data.items.find(it => it.type === type);
+  if (!entry) { entry = { type }; data.items.push(entry); }
+  Object.assign(entry, patch);
+  if (!entry.label) delete entry.label;
+  if (!entry.hidden) delete entry.hidden;
+  if (!entry.label && !entry.hidden) data.items = data.items.filter(it => it.type !== type);
+  saveCustomIcuTypeLabels(data);
+  renderActivityKindsList();
+}
+function updateIcuTypeLabel(type, value) {
+  const label = value.trim();
+  upsertIcuTypeOverride(type, { label: label || undefined });
+}
+// Vordefinierte Sportart: nur ausblenden (jederzeit über restoreIcuTypeLabel() reaktivierbar). Rein
+// eigene Sportart ohne Vorgabe: komplett löschen, „ausblenden" wäre hier gleichbedeutend und würde
+// nur unnötig einen toten Override-Eintrag hinterlassen.
+function hideIcuTypeLabel(type) {
+  if (ICU_TYPE_LABELS[type] !== undefined) {
+    upsertIcuTypeOverride(type, { hidden: true });
+  } else {
+    const data = getCustomIcuTypeLabels();
+    data.items = data.items.filter(it => it.type !== type);
+    saveCustomIcuTypeLabels(data);
+    renderActivityKindsList();
+  }
+}
+function restoreIcuTypeLabel(type) {
+  upsertIcuTypeOverride(type, { hidden: undefined });
+}
+function addCustomIcuTypeLabel() {
+  const typeInput = document.getElementById('newIcuTypeRaw');
+  const labelInput = document.getElementById('newIcuTypeLabel');
+  const type = typeInput.value.trim();
+  const label = labelInput.value.trim();
+  if (!type || !label) return;
+  upsertIcuTypeOverride(type, { label, hidden: undefined });
+  typeInput.value = '';
+  labelInput.value = '';
+}
+
 function renderActivityKindsList() {
   const el = document.getElementById('activityKindsList');
   const kinds = getActivityKinds().items || [];
-  el.innerHTML = kinds.map(k => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-    <input class="setup-input" style="flex:1" value="${escHtml(k.label)}" onchange="renameActivityKind('${k.id}', this.value)">
-    <button class="btn" style="padding:6px 10px" onclick="deleteActivityKind('${k.id}')">✕</button>
+  const typeLabels = allIcuTypeLabels();
+  el.innerHTML = kinds.map(k => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <input class="setup-input" style="flex:1" value="${escHtml(k.label)}" onchange="renameActivityKind('${k.id}', this.value)">
+      <button class="btn" style="padding:6px 10px" onclick="deleteActivityKind('${k.id}')">✕</button>
+    </div>
+    <div class="equipment-kind-checkboxes">${Object.entries(typeLabels).map(([type, label]) => `<label class="equipment-kind-checkbox">
+      <input type="checkbox" value="${type}"${(k.icuTypes || []).includes(type) ? ' checked' : ''} onchange="toggleActivityKindIcuType('${k.id}','${type}',this.checked)">${escHtml(label)}</label>`).join('')}</div>
   </div>`).join('') || '<div class="setup-hint">Noch keine Aktivitätsarten.</div>';
+  const listEl = document.getElementById('customIcuTypesList');
+  if (listEl) {
+    const entries = allIcuTypeEntries();
+    listEl.innerHTML = entries.map(e => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <input class="setup-input" style="flex:1" value="${escHtml(e.label)}" onchange="updateIcuTypeLabel('${e.type}', this.value)">
+      <span class="setup-hint" style="flex-shrink:0">${escHtml(e.type)}</span>
+      <button class="btn" style="padding:6px 10px" onclick="hideIcuTypeLabel('${e.type}')">✕</button>
+    </div>`).join('') || '<div class="setup-hint">Keine Sportarten vorhanden.</div>';
+  }
+  const hiddenEl = document.getElementById('hiddenIcuTypesList');
+  if (hiddenEl) {
+    const hidden = hiddenBuiltinIcuTypes();
+    hiddenEl.innerHTML = hidden.length
+      ? '<div class="setup-hint" style="margin-bottom:6px">Ausgeblendet:</div>' + hidden.map(e => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <span class="setup-hint" style="flex:1">${escHtml(e.label)} (${escHtml(e.type)})</span>
+        <button class="setup-btn setup-btn-sm" onclick="restoreIcuTypeLabel('${e.type}')">Wieder anzeigen</button>
+      </div>`).join('')
+      : '';
+  }
+}
+// Rohtyp-Zuordnung für die Auto-Erkennung (suggestActivityKind()) — mehrere Sportarten pro
+// Aktivitätsart möglich (z.B. "Wandern" = Hike + Spazieren). Neu angelegte Aktivitätsarten starten
+// ohne Zuordnung (rein manuell wählbar), bis hier eine angehakt wird. Steht dieselbe Sportart bei
+// mehreren Aktivitätsarten, bleibt die automatische Erkennung mehrdeutig (siehe suggestActivityKind()).
+function toggleActivityKindIcuType(id, type, checked) {
+  const data = getActivityKinds();
+  const k = data.items.find(x => x.id === id);
+  if (!k) return;
+  const set = new Set(k.icuTypes || []);
+  if (checked) set.add(type); else set.delete(type);
+  k.icuTypes = Array.from(set);
+  saveActivityKinds(data);
 }
 function addActivityKind() {
   const input = document.getElementById('newActivityKindName');
@@ -2145,12 +2352,13 @@ function recomputeEquipmentTotals(pushToGH) {
   const totals = {};
   eq.items.forEach(it => { totals[it.id] = { km: 0, sec: 0, n: 0 }; });
   _activitiesFull.forEach(act => {
-    const m = meta[act.id];
-    const eqId = m && m.equipmentId;
-    if (!eqId || !totals[eqId]) return;
-    totals[eqId].km += (act.distance || 0) / 1000;
-    totals[eqId].sec += act.moving_time || 0;
-    totals[eqId].n += 1;
+    const eqIds = activityEquipmentIds(meta[act.id]) || [];
+    eqIds.forEach(eqId => {
+      if (!totals[eqId]) return;
+      totals[eqId].km += (act.distance || 0) / 1000;
+      totals[eqId].sec += act.moving_time || 0;
+      totals[eqId].n += 1;
+    });
   });
   eq.items.forEach(it => {
     const t = totals[it.id];
@@ -2712,24 +2920,30 @@ function effectiveActivityStats(act, meta) {
   return { auto, eff };
 }
 
-// Baut die Ausrüstungs-Auswahl im Aktivitäts-Modal neu auf, gefiltert auf die aktuell gewählte
-// Aktivitätsart (#actActivityKind) — läuft sowohl beim Öffnen des Modals (initialEquipmentId aus
-// activity_meta) als auch bei dessen onchange (dann ohne Argument: bisherige Auswahl bleibt
-// erhalten, falls sie zur neuen Aktivitätsart noch passt, sonst wird sie zurückgesetzt).
-function refreshActEquipmentOptions(initialEquipmentId) {
-  const eqSel = document.getElementById('actEquipment');
-  const eqField = eqSel.closest('.setup-field');
+// Baut die Ausrüstungs-Auswahl (Mehrfachauswahl per Checkbox) im Aktivitäts-Modal neu auf, gefiltert
+// auf die aktuell gewählte Aktivitätsart (#actActivityKind) — läuft sowohl beim Öffnen des Modals
+// (initialEquipmentIds aus activity_meta bzw. null, wenn noch nie zugeordnet) als auch bei dessen
+// onchange (dann ohne Argument: bisherige Auswahl bleibt erhalten, soweit sie zur neuen Aktivitätsart
+// noch passt). War noch nie zugeordnet (initialEquipmentIds null bzw. beim onchange keine bisherige
+// Checkbox-Auswahl vorhanden), sind wie bei der Hintergrund-Automatik alle passenden Teile vorangehakt.
+function refreshActEquipmentOptions(initialEquipmentIds) {
+  const container = document.getElementById('actEquipmentCheckboxes');
+  const eqField = container.closest('.setup-field');
   if (!_activityModalAct) { eqField.style.display = 'none'; return; }
   const selectedKindId = document.getElementById('actActivityKind').value;
-  const prevValue = initialEquipmentId !== undefined ? initialEquipmentId : eqSel.value;
-  const eqItems = (getEquipment().items || []).filter(it => {
-    if (it.retired) return false;
-    const kindIds = equipmentActivityKindIds(it);
-    return !selectedKindId || kindIds.length === 0 || kindIds.includes(selectedKindId);
-  });
+  let prevValue;
+  if (initialEquipmentIds !== undefined) {
+    prevValue = initialEquipmentIds;
+  } else {
+    const checkedNow = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
+    prevValue = checkedNow.length ? checkedNow : null;
+  }
+  const eqItems = equipmentForKind(selectedKindId);
   eqField.style.display = eqItems.length ? '' : 'none';
-  eqSel.innerHTML = '<option value="">– keine –</option>' + eqItems.map(it => `<option value="${it.id}">${it.name}</option>`).join('');
-  eqSel.value = eqItems.some(it => it.id === prevValue) ? prevValue : '';
+  const defaultChecked = prevValue === null ? eqItems.map(it => it.id) : prevValue;
+  container.innerHTML = eqItems.map(it => `<label class="equipment-kind-checkbox">
+    <input type="checkbox" value="${it.id}"${defaultChecked.includes(it.id) ? ' checked' : ''}>${it.name}</label>`).join('')
+    || '<div class="setup-hint">Keine passende Ausrüstung angelegt.</div>';
 }
 
 // Ruhetage ohne echte Intervals.icu-Aktivität (id "note-<Datum>", siehe renderOverviewGroup) haben
@@ -2781,13 +2995,13 @@ function openActivityModal(actId) {
   const kindField = kindSel.closest('.setup-field');
   if (isNoteOnlyId) {
     kindField.style.display = 'none';
-    document.getElementById('actEquipment').closest('.setup-field').style.display = 'none';
+    document.getElementById('actEquipmentCheckboxes').closest('.setup-field').style.display = 'none';
   } else {
     kindField.style.display = '';
     const kinds = getActivityKinds().items || [];
     kindSel.innerHTML = '<option value="">– wählen –</option>' + kinds.map(k => `<option value="${k.id}">${k.label}</option>`).join('');
     kindSel.value = meta.activityKindId || suggestActivityKind(act) || '';
-    refreshActEquipmentOptions(meta.equipmentId || '');
+    refreshActEquipmentOptions(activityEquipmentIds(meta));
   }
   document.getElementById('actTemp').value = meta.temp != null ? meta.temp : '';
   document.getElementById('actWeather').value = meta.weather || '';
@@ -2828,7 +3042,7 @@ function deleteActivityModal() {
 
 async function saveActivityModal() {
   if (!_activityModalId) return;
-  const equipmentIdBefore = getActivityMetaFor(_activityModalId).equipmentId || '';
+  const equipmentIdsBefore = (activityEquipmentIds(getActivityMetaFor(_activityModalId)) || []).slice().sort();
   const rpeSel  = document.getElementById('rpePicker').dataset.selected;
   const feelSel = document.getElementById('feelPicker').dataset.selected;
   const rpe  = rpeSel  ? parseInt(rpeSel)  : null;
@@ -2836,7 +3050,7 @@ async function saveActivityModal() {
   const note = document.getElementById('actNote').value.trim();
   const effectCategory = document.getElementById('actTrainingEffect').value;
   const activityKindId = document.getElementById('actActivityKind').value;
-  const equipmentId = document.getElementById('actEquipment').value;
+  const equipmentIds = Array.from(document.querySelectorAll('#actEquipmentCheckboxes input:checked')).map(el => el.value);
   const tempRaw = document.getElementById('actTemp').value.trim();
   const temp = tempRaw ? parseFloat(tempRaw) : null;
   const weather = document.getElementById('actWeather').value.trim();
@@ -2846,7 +3060,8 @@ async function saveActivityModal() {
     const num = parseFloat(raw);
     statPatch[inp.dataset.statKey] = raw && !isNaN(num) ? num : null;
   });
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, activityKindId, equipmentId, temp, weather, ...statPatch });
+  // equipmentId: alte Einzelauswahl-Feld explizit löschen, ersetzt durch equipmentIds (Mehrfachauswahl)
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, activityKindId, equipmentId: null, equipmentIds, temp, weather, ...statPatch });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   closeActivityModal();
@@ -2854,7 +3069,8 @@ async function saveActivityModal() {
   renderFromCache();
   // Nur bei tatsächlicher Zuordnungsänderung nach GitHub pushen — sonst würde jede Aktivitäts-
   // Bearbeitung (RPE, Notiz, ...) unnötig einen Schreibzugriff auf equipment.json auslösen.
-  if (equipmentId !== equipmentIdBefore) recomputeEquipmentTotals(true);
+  const equipmentIdsAfter = equipmentIds.slice().sort();
+  if (JSON.stringify(equipmentIdsAfter) !== JSON.stringify(equipmentIdsBefore)) recomputeEquipmentTotals(true);
 }
 
 // Kopiert die geöffnete Aktivität (inkl. RPE/Befinden/Atmung/Notiz/Temperatur/Witterung/

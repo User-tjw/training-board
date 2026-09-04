@@ -590,11 +590,22 @@
              Mehrfachauswahl im Ausrüstungs-Modal und die Aktivitätsart-Zuordnung im Aktivitäts-Modal -->
         <div class="settings-pane" id="pane-activitykinds" style="display:none">
           <div class="settings-group-title">Aktivitätsarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht — jede Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden.</div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht — jede Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden. Über die angehakten Sportarten wird die Aktivitätsart bei neuen Einheiten automatisch erkannt (nur wenn eine Sportart eindeutig genau einer Aktivitätsart zugeordnet ist).</div>
           <div id="activityKindsList" style="margin-bottom:14px"></div>
           <div style="display:flex;gap:8px">
             <input class="setup-input" id="newActivityKindName" type="text" placeholder="z.B. Skitour" onkeydown="if(event.key==='Enter')addActivityKind()">
             <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addActivityKind()">+ Hinzufügen</button>
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+          <div class="settings-group-title">Sportarten</div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuert die Checkbox-Liste bei jeder Aktivitätsart oben — Bezeichnung frei änderbar, ✕ blendet eine Sportart aus (vordefinierte jederzeit über "Wieder anzeigen" reaktivierbar, eigene werden endgültig gelöscht). Neue eigene Sportart unten anlegen — dafür den technischen Rohtyp-Namen von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+          <div id="customIcuTypesList" style="margin-bottom:8px"></div>
+          <div id="hiddenIcuTypesList" style="margin-bottom:14px"></div>
+          <div style="display:flex;gap:8px">
+            <input class="setup-input" id="newIcuTypeRaw" type="text" placeholder="Rohtyp, z.B. StairStepper" style="flex:1">
+            <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Stepper" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabel()">
+            <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabel()">+ Hinzufügen</button>
           </div>
         </div>
       </div>
@@ -629,10 +640,12 @@
       <label class="setup-label">Aktivitätsart</label>
       <select class="setup-input" id="actActivityKind" onchange="refreshActEquipmentOptions()"></select>
     </div>
-    <!-- Ausrüstungs-Zuordnung: Optionen gefiltert auf zur gewählten Aktivitätsart passende Ausrüstung -->
+    <!-- Ausrüstungs-Zuordnung: Mehrfachauswahl, gefiltert auf zur gewählten Aktivitätsart passende
+         Ausrüstung, automatisch vorangehakt (siehe autoAssignEquipment() / refreshActEquipmentOptions()) -->
     <div class="setup-field" style="margin-top:10px">
       <label class="setup-label">Ausrüstung</label>
-      <select class="setup-input" id="actEquipment"></select>
+      <div id="actEquipmentCheckboxes" class="equipment-kind-checkboxes"></div>
+      <div class="setup-hint">Automatisch anhand Aktivitätsart zugeordnet · nachträglich änderbar</div>
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <div class="note-editor-grid2">
@@ -862,6 +875,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260903g"></script>
+<script src="app.js?v=20260904e"></script>
 </body>
 </html>
