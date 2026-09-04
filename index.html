@@ -586,12 +586,13 @@
           </div>
         </div>
 
-        <!-- Aktivitätsarten: frei anlegbare Kategorien (Standard: Rennrad/MTB/Arbeit/Laufen/Wandern), steuern die
-             Mehrfachauswahl im Ausrüstungs-Modal. Anlegen/Bearbeiten (Name + Unterarten zur automatischen
-             Erkennung) läuft über ein eigenes Modal, siehe openActivityKindModal() in app.js -->
+        <!-- Aktivitätsarten: frei anlegbare Kategorien (Standard: Rennrad/MTB/Arbeit/Laufen/Wandern) für
+             Training Effect/Statistiken. Anlegen/Bearbeiten (Name + Unterarten zur automatischen Erkennung)
+             läuft über ein eigenes Modal, siehe openActivityKindModal() in app.js — hier werden auch neue
+             Unterarten angelegt, die Ausrüstung wird darüber direkt zugeordnet (siehe equipmentForActivity()) -->
         <div class="settings-pane" id="pane-activitykinds" style="display:none">
           <div class="settings-group-title">Aktivitätsarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht. Zum Bearbeiten (Name, automatische Erkennung anhand der Unterarten von Garmin/Intervals.icu) auf eine Karte klicken.</div>
+          <div class="setup-hint" style="margin-bottom:12px">Zum Bearbeiten (Name, automatische Erkennung anhand der Unterarten von Garmin/Intervals.icu) auf eine Karte klicken — dort auch neue Unterarten anlegbar, nach denen sich im Ausrüstungs-Modal die Zuordnung richtet.</div>
           <div id="activityKindsGrid" class="equipment-grid" style="margin-bottom:14px"></div>
           <button class="setup-btn setup-btn-sm" onclick="openActivityKindModal()">+ Neu anlegen</button>
         </div>
@@ -686,12 +687,14 @@
       <label class="setup-label">Name</label>
       <input class="setup-input" id="equipmentName" type="text" placeholder="z.B. Orbea Orca">
     </div>
-    <!-- Mehrfachauswahl statt festem Kategorie-Dropdown: eine Ausrüstung kann für mehrere Aktivitätsarten
-         gelten (z.B. ein Rad für Rennrad UND Arbeit) — steuert die Filterung im Aktivitäts-Modal -->
+    <!-- Mehrfachauswahl statt festem Kategorie-Dropdown: eine Ausrüstung kann für mehrere Unterarten
+         (Rohtypen wie Garmin/Intervals.icu die Aktivität benennt) gelten, z.B. ein Rad für Rennrad-Fahrten
+         UND Pendelfahrten — hängt direkt an den echten Aktivitätsdaten, nicht an der (ggf. mehrdeutigen)
+         Aktivitätsart, siehe equipmentForActivity() in app.js -->
     <div class="setup-field">
-      <label class="setup-label">Aktivitätsarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(keine Auswahl = für alle nutzbar)</span></label>
+      <label class="setup-label">Unterarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(keine Auswahl = für alle nutzbar)</span></label>
       <div id="equipmentKindCheckboxes" class="equipment-kind-checkboxes"></div>
-      <button type="button" class="trainer-link" onclick="openActivityKindsSettings()">⚙ Aktivitätsarten verwalten →</button>
+      <button type="button" class="trainer-link" onclick="openActivityKindsSettings()">⚙ Unterarten verwalten →</button>
     </div>
     <div class="note-editor-grid2">
       <div class="setup-field">
@@ -752,10 +755,10 @@
       <div id="activityKindTypeCheckboxes" class="equipment-kind-checkboxes"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <input class="setup-input" id="newIcuTypeLabelModal" type="text" placeholder="Eigene Unterart, z.B. Rennrad / Rad" style="flex:1">
-        <input class="setup-input" id="newIcuTypeRawModal" type="text" placeholder="Rohtyp, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabelModal()">
+        <input class="setup-input" id="newIcuTypeRawModal" type="text" placeholder="Code, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabelModal()">
         <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabelModal()">+</button>
       </div>
-      <div class="setup-hint" style="margin-top:6px">Kennt Intervals.icu eine Unterart, die hier fehlt? Technischen Rohtyp-Namen eintragen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+      <div class="setup-hint" style="margin-top:6px">Kennt Intervals.icu eine Unterart, die hier fehlt? Technischen Code eintragen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
     </div>
     <div style="display:flex;gap:10px;margin-top:8px">
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityKindModal()">Speichern</button>
@@ -896,6 +899,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904j"></script>
+<script src="app.js?v=20260904k"></script>
 </body>
 </html>

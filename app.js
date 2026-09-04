@@ -42,10 +42,10 @@ function renderFromCache() {
 }
 
 // Ordnet Aktivitäten, die noch nie eine Ausrüstungs-Zuordnung hatten, im Hintergrund automatisch alle
-// zur (ggf. automatisch vorgeschlagenen) Aktivitätsart passenden Ausrüstungsteile zu — läuft bei
-// jedem renderFromCache() mit, schreibt aber nur bei tatsächlich neuen Zuordnungen. Sobald einmal
-// gesetzt (automatisch oder manuell im Aktivitäts-Modal), fasst die Automatik equipmentIds nie wieder
-// an — siehe activityEquipmentIds().
+// zu ihrem Rohtyp/sub_type passenden Ausrüstungsteile zu (siehe equipmentForActivity()) — unabhängig
+// davon, ob/welche Aktivitätsart bereits feststeht. Läuft bei jedem renderFromCache() mit, schreibt
+// aber nur bei tatsächlich neuen Zuordnungen. Sobald einmal gesetzt (automatisch oder manuell im
+// Aktivitäts-Modal), fasst die Automatik equipmentIds nie wieder an — siehe activityEquipmentIds().
 function autoAssignEquipment() {
   if (!_activitiesFull.length) return;
   const data = getActivityMeta();
@@ -53,9 +53,7 @@ function autoAssignEquipment() {
   _activitiesFull.forEach(act => {
     const cur = (data[act.id] && typeof data[act.id] === 'object') ? data[act.id] : {};
     if (activityEquipmentIds(cur) !== null) return;
-    const kindId = cur.activityKindId || suggestActivityKind(act);
-    if (!kindId) return;
-    const matches = equipmentForKind(kindId).map(it => it.id);
+    const matches = equipmentForActivity(act).map(it => it.id);
     if (!matches.length) return;
     data[act.id] = { ...cur, equipmentIds: matches };
     changed = true;
@@ -2058,8 +2056,6 @@ const DEFAULT_ACTIVITY_KINDS = [
   { label: 'Laufen', icuTypes: ['Run'] },
   { label: 'Wandern', icuTypes: ['Hike', 'Walk'] },
 ];
-const ACTIVITY_KIND_COLOR_PALETTE = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#06b6d4', '#ef4444', '#84cc16'];
-
 // Legacy-Zuordnung für Ausrüstung, die noch mit dem alten festen "Kategorie"-Feld angelegt wurde
 // (vor Einführung der frei anlegbaren Aktivitätsarten) — rein lesend, keine Persistierung nötig.
 const LEGACY_EQUIPMENT_CATEGORY_TO_KIND_LABEL = { 'Rennrad': 'Rennrad', 'Mountainbike': 'MTB', 'Laufschuhe': 'Laufen', 'Wanderausrüstung': 'Wandern' };
@@ -2105,20 +2101,35 @@ function activityEquipmentIds(meta) {
   return null;
 }
 
-// Nicht aussortierte Ausrüstung, die zur gegebenen Aktivitätsart passt (keine activityKindIds = zu
-// jeder Aktivitätsart passend) — gemeinsame Filterlogik für die Checkbox-Auswahl im Aktivitäts-Modal
-// und die automatische Hintergrund-Zuordnung (autoAssignEquipment()).
-function equipmentForKind(kindId) {
+// Liest die Unterarten-Zuordnung einer Ausrüstung (icuTypes) — bei noch nicht migrierten Altdaten
+// (nur activityKindIds bzw. Legacy-Kategorie vorhanden, siehe equipmentActivityKindIds()) ersatzweise
+// die Vereinigung der Unterarten aller zugeordneten Aktivitätsarten, ohne das Ausrüstungsteil dabei zu
+// verändern — echte Migration passiert erst beim nächsten Speichern im Ausrüstungs-Modal. Leeres
+// Array = zu jeder Aktivität passend.
+function equipmentIcuTypes(it) {
+  if (Array.isArray(it.icuTypes)) return it.icuTypes;
+  const kindIds = equipmentActivityKindIds(it);
+  if (!kindIds.length) return [];
+  const kinds = getActivityKinds().items || [];
+  const types = new Set();
+  kindIds.forEach(kid => { const k = kinds.find(x => x.id === kid); (k && k.icuTypes || []).forEach(t => types.add(t)); });
+  return Array.from(types);
+}
+// Nicht aussortierte Ausrüstung, deren Unterarten zur Aktivität passen — zuerst die genauere
+// Rohtyp:sub_type-Kombination (z.B. "Ride:COMMUTE"), sonst der reine Rohtyp; leere icuTypes = zu jeder
+// Aktivität passend. Hängt bewusst nicht von der im Aktivitäts-Modal gewählten Aktivitätsart ab,
+// sondern direkt von den echten Intervals.icu-Daten der Aktivität — gemeinsame Filterlogik für die
+// Checkbox-Auswahl im Aktivitäts-Modal (refreshActEquipmentOptions()) und die automatische
+// Hintergrund-Zuordnung (autoAssignEquipment()).
+function equipmentForActivity(act) {
+  const keys = [];
+  if (act && act.sub_type && act.sub_type !== 'NONE') keys.push(`${act.type}:${act.sub_type}`);
+  if (act && act.type) keys.push(act.type);
   return (getEquipment().items || []).filter(it => {
     if (it.retired) return false;
-    const kindIds = equipmentActivityKindIds(it);
-    return !kindId || kindIds.length === 0 || kindIds.includes(kindId);
+    const types = equipmentIcuTypes(it);
+    return types.length === 0 || keys.some(k => types.includes(k));
   });
-}
-
-function activityKindColor(kindId) {
-  const idx = (getActivityKinds().items || []).findIndex(k => k.id === kindId);
-  return ACTIVITY_KIND_COLOR_PALETTE[idx >= 0 ? idx % ACTIVITY_KIND_COLOR_PALETTE.length : 0];
 }
 
 // Schlägt eine Aktivitätsart vor — anhand des intervals.icu-Rohtyps ("Ride"), oder falls vorhanden
@@ -2425,18 +2436,14 @@ function renderEquipmentSection() {
     grid.innerHTML = `<div class="setup-hint">${_equipmentTab === 'retired' ? 'Keine aussortierte Ausrüstung.' : 'Noch keine Ausrüstung angelegt.'}</div>`;
     return;
   }
-  const kinds = getActivityKinds().items || [];
+  const typeLabels = allIcuTypeLabels();
   grid.innerHTML = items.map(it => {
-    const kindIds = equipmentActivityKindIds(it);
-    const kindTags = kindIds.length
-      ? kindIds.map(kid => {
-          const k = kinds.find(x => x.id === kid);
-          if (!k) return '';
-          const c = activityKindColor(kid);
-          return `<span class="tag" style="background:${c}20;color:${c};margin-right:4px">${k.label}</span>`;
-        }).join('')
+    const types = equipmentIcuTypes(it);
+    const tagLabels = types.map(t => typeLabels[t]).filter(Boolean);
+    const kindTags = tagLabels.length
+      ? tagLabels.map(l => `<span class="tag" style="background:#64748b20;color:#64748b;margin-right:4px">${escHtml(l)}</span>`).join('')
       : `<span class="tag" style="background:#94a3b820;color:#94a3b8">alle Aktivitäten</span>`;
-    const barBaseColor = kindIds.length ? activityKindColor(kindIds[0]) : '#94a3b8';
+    const barBaseColor = '#64748b';
     const totalKm = it.totalKm || 0;
     const hasLimit = it.maxKm > 0;
     const pct = hasLimit ? Math.min(100, totalKm / it.maxKm * 100) : 0;
@@ -2457,17 +2464,19 @@ function renderEquipmentSection() {
   }).join('');
 }
 
-// Rendert die Checkbox-Gruppe im Ausrüstungs-Modal neu — separate Funktion, weil sie sowohl beim
-// Öffnen des Modals als auch nach Änderungen im Aktivitätsarten-Verwaltungsdialog aufgerufen wird.
+// Rendert die Checkbox-Gruppe im Ausrüstungs-Modal neu — Unterarten (Rohtypen) statt Aktivitätsarten,
+// damit die Zuordnung direkt an den echten Intervals.icu-Daten hängt statt an der (ggf. mehrdeutigen)
+// Aktivitätsart. Separate Funktion, weil sie sowohl beim Öffnen des Modals als auch nach Änderungen
+// im Aktivitätsarten-Verwaltungsdialog (dort werden auch Unterarten verwaltet) aufgerufen wird.
 function renderEquipmentKindCheckboxes() {
   const container = document.getElementById('equipmentKindCheckboxes');
-  const kinds = getActivityKinds().items || [];
   const eq = getEquipment();
   const it = _equipmentModalId ? (eq.items || []).find(x => x.id === _equipmentModalId) : null;
-  const checked = it ? equipmentActivityKindIds(it) : [];
-  container.innerHTML = kinds.map(k => `<label class="equipment-kind-checkbox">
-    <input type="checkbox" value="${k.id}"${checked.includes(k.id) ? ' checked' : ''}>${k.label}</label>`).join('')
-    || '<div class="setup-hint">Noch keine Aktivitätsarten angelegt.</div>';
+  const checked = it ? equipmentIcuTypes(it) : [];
+  const entries = allIcuTypeEntries();
+  container.innerHTML = entries.map(e => `<label class="equipment-kind-checkbox">
+    <input type="checkbox" value="${e.type}"${checked.includes(e.type) ? ' checked' : ''}>${escHtml(e.label)}</label>`).join('')
+    || '<div class="setup-hint">Noch keine Unterarten angelegt.</div>';
 }
 
 let _equipmentModalId = null;
@@ -2503,7 +2512,7 @@ function closeEquipmentModal() {
 function saveEquipmentModal() {
   const name = document.getElementById('equipmentName').value.trim();
   if (!name) { alert('Bitte einen Namen eingeben.'); return; }
-  const activityKindIds = Array.from(document.querySelectorAll('#equipmentKindCheckboxes input:checked')).map(el => el.value);
+  const icuTypes = Array.from(document.querySelectorAll('#equipmentKindCheckboxes input:checked')).map(el => el.value);
   const maxKmRaw = document.getElementById('equipmentMaxKm').value.trim();
   const maxKm = maxKmRaw ? parseFloat(maxKmRaw.replace(',', '.')) : null;
   const addedAt = document.getElementById('equipmentAdded').value || fmtDate(new Date());
@@ -2519,7 +2528,8 @@ function saveEquipmentModal() {
     it = { id: 'eq_' + Date.now(), totalKm: 0, totalHours: 0, totalActivities: 0, retired: false };
     eq.items.push(it);
   }
-  Object.assign(it, { name, activityKindIds, maxKm, addedAt, baselineKm, baselineHours, note });
+  delete it.activityKindIds; // ersetzt durch icuTypes — alte Aktivitätsart-Zuordnung räumen, sonst bliebe sie als totes Feld liegen
+  Object.assign(it, { name, icuTypes, maxKm, addedAt, baselineKm, baselineHours, note });
   saveEquipment(eq);
   recomputeEquipmentTotals(true); // Start-km/-Stunden fließen sofort in die angezeigten Totals ein
   closeEquipmentModal();
@@ -2947,16 +2957,16 @@ function effectiveActivityStats(act, meta) {
 }
 
 // Baut die Ausrüstungs-Auswahl (Mehrfachauswahl per Checkbox) im Aktivitäts-Modal neu auf, gefiltert
-// auf die aktuell gewählte Aktivitätsart (#actActivityKind) — läuft sowohl beim Öffnen des Modals
-// (initialEquipmentIds aus activity_meta bzw. null, wenn noch nie zugeordnet) als auch bei dessen
-// onchange (dann ohne Argument: bisherige Auswahl bleibt erhalten, soweit sie zur neuen Aktivitätsart
-// noch passt). War noch nie zugeordnet (initialEquipmentIds null bzw. beim onchange keine bisherige
+// auf Rohtyp/sub_type der Aktivität selbst (siehe equipmentForActivity()) — unabhängig von der im
+// Dropdown gewählten Aktivitätsart. Läuft sowohl beim Öffnen des Modals (initialEquipmentIds aus
+// activity_meta bzw. null, wenn noch nie zugeordnet) als auch bei onchange von #actActivityKind (dann
+// ohne Argument: bisherige Auswahl bleibt erhalten — ändert sich durch den Rohtyp-Bezug ohnehin nicht
+// mehr). War noch nie zugeordnet (initialEquipmentIds null bzw. beim onchange keine bisherige
 // Checkbox-Auswahl vorhanden), sind wie bei der Hintergrund-Automatik alle passenden Teile vorangehakt.
 function refreshActEquipmentOptions(initialEquipmentIds) {
   const container = document.getElementById('actEquipmentCheckboxes');
   const eqField = container.closest('.setup-field');
   if (!_activityModalAct) { eqField.style.display = 'none'; return; }
-  const selectedKindId = document.getElementById('actActivityKind').value;
   let prevValue;
   if (initialEquipmentIds !== undefined) {
     prevValue = initialEquipmentIds;
@@ -2964,7 +2974,7 @@ function refreshActEquipmentOptions(initialEquipmentIds) {
     const checkedNow = Array.from(container.querySelectorAll('input:checked')).map(el => el.value);
     prevValue = checkedNow.length ? checkedNow : null;
   }
-  const eqItems = equipmentForKind(selectedKindId);
+  const eqItems = equipmentForActivity(_activityModalAct);
   eqField.style.display = eqItems.length ? '' : 'none';
   const defaultChecked = prevValue === null ? eqItems.map(it => it.id) : prevValue;
   container.innerHTML = eqItems.map(it => `<label class="equipment-kind-checkbox">
