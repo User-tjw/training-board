@@ -2247,36 +2247,49 @@ function renderActivityKindsList() {
   const el = document.getElementById('activityKindsList');
   const kinds = getActivityKinds().items || [];
   const typeLabels = allIcuTypeLabels();
-  el.innerHTML = kinds.map(k => `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+  el.innerHTML = kinds.map(k => {
+    const assigned = (k.icuTypes || []).map(t => typeLabels[t]).filter(Boolean);
+    return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <input class="setup-input" style="flex:1" value="${escHtml(k.label)}" onchange="renameActivityKind('${k.id}', this.value)">
       <button class="btn" style="padding:6px 10px" onclick="deleteActivityKind('${k.id}')">✕</button>
     </div>
-    <div class="equipment-kind-checkboxes">${Object.entries(typeLabels).map(([type, label]) => `<label class="equipment-kind-checkbox">
-      <input type="checkbox" value="${type}"${(k.icuTypes || []).includes(type) ? ' checked' : ''} onchange="toggleActivityKindIcuType('${k.id}','${type}',this.checked)">${escHtml(label)}</label>`).join('')}</div>
-  </div>`).join('') || '<div class="setup-hint">Noch keine Aktivitätsarten.</div>';
+    <div class="setup-hint">${assigned.length ? 'Sportarten: ' + assigned.map(escHtml).join(', ') : 'Keine Sportart zugeordnet — unten bei „Sportarten" zuweisen'}</div>
+  </div>`;
+  }).join('') || '<div class="setup-hint">Noch keine Aktivitätsarten.</div>';
   const listEl = document.getElementById('customIcuTypesList');
   if (listEl) {
     const entries = allIcuTypeEntries();
-    listEl.innerHTML = entries.map(e => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    listEl.innerHTML = entries.map(e => {
+      const ownerId = kindIdForIcuType(e.type);
+      return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <input class="setup-input" style="flex:1" value="${escHtml(e.label)}" onchange="updateIcuTypeLabel('${e.type}', this.value)">
-      <span class="setup-hint" style="flex-shrink:0">${escHtml(e.type)}</span>
+      <select class="setup-input" style="flex:1" onchange="assignIcuTypeToKind('${e.type}', this.value)">
+        <option value="">– keine Zuordnung –</option>
+        ${kinds.map(k => `<option value="${k.id}"${k.id === ownerId ? ' selected' : ''}>${escHtml(k.label)}</option>`).join('')}
+      </select>
       <button class="btn" style="padding:6px 10px" onclick="hideIcuTypeLabel('${e.type}')">✕</button>
-    </div>`).join('') || '<div class="setup-hint">Keine Sportarten vorhanden.</div>';
+    </div>`;
+    }).join('') || '<div class="setup-hint">Keine Sportarten vorhanden.</div>';
   }
 }
-// Rohtyp-Zuordnung für die Auto-Erkennung (suggestActivityKind()) — mehrere Sportarten pro
-// Aktivitätsart möglich (z.B. "Wandern" = Hike + Spazieren). Neu angelegte Aktivitätsarten starten
-// ohne Zuordnung (rein manuell wählbar), bis hier eine angehakt wird. Steht dieselbe Sportart bei
-// mehreren Aktivitätsarten, bleibt die automatische Erkennung mehrdeutig (siehe suggestActivityKind()).
-function toggleActivityKindIcuType(id, type, checked) {
+// Rohtyp-Zuordnung für die Auto-Erkennung (suggestActivityKind()) — jede Sportart gehört zu höchstens
+// einer Aktivitätsart, das Dropdown erzwingt das strukturell (Zuweisen entfernt die Sportart
+// automatisch von jeder anderen Aktivitätsart). Neu angelegte Aktivitätsarten starten ohne Zuordnung
+// (rein manuell wählbar), bis hier eine Sportart zugewiesen wird.
+function kindIdForIcuType(type) {
+  const k = (getActivityKinds().items || []).find(x => (x.icuTypes || []).includes(type));
+  return k ? k.id : '';
+}
+function assignIcuTypeToKind(type, kindId) {
   const data = getActivityKinds();
-  const k = data.items.find(x => x.id === id);
-  if (!k) return;
-  const set = new Set(k.icuTypes || []);
-  if (checked) set.add(type); else set.delete(type);
-  k.icuTypes = Array.from(set);
+  data.items.forEach(k => { k.icuTypes = (k.icuTypes || []).filter(t => t !== type); });
+  if (kindId) {
+    const k = data.items.find(x => x.id === kindId);
+    if (k) k.icuTypes.push(type);
+  }
   saveActivityKinds(data);
+  renderActivityKindsList();
 }
 function addActivityKind() {
   const input = document.getElementById('newActivityKindName');

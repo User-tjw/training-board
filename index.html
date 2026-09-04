@@ -590,7 +590,7 @@
              Mehrfachauswahl im Ausrüstungs-Modal und die Aktivitätsart-Zuordnung im Aktivitäts-Modal -->
         <div class="settings-pane" id="pane-activitykinds" style="display:none">
           <div class="settings-group-title">Aktivitätsarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht — jede Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden. Über die angehakten Sportarten wird die Aktivitätsart bei neuen Einheiten automatisch erkannt (nur wenn eine Sportart eindeutig genau einer Aktivitätsart zugeordnet ist).</div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuern, welche Ausrüstung im Aktivitäts-Modal zur Auswahl steht — jede Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden. Welche Sportart zu welcher Aktivitätsart automatisch erkannt wird, stellst du unten bei „Sportarten" ein.</div>
           <div id="activityKindsList" style="margin-bottom:14px"></div>
           <div style="display:flex;gap:8px">
             <input class="setup-input" id="newActivityKindName" type="text" placeholder="z.B. Skitour" onkeydown="if(event.key==='Enter')addActivityKind()">
@@ -599,7 +599,7 @@
 
           <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
           <div class="settings-group-title">Sportarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuert die Checkbox-Liste bei jeder Aktivitätsart oben — Bezeichnung frei änderbar, ✕ löscht eine Sportart (auch vordefinierte). Neue eigene Sportart unten anlegen — dafür den technischen Rohtyp-Namen von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+          <div class="setup-hint" style="margin-bottom:12px">Jede Sportart per Dropdown genau einer Aktivitätsart zuordnen (oder „– keine Zuordnung –") — Zuweisen entfernt sie automatisch von jeder anderen Aktivitätsart, ein Konflikt ist damit ausgeschlossen. Bezeichnung frei änderbar, ✕ löscht eine Sportart (auch vordefinierte). Neue eigene Sportart unten anlegen — dafür den technischen Rohtyp-Namen von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
           <div id="customIcuTypesList" style="margin-bottom:14px"></div>
           <div style="display:flex;gap:8px">
             <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Rennrad / Rad" style="flex:1">
@@ -874,6 +874,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904f"></script>
+<script src="app.js?v=20260904g"></script>
 </body>
 </html>
