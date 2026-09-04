@@ -471,7 +471,7 @@ function closeSettingsModal() {
 function selectSettingsPane(name) {
   document.querySelectorAll('.settings-nav-item').forEach(n => n.classList.toggle('active', n.dataset.pane === name));
   document.querySelectorAll('.settings-pane').forEach(p => p.style.display = (p.id === 'pane-' + name) ? 'block' : 'none');
-  if (name === 'activitykinds') renderActivityKindsList();
+  if (name === 'subtypes') renderIcuTypesList();
 }
 
 function populateSettingsForm() {
@@ -734,7 +734,6 @@ function saveApiSettings() {
   syncHfZonesFromGH();
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
-  syncActivityKindsFromGH();
   syncIcuTypeLabelsFromGH();
   syncEquipmentFromGH();
   loadAll();
@@ -809,7 +808,6 @@ function init() {
   syncHfZonesFromGH();
   syncRestDaysFromGH();
   syncAthleteProfileFromGH();
-  syncActivityKindsFromGH();
   syncIcuTypeLabelsFromGH();
   syncEquipmentFromGH();
   loadAll();
@@ -1835,7 +1833,6 @@ const GH_HIDDEN_ACTIVITIES_FILE = 'settings/hidden-activities.json';
 const GH_REST_DAYS_FILE = 'settings/rest-days.json';
 const GH_PROFILE_FILE = 'settings/athlete-profile.json';
 const GH_EQUIPMENT_FILE = 'settings/equipment.json';
-const GH_ACTIVITY_KINDS_FILE = 'settings/activity-kinds.json';
 const GH_ICU_TYPE_LABELS_FILE = 'settings/icu-type-labels.json';
 let _notes = [];
 let _editingNote = null;
@@ -2039,57 +2036,8 @@ function saveAthleteProfileToGH(profile) { return saveJSONToGH(GH_PROFILE_FILE, 
 function syncAthleteProfileFromGH() { return syncJSONFromGH(GH_PROFILE_FILE, 'athlete_profile', getAthleteProfile, applyAthleteProfileToInputs); }
 function saveEquipmentToGH(data) { return saveJSONToGH(GH_EQUIPMENT_FILE, data, 'Update Ausrüstung'); }
 function syncEquipmentFromGH() { return syncJSONFromGH(GH_EQUIPMENT_FILE, 'equipment', getEquipment, () => { recomputeEquipmentTotals(false); renderEquipmentSection(); }); }
-function saveActivityKindsToGH(data) { return saveJSONToGH(GH_ACTIVITY_KINDS_FILE, data, 'Update Aktivitätsarten'); }
-function syncActivityKindsFromGH() { return syncJSONFromGH(GH_ACTIVITY_KINDS_FILE, 'activity_kinds', getActivityKinds, () => { renderEquipmentSection(); }); }
-function saveIcuTypeLabelsToGH(data) { return saveJSONToGH(GH_ICU_TYPE_LABELS_FILE, data, 'Update Sportarten-Liste'); }
-function syncIcuTypeLabelsFromGH() { return syncJSONFromGH(GH_ICU_TYPE_LABELS_FILE, 'icu_type_labels', getCustomIcuTypeLabels, renderActivityKindsList); }
-
-// ─── Aktivitätsarten: frei anlegbare Labels (Rennrad/MTB/Arbeit/Laufen/Wandern/...), verwaltet über
-// den Reiter "Aktivitätsarten" in den Einstellungen (openActivityKindsSettings). Ersetzen das frühere feste "Kategorie"-
-// Dropdown der Ausrüstung: eine Ausrüstung kann mehreren Aktivitätsarten zugeordnet werden (z.B. ein
-// Rad für Rennrad UND Arbeit), und jede echte Aktivität bekommt eine Aktivitätsart zugewiesen (auto-
-// vorgeschlagen wo eindeutig anhand des intervals.icu-Rohtyps, siehe suggestActivityKind()).
-const DEFAULT_ACTIVITY_KINDS = [
-  { label: 'Rennrad', icuTypes: ['Ride'] },
-  { label: 'MTB', icuTypes: ['MountainBikeRide'] },
-  { label: 'Arbeit', icuTypes: [] }, // bewusst kein Auto-Match: teilt sich den Rohtyp "Ride" mit Rennrad, daher nur manuell wählbar
-  { label: 'Laufen', icuTypes: ['Run'] },
-  { label: 'Wandern', icuTypes: ['Hike', 'Walk'] },
-];
-// Legacy-Zuordnung für Ausrüstung, die noch mit dem alten festen "Kategorie"-Feld angelegt wurde
-// (vor Einführung der frei anlegbaren Aktivitätsarten) — rein lesend, keine Persistierung nötig.
-const LEGACY_EQUIPMENT_CATEGORY_TO_KIND_LABEL = { 'Rennrad': 'Rennrad', 'Mountainbike': 'MTB', 'Laufschuhe': 'Laufen', 'Wanderausrüstung': 'Wandern' };
-
-function getActivityKinds() {
-  let data;
-  try { data = JSON.parse(localStorage.getItem('activity_kinds') || 'null'); } catch(e) { data = null; }
-  if (!data || !Array.isArray(data.items)) {
-    data = { items: DEFAULT_ACTIVITY_KINDS.map((d, i) => ({ id: 'ak_default_' + i, label: d.label, icuTypes: d.icuTypes })), updatedAt: 0 };
-    localStorage.setItem('activity_kinds', JSON.stringify(data));
-  }
-  return data;
-}
-function saveActivityKindsLocal(data) {
-  data.updatedAt = Date.now();
-  localStorage.setItem('activity_kinds', JSON.stringify(data));
-  return data;
-}
-function saveActivityKinds(data) {
-  saveActivityKindsLocal(data);
-  if (ghToken && ghRepo) {
-    saveActivityKindsToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
-  }
-}
-
-// Ausrüstung ohne activityKindIds (noch mit altem Kategorie-Feld angelegt) auf Basis des Namens
-// gegen die aktuellen Aktivitätsarten auflösen — ohne das Ausrüstungsteil dabei zu verändern.
-function equipmentActivityKindIds(it) {
-  if (Array.isArray(it.activityKindIds)) return it.activityKindIds;
-  const wantLabel = LEGACY_EQUIPMENT_CATEGORY_TO_KIND_LABEL[it.category];
-  if (!wantLabel) return [];
-  const match = (getActivityKinds().items || []).find(k => k.label === wantLabel);
-  return match ? [match.id] : [];
-}
+function saveIcuTypeLabelsToGH(data) { return saveJSONToGH(GH_ICU_TYPE_LABELS_FILE, data, 'Update Unterarten-Liste'); }
+function syncIcuTypeLabelsFromGH() { return syncJSONFromGH(GH_ICU_TYPE_LABELS_FILE, 'icu_type_labels', getCustomIcuTypeLabels, renderIcuTypesList); }
 
 // Liest die Ausrüstungs-Zuordnung einer Aktivität aus activity_meta — liefert null, wenn noch nie
 // zugeordnet wurde (weder automatisch noch manuell), sonst ein Array (ggf. leer, wenn im Modal
@@ -2101,26 +2049,16 @@ function activityEquipmentIds(meta) {
   return null;
 }
 
-// Liest die Unterarten-Zuordnung einer Ausrüstung (icuTypes) — bei noch nicht migrierten Altdaten
-// (nur activityKindIds bzw. Legacy-Kategorie vorhanden, siehe equipmentActivityKindIds()) ersatzweise
-// die Vereinigung der Unterarten aller zugeordneten Aktivitätsarten, ohne das Ausrüstungsteil dabei zu
-// verändern — echte Migration passiert erst beim nächsten Speichern im Ausrüstungs-Modal. Leeres
-// Array = zu jeder Aktivität passend.
 function equipmentIcuTypes(it) {
-  if (Array.isArray(it.icuTypes)) return it.icuTypes;
-  const kindIds = equipmentActivityKindIds(it);
-  if (!kindIds.length) return [];
-  const kinds = getActivityKinds().items || [];
-  const types = new Set();
-  kindIds.forEach(kid => { const k = kinds.find(x => x.id === kid); (k && k.icuTypes || []).forEach(t => types.add(t)); });
-  return Array.from(types);
+  return Array.isArray(it.icuTypes) ? it.icuTypes : [];
 }
 // Nicht aussortierte Ausrüstung, deren Unterarten zur Aktivität passen — zuerst die genauere
 // Rohtyp:sub_type-Kombination (z.B. "Ride:COMMUTE"), sonst der reine Rohtyp; leere icuTypes = zu jeder
-// Aktivität passend. Hängt bewusst nicht von der im Aktivitäts-Modal gewählten Aktivitätsart ab,
-// sondern direkt von den echten Intervals.icu-Daten der Aktivität — gemeinsame Filterlogik für die
-// Checkbox-Auswahl im Aktivitäts-Modal (refreshActEquipmentOptions()) und die automatische
-// Hintergrund-Zuordnung (autoAssignEquipment()).
+// Aktivität passend. Hängt direkt an den echten Intervals.icu-Daten der Aktivität, keine weitere
+// Kategorisierungsebene dazwischen (Aktivitätsarten wurden am 04.09.2026 wieder entfernt — brachten
+// keinen Mehrwert mehr, nachdem die Ausrüstungs-Zuordnung auf Unterarten umgestellt wurde). Gemeinsame
+// Filterlogik für die Checkbox-Auswahl im Aktivitäts-Modal (refreshActEquipmentOptions()) und die
+// automatische Hintergrund-Zuordnung (autoAssignEquipment()).
 function equipmentForActivity(act) {
   const keys = [];
   if (act && act.sub_type && act.sub_type !== 'NONE') keys.push(`${act.type}:${act.sub_type}`);
@@ -2132,39 +2070,17 @@ function equipmentForActivity(act) {
   });
 }
 
-// Schlägt eine Aktivitätsart vor — anhand des intervals.icu-Rohtyps ("Ride"), oder falls vorhanden
-// zuerst anhand der genaueren Kombination aus Rohtyp + sub_type (z.B. "Ride:COMMUTE" für Pendelfahrten,
-// siehe RIDE_COMMUTE_TYPE) — Garmin liefert Pendelfahrten sonst mit demselben Rohtyp wie normale
-// Ausfahrten, sub_type ist der einzige Weg, sie technisch zu unterscheiden (Stand 04.09.2026, per
-// Live-Check der Rohdaten bestätigt). Passt keine Kombination eindeutig, wird auf den reinen Rohtyp
-// zurückgefallen. Nur bei genau einem Treffer wird automatisch vorgeschlagen, sonst bleibt es manuell.
-function suggestActivityKind(act) {
-  if (!act || !act.type) return null;
-  const kinds = getActivityKinds().items || [];
-  if (act.sub_type && act.sub_type !== 'NONE') {
-    const compositeKey = `${act.type}:${act.sub_type}`;
-    const compositeMatches = kinds.filter(k => (k.icuTypes || []).includes(compositeKey));
-    if (compositeMatches.length) return compositeMatches.length === 1 ? compositeMatches[0].id : null;
-  }
-  const matches = kinds.filter(k => (k.icuTypes || []).includes(act.type));
-  return matches.length === 1 ? matches[0].id : null;
-}
-
-// Aufgerufen über den Link im Ausrüstungs-Modal — schließt es (Einstellungen sind ein eigenes,
-// gleichrangiges Overlay, kein Stapeln von Modals) und springt direkt in den passenden Reiter.
-function openActivityKindsSettings() {
-  closeEquipmentModal();
-  openSettingsModal();
-  selectSettingsPane('activitykinds');
-}
-// Bekannte Intervals.icu-Rohtypen mit deutscher Bezeichnung, als Checkbox-Optionen im
-// Aktivitätsart-Modal (renderActivityKindTypeCheckboxes()) statt technischer Freitext-Eingabe — deckt
-// die bei Intervals.icu/Strava gängigen Sportarten ab. Ein Key kann auch "Rohtyp:sub_type" sein (siehe
-// "Ride:COMMUTE"), wenn der reine Rohtyp allein nicht eindeutig genug ist — suggestActivityKind()
-// prüft diese Kombination zuerst. Über addCustomIcuTypeLabelModal() kann Thomas im Modal selbst
-// weitere Rohtypen mit eigener Bezeichnung ergänzen (z.B. für bei Intervals.icu vorkommende Typen, die
-// hier fehlen) — dazu muss er den technischen Rohtyp-Namen kennen, das kann diese Liste ihm nicht
-// abnehmen.
+// ─── Unterarten: wie Garmin/Intervals.icu eine Aktivität technisch benennt (Code, z.B. "Ride", ggf.
+// kombiniert mit sub_type wie "Ride:COMMUTE" für Pendelfahrten) — verwaltet über den Reiter "Unterarten"
+// in den Einstellungen. Steuert einzig, welche Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen
+// wird (siehe equipmentForActivity()).
+// Bekannte Intervals.icu-Codes mit deutscher Bezeichnung — deckt die bei Intervals.icu/Strava gängigen
+// Sportarten ab. Ein Key kann auch "Code:sub_type" sein (siehe "Ride:COMMUTE"), wenn der reine Code
+// allein nicht eindeutig genug ist (Pendelfahrt vs. normale Radausfahrt haben denselben Code "Ride",
+// Intervals.icu liefert den Unterschied nur über das separate Feld sub_type, Stand 04.09.2026 per
+// Live-Check der Rohdaten bestätigt). Über addCustomIcuTypeLabel() kann Thomas selbst weitere Codes mit
+// eigener Bezeichnung ergänzen (z.B. für bei Intervals.icu vorkommende Typen, die hier fehlen) — dazu
+// muss er den technischen Code kennen, das kann diese Liste ihm nicht abnehmen.
 const ICU_TYPE_LABELS = {
   Ride: 'Rennrad / Rad',
   'Ride:COMMUTE': 'Pendelfahrt (Rad)',
@@ -2237,12 +2153,16 @@ function upsertIcuTypeOverride(type, patch) {
   if (!entry.hidden) delete entry.hidden;
   if (!entry.label && !entry.hidden) data.items = data.items.filter(it => it.type !== type);
   saveCustomIcuTypeLabels(data);
-  renderActivityKindsList();
+  renderIcuTypesList();
+}
+function updateIcuTypeLabel(type, value) {
+  const label = value.trim();
+  upsertIcuTypeOverride(type, { label: label || undefined });
 }
 // Löscht eine Unterart dauerhaft. Bei vordefinierten Typen (fest in ICU_TYPE_LABELS hinterlegt)
 // technisch nur per „hidden"-Override, wirkt aber dauerhaft — Wiederherstellen geht bei Bedarf über
-// das Anlegen-Formular im Modal mit demselben Rohtyp. Rein eigene Unterart ohne Vorgabe wird direkt
-// aus den Overrides entfernt.
+// das Anlegen-Formular mit demselben Code. Rein eigene Unterart ohne Vorgabe wird direkt aus den
+// Overrides entfernt.
 function hideIcuTypeLabel(type) {
   if (ICU_TYPE_LABELS[type] !== undefined) {
     upsertIcuTypeOverride(type, { hidden: true });
@@ -2250,113 +2170,37 @@ function hideIcuTypeLabel(type) {
     const data = getCustomIcuTypeLabels();
     data.items = data.items.filter(it => it.type !== type);
     saveCustomIcuTypeLabels(data);
-    renderActivityKindsList();
+    renderIcuTypesList();
   }
 }
-// Kartenliste der Aktivitätsarten in den Einstellungen — Bearbeiten/Anlegen läuft über das
-// Aktivitätsart-Modal (openActivityKindModal()), analog zur Ausrüstungsseite.
-function renderActivityKindsList() {
-  const el = document.getElementById('activityKindsGrid');
-  if (!el) return;
-  const kinds = getActivityKinds().items || [];
-  const typeLabels = allIcuTypeLabels();
-  el.innerHTML = kinds.map(k => {
-    const assigned = (k.icuTypes || []).map(t => typeLabels[t]).filter(Boolean);
-    return `<div class="card equipment-card" onclick="openActivityKindModal('${k.id}')">
-      <div class="equipment-card-name">${escHtml(k.label)}</div>
-      <div class="setup-hint">${assigned.length ? escHtml(assigned.join(', ')) : 'Keine Unterart zugeordnet'}</div>
-    </div>`;
-  }).join('') || '<div class="setup-hint">Noch keine Aktivitätsarten.</div>';
-}
-
-// ─── Aktivitätsart-Modal: Name + Unterarten (Mehrfachauswahl) in einem Fenster, siehe
-// renderActivityKindsList() für die Kartenliste. Unterarten-Checkboxen werden erst beim Speichern
-// übernommen (nicht sofort wie im Ausrüstungs-Modal) — saveActivityKindModal() sorgt dabei dafür,
-// dass jede angehakte Unterart automatisch bei jeder anderen Aktivitätsart entfernt wird (Eindeutigkeit).
-let _activityKindModalId = null;
-function openActivityKindModal(id) {
-  _activityKindModalId = id || null;
-  const kinds = getActivityKinds().items || [];
-  const k = _activityKindModalId ? kinds.find(x => x.id === _activityKindModalId) : null;
-  document.getElementById('activityKindModalHeading').textContent = k ? 'Aktivitätsart bearbeiten' : 'Aktivitätsart anlegen';
-  document.getElementById('activityKindName').value = k ? k.label : '';
-  renderActivityKindTypeCheckboxes();
-  document.getElementById('activityKindDeleteBtn').style.display = k ? 'block' : 'none';
-  document.getElementById('activityKindModal').style.display = 'flex';
-}
-function closeActivityKindModal() {
-  document.getElementById('activityKindModal').style.display = 'none';
-  _activityKindModalId = null;
-}
-// checkedOverride: nach dem Anlegen einer eigenen Unterart im Modal (addCustomIcuTypeLabelModal())
-// muss die bisherige (noch ungespeicherte) Checkbox-Auswahl erhalten bleiben statt auf den zuletzt
-// gespeicherten Stand zurückzufallen — dafür wird sie hier statt der gespeicherten icuTypes übergeben.
-function renderActivityKindTypeCheckboxes(checkedOverride) {
-  const container = document.getElementById('activityKindTypeCheckboxes');
-  const kinds = getActivityKinds().items || [];
-  const k = _activityKindModalId ? kinds.find(x => x.id === _activityKindModalId) : null;
-  const checked = checkedOverride !== undefined ? checkedOverride : (k ? (k.icuTypes || []) : []);
-  const entries = allIcuTypeEntries();
-  // Kein <label>-Wrapper (der würde Klicks auf Textfeld/✕ zusätzlich als Checkbox-Toggle interpretieren) —
-  // Checkbox, editierbares Label und Löschen-Button sind daher unabhängige Geschwister-Elemente.
-  container.innerHTML = entries.map(e => `<span class="equipment-kind-checkbox">
-    <input type="checkbox" value="${e.type}"${checked.includes(e.type) ? ' checked' : ''}>
-    <input type="text" value="${escHtml(e.label)}" style="border:none;background:transparent;color:inherit;font:inherit;width:${Math.max(6, e.label.length + 1)}ch;padding:0" onchange="updateIcuTypeLabelInModal('${e.type}', this.value)">
-    <span onclick="removeIcuTypeInModal('${e.type}')" style="opacity:0.5;cursor:pointer" title="Unterart löschen">✕</span>
-  </span>`).join('')
-    || '<div class="setup-hint">Noch keine Unterarten angelegt.</div>';
-}
-// Löscht eine Unterart direkt aus dem Modal heraus (siehe hideIcuTypeLabel()) und rendert die
-// Checkbox-Liste mit der bisherigen, noch ungespeicherten Auswahl neu (abzüglich der gelöschten).
-function removeIcuTypeInModal(type) {
-  const checkedNow = Array.from(document.querySelectorAll('#activityKindTypeCheckboxes input:checked')).map(el => el.value).filter(t => t !== type);
-  hideIcuTypeLabel(type);
-  renderActivityKindTypeCheckboxes(checkedNow);
-}
-// Benennt eine Unterart direkt im Modal um (siehe upsertIcuTypeOverride()) und rendert die
-// Checkbox-Liste mit der bisherigen, noch ungespeicherten Auswahl neu.
-function updateIcuTypeLabelInModal(type, value) {
-  const label = value.trim();
-  const checkedNow = Array.from(document.querySelectorAll('#activityKindTypeCheckboxes input:checked')).map(el => el.value);
-  if (label) upsertIcuTypeOverride(type, { label });
-  renderActivityKindTypeCheckboxes(checkedNow);
-}
-// Legt eine neue Unterart (Rohtyp + Bezeichnung) an und hakt sie direkt für die gerade im Modal
-// bearbeitete Aktivitätsart an — Zuordnung wird erst mit „Speichern" persistiert.
-function addCustomIcuTypeLabelModal() {
-  const typeInput = document.getElementById('newIcuTypeRawModal');
-  const labelInput = document.getElementById('newIcuTypeLabelModal');
+function addCustomIcuTypeLabel() {
+  const typeInput = document.getElementById('newIcuTypeRaw');
+  const labelInput = document.getElementById('newIcuTypeLabel');
   const type = typeInput.value.trim();
   const label = labelInput.value.trim();
   if (!type || !label) return;
   upsertIcuTypeOverride(type, { label, hidden: undefined });
-  const checkedNow = Array.from(document.querySelectorAll('#activityKindTypeCheckboxes input:checked')).map(el => el.value);
-  checkedNow.push(type);
-  renderActivityKindTypeCheckboxes(checkedNow);
   typeInput.value = '';
   labelInput.value = '';
 }
-function saveActivityKindModal() {
-  const label = document.getElementById('activityKindName').value.trim();
-  if (!label) return;
-  const data = getActivityKinds();
-  let k = _activityKindModalId ? data.items.find(x => x.id === _activityKindModalId) : null;
-  if (!k) { k = { id: 'ak_' + Date.now(), label, icuTypes: [] }; data.items.push(k); }
-  else k.label = label;
-  const checkedTypes = Array.from(document.querySelectorAll('#activityKindTypeCheckboxes input:checked')).map(el => el.value);
-  data.items.forEach(other => { if (other !== k) other.icuTypes = (other.icuTypes || []).filter(t => !checkedTypes.includes(t)); });
-  k.icuTypes = checkedTypes;
-  saveActivityKinds(data);
-  closeActivityKindModal();
-  renderActivityKindsList();
+// Aufgerufen über den Link im Ausrüstungs-Modal — schließt es (Einstellungen sind ein eigenes,
+// gleichrangiges Overlay, kein Stapeln von Modals) und springt direkt in den passenden Reiter.
+function openIcuTypesSettings() {
+  closeEquipmentModal();
+  openSettingsModal();
+  selectSettingsPane('subtypes');
 }
-function deleteActivityKindModal() {
-  if (!_activityKindModalId) return;
-  const data = getActivityKinds();
-  data.items = data.items.filter(x => x.id !== _activityKindModalId);
-  saveActivityKinds(data);
-  closeActivityKindModal();
-  renderActivityKindsList();
+// Flache Liste in den Einstellungen — jede Unterart mit editierbarer Bezeichnung + Löschen-Button,
+// keine weitere Zuordnungsebene mehr (Aktivitätsarten am 04.09.2026 wieder entfernt).
+function renderIcuTypesList() {
+  const el = document.getElementById('icuTypesList');
+  if (!el) return;
+  const entries = allIcuTypeEntries();
+  el.innerHTML = entries.map(e => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+    <input class="setup-input" style="flex:1" value="${escHtml(e.label)}" onchange="updateIcuTypeLabel('${e.type}', this.value)">
+    <span class="setup-hint" style="flex-shrink:0">${escHtml(e.type)}</span>
+    <button class="btn" style="padding:6px 10px" onclick="hideIcuTypeLabel('${e.type}')">✕</button>
+  </div>`).join('') || '<div class="setup-hint">Keine Unterarten vorhanden.</div>';
 }
 
 function getEquipment() {
@@ -2956,13 +2800,10 @@ function effectiveActivityStats(act, meta) {
   return { auto, eff };
 }
 
-// Baut die Ausrüstungs-Auswahl (Mehrfachauswahl per Checkbox) im Aktivitäts-Modal neu auf, gefiltert
-// auf Rohtyp/sub_type der Aktivität selbst (siehe equipmentForActivity()) — unabhängig von der im
-// Dropdown gewählten Aktivitätsart. Läuft sowohl beim Öffnen des Modals (initialEquipmentIds aus
-// activity_meta bzw. null, wenn noch nie zugeordnet) als auch bei onchange von #actActivityKind (dann
-// ohne Argument: bisherige Auswahl bleibt erhalten — ändert sich durch den Rohtyp-Bezug ohnehin nicht
-// mehr). War noch nie zugeordnet (initialEquipmentIds null bzw. beim onchange keine bisherige
-// Checkbox-Auswahl vorhanden), sind wie bei der Hintergrund-Automatik alle passenden Teile vorangehakt.
+// Baut die Ausrüstungs-Auswahl (Mehrfachauswahl per Checkbox) im Aktivitäts-Modal auf, gefiltert auf
+// Rohtyp/sub_type der Aktivität selbst (siehe equipmentForActivity()) — läuft beim Öffnen des Modals
+// mit initialEquipmentIds aus activity_meta (null, wenn noch nie zugeordnet: dann sind wie bei der
+// Hintergrund-Automatik alle passenden Teile vorangehakt).
 function refreshActEquipmentOptions(initialEquipmentIds) {
   const container = document.getElementById('actEquipmentCheckboxes');
   const eqField = container.closest('.setup-field');
@@ -3027,16 +2868,9 @@ function openActivityModal(actId) {
   const effectSel = document.getElementById('actTrainingEffect');
   effectSel.innerHTML = '<option value="">– wählen –</option>' + EFFECT_CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('');
   effectSel.value = meta.effectCategory || suggestEffectCategory(act, type) || '';
-  const kindSel = document.getElementById('actActivityKind');
-  const kindField = kindSel.closest('.setup-field');
   if (isNoteOnlyId) {
-    kindField.style.display = 'none';
     document.getElementById('actEquipmentCheckboxes').closest('.setup-field').style.display = 'none';
   } else {
-    kindField.style.display = '';
-    const kinds = getActivityKinds().items || [];
-    kindSel.innerHTML = '<option value="">– wählen –</option>' + kinds.map(k => `<option value="${k.id}">${k.label}</option>`).join('');
-    kindSel.value = meta.activityKindId || suggestActivityKind(act) || '';
     refreshActEquipmentOptions(activityEquipmentIds(meta));
   }
   document.getElementById('actTemp').value = meta.temp != null ? meta.temp : '';
@@ -3085,7 +2919,6 @@ async function saveActivityModal() {
   const feel = feelSel ? parseInt(feelSel) : null;
   const note = document.getElementById('actNote').value.trim();
   const effectCategory = document.getElementById('actTrainingEffect').value;
-  const activityKindId = document.getElementById('actActivityKind').value;
   const equipmentIds = Array.from(document.querySelectorAll('#actEquipmentCheckboxes input:checked')).map(el => el.value);
   const tempRaw = document.getElementById('actTemp').value.trim();
   const temp = tempRaw ? parseFloat(tempRaw) : null;
@@ -3096,8 +2929,9 @@ async function saveActivityModal() {
     const num = parseFloat(raw);
     statPatch[inp.dataset.statKey] = raw && !isNaN(num) ? num : null;
   });
-  // equipmentId: alte Einzelauswahl-Feld explizit löschen, ersetzt durch equipmentIds (Mehrfachauswahl)
-  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, activityKindId, equipmentId: null, equipmentIds, temp, weather, ...statPatch });
+  // equipmentId: alte Einzelauswahl-Feld explizit löschen, ersetzt durch equipmentIds (Mehrfachauswahl).
+  // activityKindId: altes Aktivitätsart-Feld explizit löschen (Konzept am 04.09.2026 wieder entfernt).
+  saveActivityMetaValue(_activityModalId, { rpe, feel, note, effectCategory, activityKindId: null, equipmentId: null, equipmentIds, temp, weather, ...statPatch });
   // Atmung läuft weiter über den bestehenden Atmungs-Speicher
   saveManualRespirationValue(_activityModalId, document.getElementById('actRespiration').value.trim());
   closeActivityModal();

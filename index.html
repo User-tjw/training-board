@@ -497,8 +497,8 @@
           <div class="settings-nav-title">Persönliche Daten</div>
           <div class="settings-nav-desc">Name, Geburtstag, FTP</div>
         </div>
-        <div class="settings-nav-item" data-pane="activitykinds" onclick="selectSettingsPane('activitykinds')">
-          <div class="settings-nav-title">Aktivitätsarten</div>
+        <div class="settings-nav-item" data-pane="subtypes" onclick="selectSettingsPane('subtypes')">
+          <div class="settings-nav-title">Unterarten</div>
           <div class="settings-nav-desc">Für Ausrüstungs-Zuordnung</div>
         </div>
       </div>
@@ -586,15 +586,19 @@
           </div>
         </div>
 
-        <!-- Aktivitätsarten: frei anlegbare Kategorien (Standard: Rennrad/MTB/Arbeit/Laufen/Wandern) für
-             Training Effect/Statistiken. Anlegen/Bearbeiten (Name + Unterarten zur automatischen Erkennung)
-             läuft über ein eigenes Modal, siehe openActivityKindModal() in app.js — hier werden auch neue
-             Unterarten angelegt, die Ausrüstung wird darüber direkt zugeordnet (siehe equipmentForActivity()) -->
-        <div class="settings-pane" id="pane-activitykinds" style="display:none">
-          <div class="settings-group-title">Aktivitätsarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Zum Bearbeiten (Name, automatische Erkennung anhand der Unterarten von Garmin/Intervals.icu) auf eine Karte klicken — dort auch neue Unterarten anlegbar, nach denen sich im Ausrüstungs-Modal die Zuordnung richtet.</div>
-          <div id="activityKindsGrid" class="equipment-grid" style="margin-bottom:14px"></div>
-          <button class="setup-btn setup-btn-sm" onclick="openActivityKindModal()">+ Neu anlegen</button>
+        <!-- Unterarten: wie Garmin/Intervals.icu eine Aktivität technisch benennt (Code, z.B. "Ride", ggf.
+             kombiniert mit sub_type wie "Ride:COMMUTE" für Pendelfahrten) — steuert einzig, welche
+             Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird, siehe equipmentForActivity()
+             in app.js. Keine Aktivitätsart-Ebene mehr darüber (bewusst am 04.09.2026 wieder entfernt). -->
+        <div class="settings-pane" id="pane-subtypes" style="display:none">
+          <div class="settings-group-title">Unterarten</div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuert, welche Ausrüstung im Aktivitäts-Modal automatisch vorgeschlagen wird. Bezeichnung frei änderbar, ✕ löscht eine Unterart (auch vordefinierte). Neue eigene Unterart unten anlegen — dafür den technischen Code von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+          <div id="icuTypesList" style="margin-bottom:14px"></div>
+          <div style="display:flex;gap:8px">
+            <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Rennrad / Rad" style="flex:1">
+            <input class="setup-input" id="newIcuTypeRaw" type="text" placeholder="Code, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabel()">
+            <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabel()">+ Hinzufügen</button>
+          </div>
         </div>
       </div>
     </div>
@@ -622,18 +626,12 @@
       <select class="setup-input" id="actTrainingEffect"></select>
       <div class="setup-hint">Automatisch vorgeschlagen anhand Ø-HF · nachträglich änderbar</div>
     </div>
-    <!-- Aktivitätsart: automatisch vorgeschlagen wo eindeutig (siehe suggestActivityKind()), sonst manuell
-         wählbar — steuert, welche Ausrüstung im Feld darunter zur Auswahl steht -->
-    <div class="setup-field" style="margin-top:10px">
-      <label class="setup-label">Aktivitätsart</label>
-      <select class="setup-input" id="actActivityKind" onchange="refreshActEquipmentOptions()"></select>
-    </div>
-    <!-- Ausrüstungs-Zuordnung: Mehrfachauswahl, gefiltert auf zur gewählten Aktivitätsart passende
+    <!-- Ausrüstungs-Zuordnung: Mehrfachauswahl, gefiltert auf zum Rohtyp/sub_type der Aktivität passende
          Ausrüstung, automatisch vorangehakt (siehe autoAssignEquipment() / refreshActEquipmentOptions()) -->
     <div class="setup-field" style="margin-top:10px">
       <label class="setup-label">Ausrüstung</label>
       <div id="actEquipmentCheckboxes" class="equipment-kind-checkboxes"></div>
-      <div class="setup-hint">Automatisch anhand Aktivitätsart zugeordnet · nachträglich änderbar</div>
+      <div class="setup-hint">Automatisch zugeordnet · nachträglich änderbar</div>
     </div>
     <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
     <div class="note-editor-grid2">
@@ -688,13 +686,12 @@
       <input class="setup-input" id="equipmentName" type="text" placeholder="z.B. Orbea Orca">
     </div>
     <!-- Mehrfachauswahl statt festem Kategorie-Dropdown: eine Ausrüstung kann für mehrere Unterarten
-         (Rohtypen wie Garmin/Intervals.icu die Aktivität benennt) gelten, z.B. ein Rad für Rennrad-Fahrten
-         UND Pendelfahrten — hängt direkt an den echten Aktivitätsdaten, nicht an der (ggf. mehrdeutigen)
-         Aktivitätsart, siehe equipmentForActivity() in app.js -->
+         (Codes wie Garmin/Intervals.icu die Aktivität benennt) gelten, z.B. ein Rad für Rennrad-Fahrten
+         UND Pendelfahrten — hängt direkt an den echten Aktivitätsdaten, siehe equipmentForActivity() in app.js -->
     <div class="setup-field">
       <label class="setup-label">Unterarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(keine Auswahl = für alle nutzbar)</span></label>
       <div id="equipmentKindCheckboxes" class="equipment-kind-checkboxes"></div>
-      <button type="button" class="trainer-link" onclick="openActivityKindsSettings()">⚙ Unterarten verwalten →</button>
+      <button type="button" class="trainer-link" onclick="openIcuTypesSettings()">⚙ Unterarten verwalten →</button>
     </div>
     <div class="note-editor-grid2">
       <div class="setup-field">
@@ -731,40 +728,6 @@
     <button class="btn" id="equipmentRetireBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px"></button>
     <!-- Nur sichtbar bei bereits aussortierten Gegenständen, siehe openEquipmentModal()/deleteEquipmentModal() -->
     <button class="btn" id="equipmentDeleteBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red);display:none" onclick="deleteEquipmentModal()">✕ Endgültig löschen</button>
-  </div>
-</div>
-
-<!-- Aktivitätsart-Modal: Anlegen/Bearbeiten einer Aktivitätsart inkl. automatischer Erkennung über
-     Unterarten (wie Garmin/Intervals.icu die importierte Aktivität technisch benennt), siehe
-     openActivityKindModal()/saveActivityKindModal() -->
-<div class="modal-overlay" id="activityKindModal" style="display:none" onclick="if(event.target===this)closeActivityKindModal()">
-  <div class="modal">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div id="activityKindModalHeading" style="font-size:17px;font-weight:600;color:var(--text)"></div>
-      <button class="btn" onclick="closeActivityKindModal()">✕</button>
-    </div>
-    <div class="setup-field">
-      <label class="setup-label">Name</label>
-      <input class="setup-input" id="activityKindName" type="text" placeholder="z.B. Rennrad">
-    </div>
-    <!-- Unterarten: wie Garmin/Intervals.icu die importierte Aktivität technisch benennt (z.B. "Ride").
-         Mehrfachauswahl per Checkbox, gilt erst nach "Speichern" — Ankreuzen entfernt eine Unterart beim
-         Speichern automatisch von jeder anderen Aktivitätsart (siehe saveActivityKindModal() in app.js) -->
-    <div class="setup-field">
-      <label class="setup-label">Unterarten <span style="text-transform:none;font-weight:400;color:var(--text2)">(zur automatischen Erkennung)</span></label>
-      <div id="activityKindTypeCheckboxes" class="equipment-kind-checkboxes"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input class="setup-input" id="newIcuTypeLabelModal" type="text" placeholder="Eigene Unterart, z.B. Rennrad / Rad" style="flex:1">
-        <input class="setup-input" id="newIcuTypeRawModal" type="text" placeholder="Code, z.B. Ride" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabelModal()">
-        <button class="setup-btn setup-btn-sm" style="flex-shrink:0" onclick="addCustomIcuTypeLabelModal()">+</button>
-      </div>
-      <div class="setup-hint" style="margin-top:6px">Kennt Intervals.icu eine Unterart, die hier fehlt? Technischen Code eintragen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:8px">
-      <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveActivityKindModal()">Speichern</button>
-      <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeActivityKindModal()">Abbrechen</button>
-    </div>
-    <button class="btn" id="activityKindDeleteBtn" style="width:100%;margin-top:10px;padding:11px;font-size:13px;color:var(--red);border-color:var(--red);display:none" onclick="deleteActivityKindModal()">✕ Löschen</button>
   </div>
 </div>
 
@@ -899,6 +862,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904k"></script>
+<script src="app.js?v=20260904l"></script>
 </body>
 </html>

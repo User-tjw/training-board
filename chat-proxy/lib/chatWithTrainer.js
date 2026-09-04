@@ -35,6 +35,29 @@ Beantworte allgemeine oder gemischte Themen selbst. Geht es klar überwiegend um
 
 const SHARED_RULES = `Sprache: Deutsch. Dialog kurz, aber eindeutig — direkt, klar, kein unnötiges Fachkauderwelsch. Empfehlungen immer mit kurzer Begründung, aber keine langen Abhandlungen: Antworte in maximal 3-4 kurzen Sätzen oder einer knappen Stichpunktliste, außer Thomas fragt explizit nach mehr Detail. Thomas trifft die finalen Entscheidungen. Du kennst das Athletenprofil und den aktuellen Trainingskontext aus dem folgenden Block — nutze ihn, ohne ihn zu wiederholen. Das gilt besonders für Konditionstrend, verpasste Einheiten und Wellness-Trends (Pfeile ↑↓→): die behältst du im Blick und lässt sie in deine Einschätzung einfließen, zählst sie aber nicht routinemäßig auf — nur wenn sie für die konkrete Frage direkt relevant sind oder eine auffällige Veränderung eine kurze Erwähnung wert ist. Der Kontext-Block enthält "Aktuelle Zeit" (Wochentag + Uhrzeit) — berücksichtige sie bei deinen Einschätzungen und Empfehlungen (z.B. ob für heute noch realistisch Zeit für eine Einheit ist, ob eine Frage sich auf den bereits gelaufenen oder den noch bevorstehenden Tag bezieht), unabhängig vom Ton früherer Nachrichten im Verlauf. Die Begrüßungsfloskel selbst ist zweitrangig — entscheidend ist, dass der inhaltliche Rat zur Tageszeit passt. Für Fragen zu Rädern, Schuhen oder Verschleißteilen steht dir das Tool get_equipment_status zur Verfügung — ruf es nur auf, wenn die Frage das tatsächlich betrifft.`;
 
+// Bekannte Intervals.icu-Codes mit deutscher Bezeichnung — Duplikat der ICU_TYPE_LABELS-Konstante aus
+// app.js (Client kann sie nicht serverseitig bereitstellen), damit get_equipment_status auch ohne
+// eigene Overrides lesbare Bezeichnungen liefert. Bei Änderungen dort auch hier nachziehen.
+const ICU_TYPE_LABELS = {
+  Ride: 'Rennrad / Rad',
+  'Ride:COMMUTE': 'Pendelfahrt (Rad)',
+  VirtualRide: 'Rad Indoor (Zwift o.ä.)',
+  MountainBikeRide: 'Mountainbike',
+  GravelRide: 'Gravel',
+  EBikeRide: 'E-Bike',
+  Run: 'Laufen',
+  TrailRun: 'Trailrunning',
+  VirtualRun: 'Laufband',
+  Walk: 'Spazieren',
+  Hike: 'Wandern',
+  Swim: 'Schwimmen',
+  WeightTraining: 'Krafttraining',
+  Workout: 'Workout (allgemein)',
+  Rowing: 'Rudern',
+  NordicSki: 'Langlauf',
+  AlpineSki: 'Skifahren',
+};
+
 // Ausrüstungsdaten kommen nicht mit jeder Anfrage im Kontext-Block mit (tokensparsam), sondern
 // werden nur bei Bedarf per Tool-Use live aus training-notes/settings/equipment.json gezogen —
 // dieselbe Datei, die die App über saveEquipmentToGH()/syncEquipmentFromGH() pflegt (siehe app.js).
@@ -54,27 +77,32 @@ async function fetchEquipmentFromGitHub() {
     'X-GitHub-Api-Version': '2022-11-28',
   };
   try {
-    // Aktivitätsarten (settings/activity-kinds.json) werden nur für die Klartext-Labels dazugeladen —
-    // schlägt der Abruf fehl, wird einfach mit den rohen IDs weitergemacht statt ganz abzubrechen.
-    const [eqRes, kindsRes] = await Promise.all([
+    // Unterarten (settings/icu-type-labels.json) werden nur für die Klartext-Labels dazugeladen —
+    // Thomas' eigene Overrides/neu angelegte Unterarten, gemergt mit den vordefinierten
+    // ICU_TYPE_LABELS (Client-seitiges Pendant: allIcuTypeEntries() in app.js). Schlägt der Abruf
+    // fehl, wird einfach mit dem rohen Code weitergemacht statt ganz abzubrechen.
+    const [eqRes, labelsRes] = await Promise.all([
       fetch(`https://api.github.com/repos/${repo}/contents/settings/equipment.json`, { headers }),
-      fetch(`https://api.github.com/repos/${repo}/contents/settings/activity-kinds.json`, { headers }),
+      fetch(`https://api.github.com/repos/${repo}/contents/settings/icu-type-labels.json`, { headers }),
     ]);
     if (eqRes.status === 404) return 'Noch keine Ausrüstung angelegt.';
     if (!eqRes.ok) return `Ausrüstungsdaten konnten nicht geladen werden (GitHub ${eqRes.status}).`;
     const eqFile = await eqRes.json();
     const eqData = JSON.parse(Buffer.from(eqFile.content, 'base64').toString('utf8'));
-    const kindLabelById = {};
-    if (kindsRes.ok) {
-      const kindsFile = await kindsRes.json();
-      const kindsData = JSON.parse(Buffer.from(kindsFile.content, 'base64').toString('utf8'));
-      (kindsData.items || []).forEach(k => { kindLabelById[k.id] = k.label; });
+    const typeLabels = { ...ICU_TYPE_LABELS };
+    if (labelsRes.ok) {
+      const labelsFile = await labelsRes.json();
+      const labelsData = JSON.parse(Buffer.from(labelsFile.content, 'base64').toString('utf8'));
+      (labelsData.items || []).forEach(o => {
+        if (o.hidden) delete typeLabels[o.type];
+        else if (o.label) typeLabels[o.type] = o.label;
+      });
     }
     const items = (eqData.items || []).filter(it => !it.retired);
     if (!items.length) return 'Noch keine Ausrüstung angelegt.';
     return JSON.stringify(items.map(it => ({
       name: it.name,
-      aktivitaetsarten: (it.activityKindIds || []).map(id => kindLabelById[id] || id).join(', ') || 'alle Aktivitäten',
+      unterarten: (it.icuTypes || []).map(t => typeLabels[t] || t).join(', ') || 'alle Aktivitäten',
       km: it.totalKm || 0,
       stunden: it.totalHours || 0,
       aktivitaeten: it.totalActivities || 0,
