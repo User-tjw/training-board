@@ -599,9 +599,8 @@
 
           <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
           <div class="settings-group-title">Sportarten</div>
-          <div class="setup-hint" style="margin-bottom:12px">Steuert die Checkbox-Liste bei jeder Aktivitätsart oben — Bezeichnung frei änderbar, ✕ blendet eine Sportart aus (vordefinierte jederzeit über "Wieder anzeigen" reaktivierbar, eigene werden endgültig gelöscht). Neue eigene Sportart unten anlegen — dafür den technischen Rohtyp-Namen von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
-          <div id="customIcuTypesList" style="margin-bottom:8px"></div>
-          <div id="hiddenIcuTypesList" style="margin-bottom:14px"></div>
+          <div class="setup-hint" style="margin-bottom:12px">Steuert die Checkbox-Liste bei jeder Aktivitätsart oben — Bezeichnung frei änderbar, ✕ löscht eine Sportart (auch vordefinierte). Neue eigene Sportart unten anlegen — dafür den technischen Rohtyp-Namen von Intervals.icu kennen (z.B. <code>AlpineSki</code>), im Zweifel nachfragen.</div>
+          <div id="customIcuTypesList" style="margin-bottom:14px"></div>
           <div style="display:flex;gap:8px">
             <input class="setup-input" id="newIcuTypeRaw" type="text" placeholder="Rohtyp, z.B. StairStepper" style="flex:1">
             <input class="setup-input" id="newIcuTypeLabel" type="text" placeholder="Eigene Bezeichnung, z.B. Stepper" style="flex:1" onkeydown="if(event.key==='Enter')addCustomIcuTypeLabel()">
@@ -875,6 +874,6 @@
   </div>
 </div>
 
-<script src="app.js?v=20260904e"></script>
+<script src="app.js?v=20260904f"></script>
 </body>
 </html>

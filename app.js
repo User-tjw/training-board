@@ -2200,13 +2200,6 @@ function allIcuTypeLabels() {
   allIcuTypeEntries().forEach(e => { obj[e.type] = e.label; });
   return obj;
 }
-function hiddenBuiltinIcuTypes() {
-  const overrides = {};
-  getCustomIcuTypeLabels().items.forEach(it => { overrides[it.type] = it; });
-  return Object.keys(ICU_TYPE_LABELS)
-    .filter(type => overrides[type] && overrides[type].hidden)
-    .map(type => ({ type, label: overrides[type].label || ICU_TYPE_LABELS[type] }));
-}
 // Erstellt/ändert den Override-Eintrag für einen Rohtyp und räumt ihn wieder auf, sobald er nichts
 // mehr bewirkt (kein Label-Override, nicht ausgeblendet) — bei vordefinierten Typen bedeutet das
 // „zurück auf Standard", bei rein eigenen Typen ohne Vorgabe verschwindet der Eintrag dann ganz.
@@ -2225,9 +2218,10 @@ function updateIcuTypeLabel(type, value) {
   const label = value.trim();
   upsertIcuTypeOverride(type, { label: label || undefined });
 }
-// Vordefinierte Sportart: nur ausblenden (jederzeit über restoreIcuTypeLabel() reaktivierbar). Rein
-// eigene Sportart ohne Vorgabe: komplett löschen, „ausblenden" wäre hier gleichbedeutend und würde
-// nur unnötig einen toten Override-Eintrag hinterlassen.
+// Löscht eine Sportart aus der Checkbox-Liste. Bei vordefinierten Typen (fest in ICU_TYPE_LABELS
+// hinterlegt) technisch nur per „hidden"-Override, wirkt aber dauerhaft — Wiederherstellen geht bei
+// Bedarf über „+ Hinzufügen" mit demselben Rohtyp. Rein eigene Sportart ohne Vorgabe wird direkt aus
+// den Overrides entfernt.
 function hideIcuTypeLabel(type) {
   if (ICU_TYPE_LABELS[type] !== undefined) {
     upsertIcuTypeOverride(type, { hidden: true });
@@ -2237,9 +2231,6 @@ function hideIcuTypeLabel(type) {
     saveCustomIcuTypeLabels(data);
     renderActivityKindsList();
   }
-}
-function restoreIcuTypeLabel(type) {
-  upsertIcuTypeOverride(type, { hidden: undefined });
 }
 function addCustomIcuTypeLabel() {
   const typeInput = document.getElementById('newIcuTypeRaw');
@@ -2272,16 +2263,6 @@ function renderActivityKindsList() {
       <span class="setup-hint" style="flex-shrink:0">${escHtml(e.type)}</span>
       <button class="btn" style="padding:6px 10px" onclick="hideIcuTypeLabel('${e.type}')">✕</button>
     </div>`).join('') || '<div class="setup-hint">Keine Sportarten vorhanden.</div>';
-  }
-  const hiddenEl = document.getElementById('hiddenIcuTypesList');
-  if (hiddenEl) {
-    const hidden = hiddenBuiltinIcuTypes();
-    hiddenEl.innerHTML = hidden.length
-      ? '<div class="setup-hint" style="margin-bottom:6px">Ausgeblendet:</div>' + hidden.map(e => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-        <span class="setup-hint" style="flex:1">${escHtml(e.label)} (${escHtml(e.type)})</span>
-        <button class="setup-btn setup-btn-sm" onclick="restoreIcuTypeLabel('${e.type}')">Wieder anzeigen</button>
-      </div>`).join('')
-      : '';
   }
 }
 // Rohtyp-Zuordnung für die Auto-Erkennung (suggestActivityKind()) — mehrere Sportarten pro
