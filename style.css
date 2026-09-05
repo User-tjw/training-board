@@ -263,6 +263,20 @@
     .modal { background: var(--bg2); border-radius: 14px; padding: 32px; width: 380px; max-width: 95vw; }
     .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
 
+    /* Eigenes Datumsauswahl-Popover (statt nativem Kalender-Widget des Browsers), da nur so ein "Heute"-Feld möglich ist */
+    .date-picker-pop { position: fixed; z-index: 200; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; width: 240px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+    .dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 12px; font-weight: 600; }
+    .dp-nav-btn { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 14px; padding: 2px 8px; border-radius: 6px; }
+    .dp-nav-btn:hover { background: var(--bg3); color: var(--text); }
+    .dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+    .dp-dow { font-size: 10px; color: var(--text2); padding: 4px 0; }
+    .dp-day { font-size: 11px; padding: 6px 0; border-radius: 6px; cursor: pointer; font-family: var(--mono); color: var(--text); }
+    .dp-day:hover { background: var(--bg3); }
+    .dp-day.dp-muted { color: var(--text2); opacity: 0.5; }
+    .dp-day.dp-today { border: 1px solid var(--accent, #3b82f6); }
+    .dp-day.dp-selected { background: var(--accent, #3b82f6); color: #fff; }
+    .dp-foot { display: flex; justify-content: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+
     /* Week-Cal: Trainingswoche-Kalender-Grid (7 Tage + Zusammenfassungs-Spalte) inkl. Soll-Ist-Balken (hbar-Klassen) */
     /* Aufbau: 8 Spalten, 2 Reihen — Reihe 1 = Datums-Header, Reihe 2 = Tagesspalten mit gestapelten Aktivitäts-Balken */
     .week-cal { display: grid; grid-template-columns: repeat(7, 1fr) 220px; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }

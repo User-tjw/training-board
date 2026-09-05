@@ -1356,24 +1356,49 @@ function renderCockpitLoad() {
 
 // ─── Übersicht ────────────────────────────────────────────────────────────────
 
+function resetActivityFilters() {
+  document.getElementById('activityDateFrom').value = '';
+  document.getElementById('activityDateTo').value = '';
+  document.getElementById('activityTypeFilter').value = '';
+  renderOverviewGroup();
+}
+
 function renderOverviewGroup() {
   document.getElementById('ghSetupBanner').style.display = (ghToken && ghRepo) ? 'none' : 'block';
 
-  const days = getRangeDays('overview', 14);
-
-  const activities = sliceDays(_activitiesFull, days, a => new Date(a.start_date_local));
+  // Datumsfilter (Von/Bis): leer = kein Limit in diese Richtung
+  const dateFromEl = document.getElementById('activityDateFrom');
+  const dateToEl = document.getElementById('activityDateTo');
+  const dateFrom = dateFromEl && dateFromEl.value ? dateFromEl.value : null;
+  const dateTo = dateToEl && dateToEl.value ? dateToEl.value : null;
+  const activities = _activitiesFull.filter(a => {
+    const day = fmtDate(new Date(a.start_date_local));
+    return (!dateFrom || day >= dateFrom) && (!dateTo || day <= dateTo);
+  });
   const journalByDate = journalByDateMap();
 
-  const activityDays = new Set(activities.map(a => fmtDate(new Date(a.start_date_local))));
-  const from = daysAgo(days);
-  const noteOnlyEntries = Object.keys(journalByDate)
-    .filter(day => !activityDays.has(day) && new Date(day) >= from)
+  // Typ-Filter: Dropdown-Optionen kommen aus den Unterarten-Bezeichnungen der Einstellungen (allIcuTypeLabels()) —
+  // bei jedem Render neu aufgebaut, damit Umbenennen/Ausblenden dort sich sofort im Filter niederschlägt.
+  const typeSelect = document.getElementById('activityTypeFilter');
+  let typeFilter = '';
+  if (typeSelect) {
+    typeFilter = typeSelect.value;
+    const options = activityTypeFilterOptions();
+    typeSelect.innerHTML = '<option value="">Alle Arten</option>' + options.map(o => `<option value="${escHtml(o.key)}">${escHtml(o.label)}</option>`).join('');
+    if (options.some(o => o.key === typeFilter)) typeSelect.value = typeFilter; else typeFilter = '';
+  }
+  const activityTypeKey = a => (a.sub_type && a.sub_type !== 'NONE') ? `${a.type}:${a.sub_type}` : a.type;
+  const activitiesFiltered = typeFilter ? activities.filter(a => activityTypeKey(a) === typeFilter) : activities;
+
+  const activityDays = new Set(activitiesFiltered.map(a => fmtDate(new Date(a.start_date_local))));
+  const noteOnlyEntries = typeFilter ? [] : Object.keys(journalByDate)
+    .filter(day => !activityDays.has(day) && (!dateFrom || day >= dateFrom) && (!dateTo || day <= dateTo))
     .map(day => ({ id: 'note-' + day, _noteOnly: true, start_date_local: day + 'T12:00:00' }));
-  const merged = [...activities, ...noteOnlyEntries]
+  const merged = [...activitiesFiltered, ...noteOnlyEntries]
     .sort((a, b) => new Date(b.start_date_local) - new Date(a.start_date_local));
 
-  // Angezeigte (im Zeitraum) / Gesamtzahl aller geladenen Aktivitäten
-  document.getElementById('journalCount').textContent = `${activities.length} / ${_activitiesFull.length} Aktivitäten`;
+  // Angezeigte (im Zeitraum + Typ-Filter) / Gesamtzahl aller geladenen Aktivitäten
+  document.getElementById('journalCount').textContent = `${activitiesFiltered.length} / ${_activitiesFull.length} Aktivitäten`;
   renderActivityTable(merged,'allActivities',null,journalByDate);
 
   const mix = {};
@@ -2168,6 +2193,21 @@ function distinctActivityKinds() {
     .map(type => ({ type, label: labels[type] || prettifyIcuType(type) }))
     .sort((a, b) => a.label.localeCompare(b.label, 'de'));
 }
+// Optionen für den Typ-Filter auf der Aktivitäten-Seite: nur Rohtyp/sub_type-Kombinationen, die (a) in der
+// Historie vorkommen UND (b) in den Einstellungen (Unterarten) nicht ausgeblendet sind — anders als
+// distinctActivityKinds() für die Ausrüstungs-Zuordnung, wo auch ausgeblendete/unbenannte Typen wählbar bleiben.
+function activityTypeFilterOptions() {
+  const seen = new Set();
+  (_activitiesFull || []).forEach(act => {
+    if (!act || !act.type) return;
+    seen.add((act.sub_type && act.sub_type !== 'NONE') ? `${act.type}:${act.sub_type}` : act.type);
+  });
+  const labels = allIcuTypeLabels();
+  return Array.from(seen)
+    .filter(key => labels[key])
+    .map(key => ({ key, label: labels[key] }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'de'));
+}
 // Erstellt/ändert den Override-Eintrag für einen Rohtyp und räumt ihn wieder auf, sobald er nichts
 // mehr bewirkt (kein Label-Override, nicht ausgeblendet) — bei vordefinierten Typen bedeutet das
 // „zurück auf Standard", bei rein eigenen Typen ohne Vorgabe verschwindet der Eintrag dann ganz.
@@ -2181,6 +2221,7 @@ function upsertIcuTypeOverride(type, patch) {
   if (!entry.label && !entry.hidden) data.items = data.items.filter(it => it.type !== type);
   saveCustomIcuTypeLabels(data);
   renderIcuTypesList();
+  renderOverviewGroup();
 }
 function updateIcuTypeLabel(type, value) {
   const label = value.trim();
@@ -2197,6 +2238,7 @@ function hideIcuTypeLabel(type) {
     data.items = data.items.filter(it => it.type !== type);
     saveCustomIcuTypeLabels(data);
     renderIcuTypesList();
+    renderOverviewGroup();
   }
 }
 // Aufgerufen über den Link im Ausrüstungs-Modal — schließt es (Einstellungen sind ein eigenes,
@@ -3714,6 +3756,71 @@ function normalizeType(type) {
 function daysAgo(n) { const d=new Date(); d.setDate(d.getDate()-n); return d; }
 function fmtDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ─── Eigenes Datumsauswahl-Popover ──────────────────────────────────────────────
+// Ersetzt das native Kalender-Widget des Browsers (dort lässt sich kein "Heute"-Feld einbauen).
+let _dpTarget = null, _dpViewDate = null;
+
+function openDatePicker(inputEl) {
+  _dpTarget = inputEl;
+  _dpViewDate = inputEl.value ? new Date(inputEl.value + 'T12:00:00') : new Date();
+  renderDatePicker();
+  const pop = document.getElementById('datePickerPopover');
+  const r = inputEl.getBoundingClientRect();
+  pop.style.display = 'block';
+  pop.style.top = (r.bottom + 6) + 'px';
+  pop.style.left = Math.min(r.left, window.innerWidth - 256) + 'px';
+  setTimeout(() => document.addEventListener('mousedown', dpOutsideClick), 0);
+}
+function closeDatePicker() {
+  document.getElementById('datePickerPopover').style.display = 'none';
+  document.removeEventListener('mousedown', dpOutsideClick);
+  _dpTarget = null;
+}
+function dpOutsideClick(e) {
+  const pop = document.getElementById('datePickerPopover');
+  if (!pop.contains(e.target) && e.target !== _dpTarget) closeDatePicker();
+}
+function dpNav(delta) {
+  _dpViewDate.setMonth(_dpViewDate.getMonth() + delta);
+  renderDatePicker();
+}
+function dpPick(dateStr) {
+  if (_dpTarget) { _dpTarget.value = dateStr; renderOverviewGroup(); }
+  closeDatePicker();
+}
+function renderDatePicker() {
+  const pop = document.getElementById('datePickerPopover');
+  const year = _dpViewDate.getFullYear(), month = _dpViewDate.getMonth();
+  const today = fmtDate(new Date());
+  const selected = _dpTarget ? _dpTarget.value : '';
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = (firstOfMonth.getDay() + 6) % 7; // Woche beginnt Montag
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const monthLabel = _dpViewDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  const dowLabels = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+  pop.innerHTML = `
+    <div class="dp-head">
+      <button class="dp-nav-btn" onclick="dpNav(-1)">‹</button>
+      <span>${monthLabel}</span>
+      <button class="dp-nav-btn" onclick="dpNav(1)">›</button>
+    </div>
+    <div class="dp-grid">
+      ${dowLabels.map(l => `<div class="dp-dow">${l}</div>`).join('')}
+      ${cells.map(d => {
+        if (!d) return '<div></div>';
+        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const cls = ['dp-day'];
+        if (dateStr === today) cls.push('dp-today');
+        if (dateStr === selected) cls.push('dp-selected');
+        return `<div class="${cls.join(' ')}" onclick="dpPick('${dateStr}')">${d}</div>`;
+      }).join('')}
+    </div>
+    <div class="dp-foot"><button class="btn" onclick="dpPick('${today}')">Heute</button></div>`;
 }
 function getWeek(date) {
   const d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate()));
