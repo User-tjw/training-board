@@ -66,6 +66,45 @@ function autoAssignEquipment() {
   }
 }
 
+// Einmaliges Reparatur-Werkzeug für Alt-Zuordnungen aus der Zeit vor den heutigen icuTypes-Regeln
+// (z.B. als BMC/Orbea Orca noch mit leeren icuTypes = "passt auf alles" angelegt waren und
+// autoAssignEquipment() dadurch beiden pauschal jede Aktivität zugeordnet hat, unabhängig vom
+// tatsächlichen Rohtyp — siehe Bug vom 05.09.2026). Vergleicht jede bereits zugeordnete Aktivität
+// gegen die aktuellen icuTypes-Regeln (equipmentForActivity()) und entfernt IDs, die nicht mehr
+// passen würden. Aufruf über Browser-Konsole: erst repairEquipmentAssignments(true) (nur Log,
+// keine Änderung), nach Prüfung repairEquipmentAssignments(false) (schreibt + GitHub-Sync).
+function repairEquipmentAssignments(dryRun) {
+  if (dryRun === undefined) dryRun = true;
+  if (!_activitiesFull.length) { console.warn('Keine Aktivitäten geladen.'); return; }
+  const data = getActivityMeta();
+  const changes = [];
+  _activitiesFull.forEach(act => {
+    const cur = (data[act.id] && typeof data[act.id] === 'object') ? data[act.id] : null;
+    const curIds = cur ? activityEquipmentIds(cur) : null;
+    if (!curIds || !curIds.length) return;
+    const correctIds = equipmentForActivity(act).map(it => it.id);
+    const removed = curIds.filter(id => !correctIds.includes(id));
+    if (!removed.length) return;
+    changes.push({ id: act.id, type: act.type, sub_type: act.sub_type, before: curIds, after: correctIds, removed });
+    if (!dryRun) data[act.id] = { ...cur, equipmentIds: correctIds };
+  });
+  console.log(`${changes.length} Aktivität(en) mit falscher Ausrüstungs-Zuordnung gefunden.`, changes);
+  if (dryRun || !changes.length) return changes;
+  data.updatedAt = Date.now();
+  localStorage.setItem('activity_meta', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    saveActivityMetaToGH(data).then(() => {
+      recomputeEquipmentTotals(true);
+      renderEquipmentSection();
+      console.log('Korrektur gespeichert und nach GitHub synchronisiert.');
+    }).catch(e => console.error('Reparatur: GitHub-Sync fehlgeschlagen:', e));
+  } else {
+    recomputeEquipmentTotals(true);
+    renderEquipmentSection();
+  }
+  return changes;
+}
+
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
 
 async function sha256(text) {
@@ -2083,14 +2122,13 @@ function equipmentIcuTypes(it) {
 // Kategorisierungsebene dazwischen. Gemeinsame Filterlogik für die Checkbox-Auswahl im Aktivitäts-Modal
 // (refreshActEquipmentOptions()) und die automatische Hintergrund-Zuordnung (autoAssignEquipment()).
 function equipmentForActivity(act) {
-  const keys = [];
-  if (act && act.sub_type && act.sub_type !== 'NONE') keys.push(`${act.type}:${act.sub_type}`);
-  if (act && act.type) keys.push(act.type);
-  return (getEquipment().items || []).filter(it => {
-    if (it.retired) return false;
-    const types = equipmentIcuTypes(it);
-    return types.length === 0 || keys.some(k => types.includes(k));
-  });
+  const items = (getEquipment().items || []).filter(it => !it.retired);
+  const wildcard = items.filter(it => equipmentIcuTypes(it).length === 0);
+  const specificKey = act && act.sub_type && act.sub_type !== 'NONE' ? `${act.type}:${act.sub_type}` : null;
+  const specificMatches = specificKey ? items.filter(it => equipmentIcuTypes(it).includes(specificKey)) : [];
+  if (specificMatches.length) return [...new Set([...specificMatches, ...wildcard])];
+  const typeMatches = act && act.type ? items.filter(it => equipmentIcuTypes(it).includes(act.type)) : [];
+  return [...new Set([...typeMatches, ...wildcard])];
 }
 
 // ─── Unterarten: wie Garmin/Intervals.icu eine Aktivität technisch benennt (Code, z.B. "Ride", ggf.
