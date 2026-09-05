@@ -105,6 +105,51 @@ function repairEquipmentAssignments(dryRun) {
   return changes;
 }
 
+// Abgleich-Werkzeug für neu angelegte/geänderte Ausrüstung: autoAssignEquipment() ordnet Ausrüstung
+// nur zukünftigen, noch nie zugeordneten Aktivitäten automatisch zu — bereits zugeordnete Alt-Aktivitäten
+// bleiben unangetastet (siehe Kommentar oben bei autoAssignEquipment()), daher zeigt frisch angelegte
+// oder gerade geänderte Ausrüstung zunächst falsche/fehlende Aktivitäten. Diese Funktion gleicht gezielt
+// GENAU EIN Ausrüstungsteil gegen seine aktuellen Standardaktivitäten (icuTypes) ab: fügt passende
+// Alt-Aktivitäten hinzu UND entfernt nicht mehr passende (z.B. wenn eine Standardaktivität wieder
+// abgehakt wird) — rührt dabei aber nie an, welche ANDEREN Ausrüstungsteile derselben Aktivität
+// zugeordnet sind. Läuft automatisch bei jedem saveEquipmentModal() mit (kein separater Schritt
+// nötig), lässt sich aber auch manuell über die Browser-Konsole prüfen: erst
+// backfillEquipmentAssignment('Kette Orbea', true) (nur Log), dann mit false zum Anwenden + Sync.
+function backfillEquipmentAssignment(nameOrId, dryRun) {
+  if (dryRun === undefined) dryRun = true;
+  if (!_activitiesFull.length) { console.warn('Keine Aktivitäten geladen.'); return; }
+  const eq = getEquipment();
+  const target = (eq.items || []).find(it => it.id === nameOrId || it.name === nameOrId);
+  if (!target) { console.warn('Ausrüstung nicht gefunden:', nameOrId); return; }
+  const data = getActivityMeta();
+  const changes = [];
+  _activitiesFull.forEach(act => {
+    const shouldHave = equipmentForActivity(act).some(it => it.id === target.id);
+    const cur = (data[act.id] && typeof data[act.id] === 'object') ? data[act.id] : null;
+    const curIds = cur ? (activityEquipmentIds(cur) || []) : [];
+    const has = curIds.includes(target.id);
+    if (shouldHave === has) return; // schon konsistent
+    const afterIds = shouldHave ? [...curIds, target.id] : curIds.filter(id => id !== target.id);
+    changes.push({ id: act.id, type: act.type, sub_type: act.sub_type, action: shouldHave ? 'add' : 'remove', before: curIds, after: afterIds });
+    if (!dryRun) data[act.id] = { ...(cur || {}), equipmentIds: afterIds };
+  });
+  console.log(`${changes.length} Aktivität(en) würden bei "${target.name}" angepasst.`, changes);
+  if (dryRun || !changes.length) return changes;
+  data.updatedAt = Date.now();
+  localStorage.setItem('activity_meta', JSON.stringify(data));
+  if (ghToken && ghRepo) {
+    saveActivityMetaToGH(data).then(() => {
+      recomputeEquipmentTotals(true);
+      renderEquipmentSection();
+      console.log('Nachrüstung gespeichert und nach GitHub synchronisiert.');
+    }).catch(e => console.error('Nachrüstung: GitHub-Sync fehlgeschlagen:', e));
+  } else {
+    recomputeEquipmentTotals(true);
+    renderEquipmentSection();
+  }
+  return changes;
+}
+
 // ─── Passwortschutz ──────────────────────────────────────────────────────────
 
 async function sha256(text) {
@@ -2480,7 +2525,15 @@ function saveEquipmentModal() {
   }
   delete it.activityKindIds; // ersetzt durch icuTypes — alte Aktivitätsart-Zuordnung räumen, sonst bliebe sie als totes Feld liegen
   Object.assign(it, { name, icuTypes, maxKm, addedAt, baselineKm, baselineHours, note });
+  const savedId = it.id;
   saveEquipment(eq);
+  // Bei jedem Speichern auch passende Alt-Aktivitäten aus der Historie nachziehen — deckt sowohl
+  // neu angelegte Ausrüstung als auch nachträglich geänderte Standardaktivitäten/Erste-Nutzung ab,
+  // ohne dass man das separat anstoßen muss. Ergänzt nur (siehe backfillEquipmentAssignment()),
+  // entfernt nie etwas — bestehende Zuordnungen (auch manuell im Aktivitäts-Modal korrigierte)
+  // bleiben unangetastet. Muss NACH saveEquipment() laufen, da backfillEquipmentAssignment() die
+  // gerade gespeicherten icuTypes/addedAt aus getEquipment() liest.
+  backfillEquipmentAssignment(savedId, false);
   recomputeEquipmentTotals(true); // Start-km/-Stunden fließen sofort in die angezeigten Totals ein
   closeEquipmentModal();
   renderEquipmentSection();
