@@ -66,10 +66,10 @@
     .setup-field-row-item .setup-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .setup-input-compact { width: 64px; flex: none; text-align: center; }
     .setup-field-row .setup-input-compact { width: 100%; }
-    /* Kompakte Zahlenfelder (Wochenstunden, Prozent-Anteile): reine Tastatureingabe, keine Spinner-Pfeile */
-    .setup-input-compact[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-    .setup-input-compact[type="number"]::-webkit-outer-spin-button,
-    .setup-input-compact[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    /* Zahlenfelder: reine Tastatureingabe, keine Spinner-Pfeile (überall, nicht nur bei den kompakten Feldern) */
+    .setup-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+    .setup-input[type="number"]::-webkit-outer-spin-button,
+    .setup-input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     /* Wettkampf-Liste (Plan-Seite): eine Zeile pro Rennen, siehe renderRacesList()/addRaceRow() */
     .race-list { display: flex; flex-direction: column; gap: 6px; max-width: 460px; }
     .race-row { display: flex; gap: 6px; align-items: center; }
@@ -250,6 +250,9 @@
     .rpe-btn.active { box-shadow:0 1px 6px rgba(0,0,0,0.2); }
     /* Note-Editor kompakt: Titel/Datum nebeneinander, engere Abstände, kleineres Textfeld → möglichst kein Scrollen */
     .note-editor-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    /* Ausrüstungs-Modal: Labels sind unterschiedlich lang ("Wartungsgrenze km (optional)" bricht um,
+       "Erste Nutzung" nicht) — feste Mindesthöhe hält die Eingabefelder beider Spalten auf einer Linie */
+    #equipmentModal .note-editor-grid2 .setup-label { min-height:28px; }
     #noteEditorModal .setup-field { margin-bottom:11px; }
     #noteEditorModal .note-textarea { min-height:96px; }
     #noteEditorModal .modal { padding:22px 26px; max-height:90vh; }

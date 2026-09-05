@@ -2330,11 +2330,19 @@ function recomputeEquipmentTotals(pushToGH) {
   if (!eq.items || !eq.items.length) return eq;
   const meta = getActivityMeta();
   const totals = {};
-  eq.items.forEach(it => { totals[it.id] = { km: 0, sec: 0, n: 0 }; });
+  const byId = {};
+  eq.items.forEach(it => { totals[it.id] = { km: 0, sec: 0, n: 0 }; byId[it.id] = it; });
   _activitiesFull.forEach(act => {
     const eqIds = activityEquipmentIds(meta[act.id]) || [];
+    // "Erste Nutzung" (addedAt) ist der Startpunkt der Zählung — z.B. bei einem Kettenwechsel trägt
+    // man hier das Wechsel-Datum ein (+ Start-km auf 0), dann zählen nur noch Aktivitäten ab diesem
+    // Tag. Ältere, bereits zugeordnete Aktivitäten bleiben in activity_meta erhalten, fließen aber
+    // nicht mehr in die Summe ein — die Zuordnung selbst wird dadurch nie verändert, nur gefiltert.
+    const actDate = act.start_date_local ? act.start_date_local.slice(0, 10) : null;
     eqIds.forEach(eqId => {
       if (!totals[eqId]) return;
+      const it = byId[eqId];
+      if (it.addedAt && actDate && actDate < it.addedAt) return;
       totals[eqId].km += (act.distance || 0) / 1000;
       totals[eqId].sec += act.moving_time || 0;
       totals[eqId].n += 1;
