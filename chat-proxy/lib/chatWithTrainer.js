@@ -115,18 +115,23 @@ async function fetchEquipmentFromGitHub() {
   }
 }
 
-function buildSystemPrompt(personaSlug, contextBlock) {
+// Getrennt in zwei System-Blöcke statt einem: Rolle+Regeln ändern sich nie und werden per
+// cache_control gecacht, der Live-Kontext (Uhrzeit, HRV, Trends ...) ändert sich praktisch bei
+// jeder Nachricht und würde in einem gemeinsamen Block den Cache-Treffer jedes Mal verhindern.
+function buildSystemBlocks(personaSlug, contextBlock) {
   const persona = PERSONAS[personaSlug];
   if (!persona) {
     const err = new Error(`Unbekannte Trainer-Persona: ${personaSlug}`);
     err.status = 400;
     throw err;
   }
-  return [
-    persona.role,
-    SHARED_RULES,
-    contextBlock ? `Aktueller Trainingskontext:\n${contextBlock}` : '',
-  ].filter(Boolean).join('\n\n');
+  const blocks = [
+    { type: 'text', text: [persona.role, SHARED_RULES].join('\n\n'), cache_control: { type: 'ephemeral' } },
+  ];
+  if (contextBlock) {
+    blocks.push({ type: 'text', text: `Aktueller Trainingskontext:\n${contextBlock}` });
+  }
+  return blocks;
 }
 
 // history: Array von { role: 'user'|'trainer', text } aus dem Chat-Schema der App
@@ -162,9 +167,7 @@ async function chatWithTrainer({ persona, context, history, message, apiKey }) {
   // get_equipment_status. Wird für den Head Coach und ggf. den per Handoff dazugeholten
   // Spezialisten gleichermaßen genutzt.
   async function runPersonaTurn(personaSlug, promptContext) {
-    const system = [
-      { type: 'text', text: buildSystemPrompt(personaSlug, promptContext), cache_control: { type: 'ephemeral' } },
-    ];
+    const system = buildSystemBlocks(personaSlug, promptContext);
     const messages = buildMessages(history, message);
 
     let response = await client.messages.create({
