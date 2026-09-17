@@ -229,9 +229,10 @@
     .note-textarea:focus { border-color:var(--accent); }
 
     /* Morgen-Check: Verlauf, Eingabefeld und Senden-Button in EINEM gemeinsamen Rahmen statt
-       mehrerer getrennter Kästen — Verlauf und Button verlieren dafür ihren eigenen Rahmen. */
-    .chat-block { border:1px solid var(--border); border-radius:8px; background:var(--bg); overflow:hidden; }
-    .chat-block .note-textarea { border:none; border-radius:0; }
+       mehrerer getrennter Kästen — Verlauf und Eingabefeld teilen sich EINE Scrollbar (das ganze
+       .chat-block scrollt gemeinsam), statt je eine eigene zu haben. */
+    .chat-block { border:1px solid var(--border); border-radius:8px; background:var(--bg); max-height:48vh; overflow-y:auto; }
+    .chat-block .note-textarea { border:none; border-radius:0; resize:none; }
     .chat-block .note-textarea:focus { border-color:transparent; }
     .chat-block-send { padding:8px; border-top:1px solid var(--border); }
 

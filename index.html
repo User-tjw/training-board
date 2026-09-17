@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260917a">
+  <link rel="stylesheet" href="style.css?v=20260917b">
 </head>
 <body>
 
@@ -420,7 +420,7 @@
     <div class="setup-field">
       <label class="setup-label">Notiz / Nachricht ans Trainer-Team</label>
       <div class="chat-block">
-        <div id="morgenCheckChatList" style="display:flex;flex-direction:column;gap:8px;max-height:35vh;overflow-y:auto;padding:8px 8px 0"></div>
+        <div id="morgenCheckChatList" style="display:flex;flex-direction:column;gap:8px;padding:8px 8px 0"></div>
         <textarea class="note-textarea chat-block-input" id="morgenCheckChatInput" placeholder="Wie geht's dir heute…&#10;&#10;Erster Klick auf Senden schickt das zusammen mit den aktuellen Werten automatisch an den Head Coach."></textarea>
         <div id="noteEditorChatSection" class="chat-block-send">
           <button class="setup-btn" style="margin-top:0" id="morgenCheckChatSendBtn" onclick="sendMorgenCheckMessage()">Senden</button>
