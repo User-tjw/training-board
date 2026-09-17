@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20260917b">
+  <link rel="stylesheet" href="style.css?v=20260917d">
 </head>
 <body>
 
@@ -421,15 +421,15 @@
       <label class="setup-label">Notiz / Nachricht ans Trainer-Team</label>
       <div class="chat-block">
         <div id="morgenCheckChatList" style="display:flex;flex-direction:column;gap:8px;padding:8px 8px 0"></div>
-        <textarea class="note-textarea chat-block-input" id="morgenCheckChatInput" placeholder="Wie geht's dir heute…&#10;&#10;Erster Klick auf Senden schickt das zusammen mit den aktuellen Werten automatisch an den Head Coach."></textarea>
-        <div id="noteEditorChatSection" class="chat-block-send">
-          <button class="setup-btn" style="margin-top:0" id="morgenCheckChatSendBtn" onclick="sendMorgenCheckMessage()">Senden</button>
-          <div class="setup-error" id="morgenCheckChatError" style="display:none"></div>
-        </div>
+        <textarea class="note-textarea chat-block-input" id="morgenCheckChatInput" oninput="autosizeChatInput(this)" placeholder="Wie geht's dir heute…&#10;&#10;Erster Klick auf Senden schickt das zusammen mit den aktuellen Werten automatisch an den Head Coach."></textarea>
       </div>
+      <div class="setup-error" id="morgenCheckChatError" style="display:none"></div>
     </div>
 
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+      <div id="noteEditorChatSection" style="display:contents">
+        <button class="setup-btn" style="flex:1;margin-top:0" id="morgenCheckChatSendBtn" onclick="sendMorgenCheckMessage()">Senden</button>
+      </div>
       <button class="setup-btn" style="flex:1;margin-top:0" onclick="saveNoteEditor()">Beenden</button>
       <button class="btn" style="flex:1;padding:12px;font-size:14px" onclick="closeNoteEditor()">Abbrechen</button>
       <button id="copyNoteBtn" class="btn" style="flex-basis:100%;padding:12px;font-size:14px" onclick="copyNoteForClaude()">✦ Morgen-Check + Notiz für Claude kopieren</button>
@@ -822,6 +822,6 @@
 <!-- Eigenes Datumsauswahl-Popover (statt nativem Kalender), damit ein "Heute"-Feld möglich ist -->
 <div id="datePickerPopover" class="date-picker-pop" style="display:none"></div>
 
-<script src="app.js?v=20260917d"></script>
+<script src="app.js?v=20260917f"></script>
 </body>
 </html>

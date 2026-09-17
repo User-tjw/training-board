@@ -2628,11 +2628,19 @@ function chatMessageHtml(m) {
     </div>`;
 }
 
+// Lässt das Eingabefeld mit dem Inhalt mitwachsen statt selbst zu scrollen — sonst hätte das Feld
+// neben der Scrollbar des .chat-block (Verlauf+Eingabe) noch eine eigene, native Textarea-Scrollbar.
+function autosizeChatInput(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
 // Verlauf + Senden-Button ein-/ausblenden (Chat braucht GitHub-Sync) — beide zusammen, damit im
 // lokalen Modus nur das Eingabefeld als reine Notiz übrig bleibt, ohne halbes Chat-UI drumherum.
 function setMorgenCheckChatVisible(visible) {
   document.getElementById('morgenCheckChatList').style.display = visible ? 'flex' : 'none';
-  document.getElementById('noteEditorChatSection').style.display = visible ? 'block' : 'none';
+  // 'contents' statt 'block', damit der Senden-Button in der Flex-Reihe mit Beenden/Abbrechen bleibt
+  document.getElementById('noteEditorChatSection').style.display = visible ? 'contents' : 'none';
 }
 
 // Chat-Fenster im Morgen-Check-Modal: zeigt nur das Gespräch des gerade geöffneten Tages
@@ -2761,6 +2769,7 @@ async function sendMorgenCheckMessage() {
     await appendChatMessages(newMsgs);
 
     input.value = '';
+    autosizeChatInput(input);
     renderMorgenCheckChat();
   } catch(e) {
     errEl.textContent = 'Fehler: ' + e.message;
@@ -3244,6 +3253,8 @@ function openNoteEditor(dateStr) {
   document.getElementById('morgenCheckChatError').style.display = 'none';
   renderMorgenCheckChat();
   document.getElementById('noteEditorModal').style.display = 'flex';
+  // scrollHeight ist erst nach dem Sichtbarwerden des Modals korrekt messbar
+  autosizeChatInput(document.getElementById('morgenCheckChatInput'));
 }
 
 function openDayNoteEditor(localNoteId) {
@@ -3271,6 +3282,7 @@ function openDayNoteEditor(localNoteId) {
   setMorgenCheckChatVisible(false);
   renderLocalDayNotesList();
   document.getElementById('noteEditorModal').style.display = 'flex';
+  autosizeChatInput(document.getElementById('morgenCheckChatInput'));
 }
 
 function closeNoteEditor() {

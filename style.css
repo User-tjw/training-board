@@ -228,13 +228,13 @@
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
 
-    /* Morgen-Check: Verlauf, Eingabefeld und Senden-Button in EINEM gemeinsamen Rahmen statt
-       mehrerer getrennter Kästen — Verlauf und Eingabefeld teilen sich EINE Scrollbar (das ganze
-       .chat-block scrollt gemeinsam), statt je eine eigene zu haben. */
+    /* Morgen-Check: Verlauf und Eingabefeld in EINEM gemeinsamen Rahmen statt zweier getrennter
+       Kästen — sie teilen sich auch EINE Scrollbar (das ganze .chat-block scrollt gemeinsam),
+       statt je eine eigene zu haben. Der Senden-Button liegt bewusst NICHT hier drin, sondern
+       unten in der Button-Reihe bei Beenden/Abbrechen (siehe #noteEditorChatSection). */
     .chat-block { border:1px solid var(--border); border-radius:8px; background:var(--bg); max-height:48vh; overflow-y:auto; }
-    .chat-block .note-textarea { border:none; border-radius:0; resize:none; }
+    .chat-block .note-textarea { border:none; border-radius:0; resize:none; overflow:hidden; }
     .chat-block .note-textarea:focus { border-color:transparent; }
-    .chat-block-send { padding:8px; border-top:1px solid var(--border); }
 
     /* Team-Chat (jetzt im Morgen-Check-Modal): Nachrichten-Bubbles je Rolle (user rechtsbündig neutral, trainer linksbündig mit Persona-Farbe als linker Rand) */
     .chat-msg { max-width:82%; border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; background:var(--bg2); }
