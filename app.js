@@ -2628,6 +2628,13 @@ function chatMessageHtml(m) {
     </div>`;
 }
 
+// Verlauf + Senden-Button ein-/ausblenden (Chat braucht GitHub-Sync) — beide zusammen, damit im
+// lokalen Modus nur das Eingabefeld als reine Notiz übrig bleibt, ohne halbes Chat-UI drumherum.
+function setMorgenCheckChatVisible(visible) {
+  document.getElementById('morgenCheckChatList').style.display = visible ? 'flex' : 'none';
+  document.getElementById('noteEditorChatSection').style.display = visible ? 'block' : 'none';
+}
+
 // Chat-Fenster im Morgen-Check-Modal: zeigt nur das Gespräch des gerade geöffneten Tages
 // (_noteEditorDate), kein langer/übergreifender Verlauf mehr (siehe Team-Chat-Ablösung).
 function renderMorgenCheckChat() {
@@ -3231,7 +3238,7 @@ function openNoteEditor(dateStr) {
   // eine erste Nachricht raus, bleibt das Feld für Follow-ups leer statt die alte Notiz erneut
   // hineinzuschreiben — die alte Notiz ist dann bereits über _noteEditorSavedBody gesichert.
   const hasSentToday = chatMessagesForDate(targetDate).some(m => m.role === 'user');
-  document.getElementById('noteEditorChatSection').style.display = 'block';
+  setMorgenCheckChatVisible(true);
   document.getElementById('morgenCheckChatInput').value = hasSentToday ? '' : (existing ? existing.body : '');
   _noteEditorSavedBody = hasSentToday ? (existing ? existing.body : '') : null;
   document.getElementById('morgenCheckChatError').style.display = 'none';
@@ -3261,7 +3268,7 @@ function openDayNoteEditor(localNoteId) {
   document.getElementById('noteEditorDeleteBtn').style.display = 'none';
   // Chat braucht GitHub-Sync — im lokalen Modus (kein ghToken) ausgeblendet, das Textfeld
   // darüber bleibt als einziges Eingabefeld die reine Notiz.
-  document.getElementById('noteEditorChatSection').style.display = 'none';
+  setMorgenCheckChatVisible(false);
   renderLocalDayNotesList();
   document.getElementById('noteEditorModal').style.display = 'flex';
 }

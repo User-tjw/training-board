@@ -412,17 +412,17 @@
       <label class="setup-label">Schlafqualität (optional)</label>
       <div class="mood-picker" id="moodPicker"></div>
     </div>
+    <!-- Team-Chat, ins Morgen-Check-Modal integriert: Verlauf (nur GitHub-Modus, gefiltert auf das
+         Gespräch dieses Tages, siehe chatMessagesForDate() in app.js), Eingabefeld und Senden-Button
+         bilden zusammen EINEN durchgehenden Chat-Block statt zweier getrennter Kästen. Im lokalen
+         Modus (kein ghToken) bleibt nur das Eingabefeld als reine Notiz übrig (per JS in
+         openNoteEditor()/openDayNoteEditor() ein-/ausgeblendet). -->
     <div class="setup-field">
       <label class="setup-label">Notiz / Nachricht ans Trainer-Team</label>
+      <div id="morgenCheckChatList" style="display:flex;flex-direction:column;gap:8px;max-height:35vh;overflow-y:auto;padding:4px 2px;margin-bottom:8px"></div>
       <textarea class="note-textarea" id="morgenCheckChatInput" placeholder="Wie geht's dir heute…&#10;&#10;Erster Klick auf Senden schickt das zusammen mit den aktuellen Werten automatisch an den Head Coach."></textarea>
     </div>
-
-    <!-- Team-Chat, ins Morgen-Check-Modal integriert: informelles Gespräch mit dem Head Coach für
-         genau diesen Tag (nach Datum gefiltert aus den GitHub-Chat-Daten, siehe chatMessagesForDate()
-         in app.js). Nur im GitHub-Modus sichtbar (per JS ein-/ausgeblendet, siehe openNoteEditor()) —
-         im lokalen Modus (kein ghToken) ist die Notiz oben das einzige Feld, ohne Team-Chat. -->
-    <div id="noteEditorChatSection" style="margin-top:6px">
-      <div id="morgenCheckChatList" style="display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow-y:auto;padding:4px 2px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px"></div>
+    <div id="noteEditorChatSection" style="margin-top:8px">
       <button class="setup-btn" style="margin-top:0" id="morgenCheckChatSendBtn" onclick="sendMorgenCheckMessage()">Senden</button>
       <div class="setup-error" id="morgenCheckChatError" style="display:none"></div>
     </div>
@@ -820,6 +820,6 @@
 <!-- Eigenes Datumsauswahl-Popover (statt nativem Kalender), damit ein "Heute"-Feld möglich ist -->
 <div id="datePickerPopover" class="date-picker-pop" style="display:none"></div>
 
-<script src="app.js?v=20260917c"></script>
+<script src="app.js?v=20260917d"></script>
 </body>
 </html>
