@@ -9,7 +9,7 @@ const PERSONAS = {
 
 Dein Team: Reha-Trainer (Verletzungen, Schmerzen, Gate-System), Kraft-Trainer (Kraftprogramm), Sporternährungs-Coach (Ernährung/Supplements), UA-Methodik-Berater (Uphill-Athlete-Prinzipien, Zonenlogik), Mobilitäts-Trainer (Beweglichkeit, Faszien).
 
-Beantworte allgemeine oder gemischte Themen selbst. Geht es klar überwiegend um das Spezialgebiet eines Teammitglieds, gib eine kurze erste Einschätzung und sag Thomas explizit, dass er für Details in der Auswahl auf den passenden Trainer wechseln soll (z.B. "Für die Feinjustierung wechsle bitte oben auf den Kraft-Trainer").`,
+Beantworte allgemeine oder gemischte Themen selbst. Geht es klar überwiegend um das Spezialgebiet eines Teammitglieds UND ist fachliche Tiefe nötig, gib deine kurze Einschätzung und hole den Spezialisten automatisch dazu: hänge dazu ganz am Ende deiner Antwort, auf einer eigenen letzten Zeile und unverändert, GENAU einen dieser Marker an: [SPEZIALIST: reha], [SPEZIALIST: kraft], [SPEZIALIST: ernaehrung], [SPEZIALIST: methodik] oder [SPEZIALIST: mobilitaet]. Der Marker wird automatisch verarbeitet und Thomas nie angezeigt. Setze ihn nur bei echtem Bedarf für eine konkrete Nachfrage — bei den meisten Nachrichten reicht deine eigene Antwort, dann keinen Marker anhängen.`,
   },
   reha: {
     label: 'Reha-Trainer',
@@ -140,6 +140,10 @@ function buildMessages(history, message) {
   return mapped;
 }
 
+// Erkennt den Handoff-Marker, den der Head Coach laut Systemprompt an das Ende seiner Antwort
+// hängt, wenn ein Spezialist fachlich einsteigen soll (siehe PERSONAS['head-coach'].role).
+const HANDOFF_RE = /\n*\[SPEZIALIST:\s*(reha|kraft|ernaehrung|methodik|mobilitaet)\]\s*$/i;
+
 async function chatWithTrainer({ persona, context, history, message, apiKey }) {
   if (!apiKey) {
     const err = new Error('ANTHROPIC_API_KEY ist nicht gesetzt.');
@@ -153,41 +157,67 @@ async function chatWithTrainer({ persona, context, history, message, apiKey }) {
   }
 
   const client = new Anthropic({ apiKey });
-  const system = [
-    { type: 'text', text: buildSystemPrompt(persona, context), cache_control: { type: 'ephemeral' } },
-  ];
-  const messages = buildMessages(history, message);
 
-  let response = await client.messages.create({
-    model: 'claude-sonnet-5', max_tokens: 700, system, tools: TOOLS, messages,
-  });
+  // Ein Antwort-Turn für eine Persona, inkl. der (höchstens einen) Tool-Use-Runde für
+  // get_equipment_status. Wird für den Head Coach und ggf. den per Handoff dazugeholten
+  // Spezialisten gleichermaßen genutzt.
+  async function runPersonaTurn(personaSlug, promptContext) {
+    const system = [
+      { type: 'text', text: buildSystemPrompt(personaSlug, promptContext), cache_control: { type: 'ephemeral' } },
+    ];
+    const messages = buildMessages(history, message);
 
-  // Höchstens eine Tool-Use-Runde: reicht für get_equipment_status, hält Kosten/Latenz begrenzt
-  // und vermeidet Endlosschleifen, falls das Modell wiederholt nach Tools verlangt.
-  if (response.stop_reason === 'tool_use') {
-    messages.push({ role: 'assistant', content: response.content });
-    const toolResults = [];
-    for (const block of response.content) {
-      if (block.type !== 'tool_use') continue;
-      const result = block.name === 'get_equipment_status'
-        ? await fetchEquipmentFromGitHub()
-        : `Unbekanntes Tool: ${block.name}`;
-      toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
-    }
-    messages.push({ role: 'user', content: toolResults });
-    response = await client.messages.create({
-      model: 'claude-sonnet-5', max_tokens: 700, system, messages,
+    let response = await client.messages.create({
+      model: 'claude-sonnet-5', max_tokens: 700, system, tools: TOOLS, messages,
     });
+
+    if (response.stop_reason === 'tool_use') {
+      messages.push({ role: 'assistant', content: response.content });
+      const toolResults = [];
+      for (const block of response.content) {
+        if (block.type !== 'tool_use') continue;
+        const result = block.name === 'get_equipment_status'
+          ? await fetchEquipmentFromGitHub()
+          : `Unbekanntes Tool: ${block.name}`;
+        toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result });
+      }
+      messages.push({ role: 'user', content: toolResults });
+      response = await client.messages.create({
+        model: 'claude-sonnet-5', max_tokens: 700, system, messages,
+      });
+    }
+
+    const textBlock = response.content.find(block => block.type === 'text');
+    if (!textBlock) {
+      const err = new Error('Keine Textantwort vom Modell erhalten.');
+      err.status = 502;
+      throw err;
+    }
+    return textBlock.text.trim();
   }
 
-  const textBlock = response.content.find(block => block.type === 'text');
-  if (!textBlock) {
-    const err = new Error('Keine Textantwort vom Modell erhalten.');
-    err.status = 502;
-    throw err;
+  let text = await runPersonaTurn(persona, context);
+
+  // Nur der Head Coach darf Spezialisten heranholen (siehe Systemprompt) — höchstens einer pro
+  // Nachricht, kein mehrstufiges Weiterreichen, um Kosten/Latenz kalkulierbar zu halten.
+  let specialist = null;
+  const handoffMatch = persona === 'head-coach' && text.match(HANDOFF_RE);
+  if (handoffMatch) {
+    const specialistSlug = handoffMatch[1].toLowerCase();
+    text = text.replace(HANDOFF_RE, '').trim();
+    try {
+      const specialistContext = [
+        context,
+        `Der Head Coach hat dazu schon kurz geantwortet: "${text}"\nErgänze das jetzt fachlich aus deinem Bereich, ohne dich zu wiederholen.`,
+      ].filter(Boolean).join('\n\n');
+      const specialistText = await runPersonaTurn(specialistSlug, specialistContext);
+      specialist = { persona: specialistSlug, text: specialistText };
+    } catch (e) {
+      console.error('Spezialist-Handoff fehlgeschlagen:', e);
+    }
   }
 
-  return { text: textBlock.text.trim() };
+  return specialist ? { text, specialist } : { text };
 }
 
 module.exports = { chatWithTrainer, PERSONAS };

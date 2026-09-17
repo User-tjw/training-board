@@ -2841,7 +2841,13 @@ async function sendChatMessage() {
 
     const userMsg = { id: chatMsgId(), ts: new Date().toISOString(), role: 'user', trainer: null, text, pinned: false };
     const trainerMsg = { id: chatMsgId(), ts: new Date().toISOString(), role: 'trainer', trainer: persona, text: data.text, pinned: false };
-    await appendChatMessages([userMsg, trainerMsg]);
+    const newMsgs = [userMsg, trainerMsg];
+    // Head Coach hat bei Bedarf automatisch einen Spezialisten hinzugezogen (siehe chatWithTrainer.js
+    // Handoff-Marker) — dessen Antwort kommt als eigene Nachricht kurz danach in den Chat.
+    if (data.specialist && data.specialist.text) {
+      newMsgs.push({ id: chatMsgId(), ts: new Date(Date.now() + 1).toISOString(), role: 'trainer', trainer: data.specialist.persona, text: data.specialist.text, pinned: false });
+    }
+    await appendChatMessages(newMsgs);
 
     input.value = '';
     renderChatMessages();
