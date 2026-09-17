@@ -228,6 +228,13 @@
     .note-textarea { width:100%; min-height:180px; padding:12px; border:1px solid var(--border); border-radius:8px; font-family:var(--mono); font-size:13px; background:var(--bg); color:var(--text); resize:vertical; outline:none; line-height:1.6; }
     .note-textarea:focus { border-color:var(--accent); }
 
+    /* Morgen-Check: Verlauf, Eingabefeld und Senden-Button in EINEM gemeinsamen Rahmen statt
+       mehrerer getrennter Kästen — Verlauf und Button verlieren dafür ihren eigenen Rahmen. */
+    .chat-block { border:1px solid var(--border); border-radius:8px; background:var(--bg); overflow:hidden; }
+    .chat-block .note-textarea { border:none; border-radius:0; }
+    .chat-block .note-textarea:focus { border-color:transparent; }
+    .chat-block-send { padding:8px; border-top:1px solid var(--border); }
+
     /* Team-Chat (jetzt im Morgen-Check-Modal): Nachrichten-Bubbles je Rolle (user rechtsbündig neutral, trainer linksbündig mit Persona-Farbe als linker Rand) */
     .chat-msg { max-width:82%; border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; background:var(--bg2); }
     .chat-msg.chat-msg-user { align-self:flex-end; background:var(--accent-light); border-color:transparent; }
