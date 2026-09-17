@@ -35,7 +35,7 @@ function renderFromCache() {
   renderOverviewGroup();
   renderZonesGroup();
   renderWellnessGroup();
-  renderChatMessages();
+  refreshMorgenCheckChatIfOpen();
   autoAssignEquipment();
   recomputeEquipmentTotals(false);
   renderEquipmentSection();
@@ -1666,7 +1666,7 @@ function renderWellnessDayList(sorted) {
     const n = journalByDate[d.id];
     const moodVal = n && n.mood != null ? moodIcon(n.mood,16) : '—';
 
-    return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openWellnessEditModal('${d.id}')" title="Tageswerte & Notiz bearbeiten">
+    return `${yearDivider}<div class="note-card" style="cursor:pointer;flex-wrap:wrap;row-gap:10px" onclick="openWellnessEditModal('${d.id}')" title="Tageswerte bearbeiten (Notiz & Chat über Morgen-Check)">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-width:70px">
         <span class="mono" style="font-size:12px">${dateLabel}</span>
       </div>
@@ -1681,12 +1681,10 @@ function renderWellnessDayList(sorted) {
 }
 
 let _wellnessEditDay = null;
-let _wellnessEditNote = null;
-let _wellnessEditLocalMode = false;
 
-// Tageswerte (Intervals.icu) UND Tagesnotiz (GitHub/lokal) in einem Fenster — bewusst keine
-// Wiederverwendung des separaten "Morgen-Check"-Dialogs (siehe openNoteEditor), da Wellness eine
-// eigene Ansicht bleiben soll. Notiz-Zustand analog zu openNoteEditor()/openDayNoteEditor().
+// Reine Tageswerte-Korrektur (Intervals.icu). Notiz/Stimmung + Gespräch mit dem Trainer-Team
+// leben im Morgen-Check-Modal (siehe openNoteEditor/openMorgenCheckFromWellness) — kein doppelter
+// Eingabeweg für dieselbe Notiz mehr.
 function openWellnessEditModal(dayStr) {
   _wellnessEditDay = dayStr;
   const d = _wellnessFull.find(x => x.id === dayStr) || {};
@@ -1695,23 +1693,12 @@ function openWellnessEditModal(dayStr) {
   document.getElementById('wellnessEditRestingHR').value = d.restingHR != null ? Math.round(d.restingHR) : '';
   document.getElementById('wellnessEditHrv').value = d.hrv != null ? d.hrv : '';
   document.getElementById('wellnessEditError').style.display = 'none';
-
-  _wellnessEditLocalMode = !(ghToken && ghRepo);
-  _wellnessEditNote = _wellnessEditLocalMode
-    ? (_localDayNotes.find(x => x.date.slice(0,10) === dayStr) || null)
-    : (_notes.find(n => n.type !== 'trainer-summary' && n.date && n.date.slice(0,10) === dayStr) || null);
-  renderMoodPicker(_wellnessEditNote ? _wellnessEditNote.mood : null, 'wellnessEditMoodPicker');
-  document.getElementById('wellnessEditNoteContent').value = _wellnessEditNote ? _wellnessEditNote.body : '';
-  document.getElementById('wellnessEditDeleteNoteBtn').style.display = _wellnessEditNote ? 'block' : 'none';
-
   document.getElementById('wellnessEditModal').style.display = 'flex';
 }
 
 function closeWellnessEditModal() {
   document.getElementById('wellnessEditModal').style.display = 'none';
   _wellnessEditDay = null;
-  _wellnessEditNote = null;
-  _wellnessEditLocalMode = false;
 }
 
 async function saveWellnessEdit() {
@@ -1727,7 +1714,6 @@ async function saveWellnessEdit() {
     let entry = _wellnessFull.find(x => x.id === _wellnessEditDay);
     if (!entry) { entry = { id: _wellnessEditDay }; _wellnessFull.push(entry); }
     Object.assign(entry, updated || body);
-    await saveWellnessEditNote();
     closeWellnessEditModal();
     refreshCockpitMoodTile();
     renderFromCache();
@@ -1737,62 +1723,11 @@ async function saveWellnessEdit() {
   }
 }
 
-// Speichert Schlafqualität/Freitext zusätzlich zu den Tageswerten — nur wenn tatsächlich etwas
-// eingetragen ist, damit keine leeren Notizen für unberührte Tage entstehen (dafür gibt es den
-// eigenen Löschen-Button, siehe deleteWellnessEditNote).
-async function saveWellnessEditNote() {
-  const moodSel = document.getElementById('wellnessEditMoodPicker').dataset.selected;
-  const mood = moodSel ? parseInt(moodSel) : null;
-  const contentVal = document.getElementById('wellnessEditNoteContent').value.trim();
-  if (!contentVal && mood == null && !_wellnessEditNote) return;
-
-  const title = _wellnessEditNote ? _wellnessEditNote.title : 'Morgenbericht';
-  const timeVal = _wellnessEditNote && _wellnessEditNote.date ? _wellnessEditNote.date.slice(11,16) : nowLocalISO().slice(11,16);
-  const date = _wellnessEditDay + 'T' + timeVal;
-
-  if (_wellnessEditLocalMode) {
-    if (_wellnessEditNote) {
-      Object.assign(_wellnessEditNote, { title, body: contentVal, date, mood });
-    } else {
-      _localDayNotes.unshift({ id: Date.now(), trainer: 'head-coach', title, body: contentVal, date, mood });
-    }
-    saveLocalDayNotes();
-    return;
-  }
-
-  const content = buildNoteContent(contentVal, 'journal', title, date, mood);
-  const filename = _wellnessEditNote ? _wellnessEditNote.filename : `${Date.now()}-journal.md`;
-  const sha = _wellnessEditNote ? _wellnessEditNote.sha : null;
-  const res = await saveNoteToGH(filename, content, sha);
-  if (_wellnessEditNote) {
-    Object.assign(_wellnessEditNote, { title, body: contentVal, date, mood, sha: res.content.sha });
-  } else {
-    _notes.unshift({ filename, sha: res.content.sha, trainer: 'journal', title, date, mood, body: contentVal });
-  }
-}
-
-async function deleteWellnessEditNote() {
-  if (!_wellnessEditNote) return;
-  if (!confirm('Notiz für diesen Tag wirklich löschen?')) return;
-  const errEl = document.getElementById('wellnessEditError');
-  try {
-    if (_wellnessEditLocalMode) {
-      _localDayNotes = _localDayNotes.filter(x => x.id !== _wellnessEditNote.id);
-      saveLocalDayNotes();
-    } else {
-      await deleteNoteFromGH(_wellnessEditNote.filename, _wellnessEditNote.sha);
-      _notes = _notes.filter(x => x.filename !== _wellnessEditNote.filename);
-    }
-    _wellnessEditNote = null;
-    renderMoodPicker(null, 'wellnessEditMoodPicker');
-    document.getElementById('wellnessEditNoteContent').value = '';
-    document.getElementById('wellnessEditDeleteNoteBtn').style.display = 'none';
-    refreshCockpitMoodTile();
-    renderFromCache();
-  } catch(e) {
-    errEl.textContent = 'Fehler beim Löschen: ' + e.message;
-    errEl.style.display = 'block';
-  }
+// Sprungpunkt vom Wellness-Editor zum Morgen-Check desselben Tages (inkl. dessen Notiz/Chat).
+function openMorgenCheckFromWellness() {
+  const day = _wellnessEditDay;
+  closeWellnessEditModal();
+  openNoteEditor(day);
 }
 
 function wellnessSteps(d) { return d.steps ?? d.totalSteps ?? null; }
@@ -2640,10 +2575,6 @@ function appendChatMessages(newMsgs) {
   return updateChatMonth(monthKey, msgs => msgs.concat(newMsgs), 'Chat: neue Nachricht(en)');
 }
 
-function toggleChatPin(monthKey, messageId) {
-  return updateChatMonth(monthKey, msgs => msgs.map(m => m.id === messageId ? { ...m, pinned: !m.pinned } : m), 'Chat: Markierung geändert');
-}
-
 // Lädt aktuellen + vorherigen Monat eager (meiste Aktivität ist aktuell), ältere Monate nur auf
 // Anfrage — analog zum recent/older-Split bei loadNotes()/loadOlderNotesInBackground().
 async function loadRecentChatMonths() {
@@ -2658,25 +2589,17 @@ async function loadRecentChatMonths() {
   _chatMonthsLoaded.sort().reverse();
 }
 
-async function loadOlderChatMonth() {
-  const oldest = _chatMonthsLoaded[_chatMonthsLoaded.length - 1] || chatMonthKey(new Date());
-  const older = shiftMonthKey(oldest, -1);
-  if (_chatMonthsLoaded.includes(older)) return null;
-  const data = await loadChatMonthRaw(older);
-  _chatMessages[older] = data.messages;
-  _chatMonthsLoaded.push(older);
-  _chatMonthsLoaded.sort().reverse();
-  return older;
-}
-
 function allLoadedChatMessages() {
   return _chatMonthsLoaded
     .flatMap(mk => (_chatMessages[mk] || []).map(m => ({ ...m, _monthKey: mk })))
     .sort((a,b) => a.ts.localeCompare(b.ts));
 }
 
-function pinnedChatMessages() {
-  return allLoadedChatMessages().filter(m => m.pinned);
+// Nachrichten, die zu einem bestimmten Morgen-Check-Tag gehören — anhand des beim Senden gesetzten
+// `day`-Felds (siehe sendMorgenCheckMessage), nicht anhand des reinen Sende-Zeitstempels, damit ein
+// später am Tag nachgereichtes Follow-up zum richtigen Morgen-Check-Gespräch gezählt wird.
+function chatMessagesForDate(dateStr) {
+  return allLoadedChatMessages().filter(m => (m.day || (m.ts || '').slice(0,10)) === dateStr);
 }
 
 const TRAINER_COLORS = {
@@ -2689,14 +2612,6 @@ const TRAINER_COLORS = {
 };
 
 let chatProxyUrl = localStorage.getItem('chat_proxy_url') || '';
-let _chatPinFilterActive = false;
-
-function populateChatPersonaSelect() {
-  const sel = document.getElementById('chatPersonaSelect');
-  if (!sel || sel.dataset.filled) return;
-  sel.innerHTML = TRAINER_OPTIONS.map(t => `<option value="${t.v}">${escHtml(t.l)}</option>`).join('');
-  sel.dataset.filled = '1';
-}
 
 function chatMessageHtml(m) {
   const isUser = m.role === 'user';
@@ -2708,59 +2623,37 @@ function chatMessageHtml(m) {
       <div class="chat-msg-meta">
         <span>${isUser ? 'Du' : escHtml(trainerLabel)}</span>
         <span>· ${time}</span>
-        <button class="chat-msg-pin-btn ${m.pinned ? 'pinned' : ''}" title="${m.pinned ? 'Markierung entfernen' : 'Als wichtig markieren'}" onclick="handleChatPinClick('${m._monthKey}','${m.id}')">★</button>
       </div>
       <div class="chat-msg-text">${escHtml(m.text)}</div>
     </div>`;
 }
 
-function renderChatMessages() {
-  const listEl = document.getElementById('chatMessageList');
-  if (!listEl) return;
-  populateChatPersonaSelect();
-
-  document.getElementById('chatGhSetupBanner').style.display = (ghToken && ghRepo) ? 'none' : 'block';
-  document.getElementById('chatProxySetupBanner').style.display = chatProxyUrl ? 'none' : 'block';
-
-  const msgs = _chatPinFilterActive ? pinnedChatMessages() : allLoadedChatMessages();
+// Chat-Fenster im Morgen-Check-Modal: zeigt nur das Gespräch des gerade geöffneten Tages
+// (_noteEditorDate), kein langer/übergreifender Verlauf mehr (siehe Team-Chat-Ablösung).
+function renderMorgenCheckChat() {
+  const listEl = document.getElementById('morgenCheckChatList');
+  if (!listEl || !_noteEditorDate) return;
+  const msgs = chatMessagesForDate(_noteEditorDate);
   listEl.innerHTML = msgs.length
     ? msgs.map(chatMessageHtml).join('')
-    : `<div class="loading">${_chatPinFilterActive ? 'Keine markierten Beiträge.' : 'Noch keine Nachrichten.'}</div>`;
+    : `<div class="loading">Noch kein Gespräch für diesen Tag.</div>`;
   listEl.scrollTop = listEl.scrollHeight;
 }
 
-function toggleChatPinFilter() {
-  _chatPinFilterActive = !_chatPinFilterActive;
-  document.getElementById('chatPinFilterBtn').classList.toggle('active', _chatPinFilterActive);
-  renderChatMessages();
-}
-
-async function handleChatPinClick(monthKey, messageId) {
-  try {
-    await toggleChatPin(monthKey, messageId);
-    renderChatMessages();
-  } catch(e) {
-    alert('Markierung fehlgeschlagen: ' + e.message);
-  }
-}
-
-async function loadOlderChatMonthAndRender() {
-  try {
-    const added = await loadOlderChatMonth();
-    if (!added) { alert('Keine älteren Monate mehr vorhanden.'); return; }
-    renderChatMessages();
-  } catch(e) {
-    alert('Laden fehlgeschlagen: ' + e.message);
-  }
+// Falls das Morgen-Check-Modal gerade offen ist, wenn ein Hintergrund-Ladevorgang durchläuft
+// (z.B. loadChatInBackground beim App-Start), dessen Chat-Ansicht mit auffrischen.
+function refreshMorgenCheckChatIfOpen() {
+  const modal = document.getElementById('noteEditorModal');
+  if (modal && modal.style.display !== 'none') renderMorgenCheckChat();
 }
 
 // Lädt aktuellen + vorherigen Monat im Hintergrund nach (wie loadNotesInBackground) — blockiert
 // nicht den ersten Render der Seite.
 async function loadChatInBackground() {
-  if (!ghToken || !ghRepo) { renderChatMessages(); return; }
+  if (!ghToken || !ghRepo) { refreshMorgenCheckChatIfOpen(); return; }
   try {
     await loadRecentChatMonths();
-    renderChatMessages();
+    refreshMorgenCheckChatIfOpen();
   } catch(e) {
     console.error('Chat-Hintergrund-Ladung fehlgeschlagen:', e);
   }
@@ -2811,16 +2704,26 @@ function buildChatContextText() {
   ].join('\n');
 }
 
-async function sendChatMessage() {
-  const input = document.getElementById('chatInputText');
-  const text = input.value.trim();
-  if (!text) return;
+// Erster Klick auf "Senden" pro Morgen-Check-Tag schickt automatisch den strukturierten Block
+// (HRV/Reha/Job-Belastung/Heute geplant/Befinden — bisher per "Für Claude kopieren" manuell
+// übertragen), jeder weitere Klick an dem Tag nur noch den kurzen Freitext aus dem Eingabefeld
+// (sonst würde bei jeder Rückfrage wieder der ganze Block wiederholt).
+async function sendMorgenCheckMessage() {
+  if (!_noteEditorDate) return;
   if (!chatProxyUrl) { alert('Bitte erst die Chat-Proxy-URL in den Einstellungen eintragen.'); return; }
   if (!ghToken || !ghRepo) { alert('Bitte erst GitHub-Token/-Repo in den Einstellungen eintragen.'); return; }
 
-  const persona = document.getElementById('chatPersonaSelect').value;
-  const sendBtn = document.getElementById('chatSendBtn');
-  const errEl = document.getElementById('chatSendError');
+  const input = document.getElementById('morgenCheckChatInput');
+  const typed = input.value.trim();
+  const isFirstToday = !chatMessagesForDate(_noteEditorDate).some(m => m.role === 'user');
+  if (!isFirstToday && !typed) return;
+  const messageText = isFirstToday ? buildMorgenCheckLines(typed).join('\n') : typed;
+  // Getippten Text vorm Leeren des Felds sichern, damit "Beenden" ihn noch als Notiz speichern
+  // kann, auch wenn das Feld für ein Follow-up danach wieder leer ist (siehe saveNoteEditor).
+  if (isFirstToday) _noteEditorSavedBody = typed;
+
+  const sendBtn = document.getElementById('morgenCheckChatSendBtn');
+  const errEl = document.getElementById('morgenCheckChatError');
   errEl.style.display = 'none';
   sendBtn.disabled = true;
   sendBtn.textContent = '…';
@@ -2834,23 +2737,24 @@ async function sendChatMessage() {
     const res = await fetch(chatProxyUrl.replace(/\/$/, '') + '/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ persona, context: buildChatContextText(), history, message: text }),
+      body: JSON.stringify({ persona: 'head-coach', context: buildChatContextText(), history, message: messageText }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-    const userMsg = { id: chatMsgId(), ts: new Date().toISOString(), role: 'user', trainer: null, text, pinned: false };
-    const trainerMsg = { id: chatMsgId(), ts: new Date().toISOString(), role: 'trainer', trainer: persona, text: data.text, pinned: false };
+    const day = _noteEditorDate;
+    const userMsg = { id: chatMsgId(), ts: new Date().toISOString(), day, role: 'user', trainer: null, text: messageText, pinned: false };
+    const trainerMsg = { id: chatMsgId(), ts: new Date(Date.now() + 1).toISOString(), day, role: 'trainer', trainer: 'head-coach', text: data.text, pinned: false };
     const newMsgs = [userMsg, trainerMsg];
     // Head Coach hat bei Bedarf automatisch einen Spezialisten hinzugezogen (siehe chatWithTrainer.js
     // Handoff-Marker) — dessen Antwort kommt als eigene Nachricht kurz danach in den Chat.
     if (data.specialist && data.specialist.text) {
-      newMsgs.push({ id: chatMsgId(), ts: new Date(Date.now() + 1).toISOString(), role: 'trainer', trainer: data.specialist.persona, text: data.specialist.text, pinned: false });
+      newMsgs.push({ id: chatMsgId(), ts: new Date(Date.now() + 2).toISOString(), day, role: 'trainer', trainer: data.specialist.persona, text: data.specialist.text, pinned: false });
     }
     await appendChatMessages(newMsgs);
 
     input.value = '';
-    renderChatMessages();
+    renderMorgenCheckChat();
   } catch(e) {
     errEl.textContent = 'Fehler: ' + e.message;
     errEl.style.display = 'block';
@@ -3300,6 +3204,10 @@ let _noteEditorLocalMode = false;
 let _editingLocalNoteId = null;
 let _noteEditorDate = null;
 let _noteEditorTitle = 'Morgenbericht';
+// Sobald die erste Chat-Nachricht des Tages raus ist, hält dieses Feld den dabei verwendeten
+// Notiz-Text fest (siehe sendMorgenCheckMessage) — "Beenden" speichert dann diesen Text statt des
+// (für Follow-ups wieder geleerten) Eingabefelds, damit die Notiz nicht überschrieben wird.
+let _noteEditorSavedBody = null;
 
 function openNoteEditor(dateStr) {
   if (!ghToken || !ghRepo) { openSettingsModal(); return; }
@@ -3312,13 +3220,22 @@ function openNoteEditor(dateStr) {
   _noteEditorTitle = existing ? existing.title : 'Morgenbericht';
   document.getElementById('noteEditorHeading').textContent = existing ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
   document.getElementById('noteEditorModalDate').textContent = new Date(targetDate + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  document.getElementById('noteEditorContent').value = existing ? existing.body : '';
   renderMoodPicker(existing ? existing.mood : null, 'moodPicker');
 
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'none';
   // Löschen-Button nur bei bestehender Notiz zeigen
   document.getElementById('noteEditorDeleteBtn').style.display = existing ? 'block' : 'none';
+  // Team-Chat lebt jetzt hier: nur im GitHub-Modus verfügbar (Chat braucht denselben GH-Sync),
+  // gefiltert auf das Gespräch dieses Tages (siehe chatMessagesForDate). War für diesen Tag schon
+  // eine erste Nachricht raus, bleibt das Feld für Follow-ups leer statt die alte Notiz erneut
+  // hineinzuschreiben — die alte Notiz ist dann bereits über _noteEditorSavedBody gesichert.
+  const hasSentToday = chatMessagesForDate(targetDate).some(m => m.role === 'user');
+  document.getElementById('noteEditorChatSection').style.display = 'block';
+  document.getElementById('morgenCheckChatInput').value = hasSentToday ? '' : (existing ? existing.body : '');
+  _noteEditorSavedBody = hasSentToday ? (existing ? existing.body : '') : null;
+  document.getElementById('morgenCheckChatError').style.display = 'none';
+  renderMorgenCheckChat();
   document.getElementById('noteEditorModal').style.display = 'flex';
 }
 
@@ -3330,17 +3247,21 @@ function openDayNoteEditor(localNoteId) {
   _editingNote = null;
   _noteEditorLocalMode = true;
   _editingLocalNoteId = localNoteId || null;
+  _noteEditorSavedBody = null;
   const n = localNoteId ? _localDayNotes.find(x => x.id === localNoteId) : null;
   _noteEditorDate = n ? n.date.slice(0,10) : fmtDate(new Date());
   _noteEditorTitle = n ? n.title : 'Morgenbericht';
   document.getElementById('noteEditorHeading').textContent = n ? '✎ Morgen-Check bearbeiten' : '✎ Morgen-Check';
   document.getElementById('noteEditorModalDate').textContent = new Date(_noteEditorDate + 'T00:00').toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
-  document.getElementById('noteEditorContent').value = n ? n.body : '';
+  document.getElementById('morgenCheckChatInput').value = n ? n.body : '';
   renderMoodPicker(n ? n.mood : null, 'moodPicker');
   document.getElementById('noteEditorError').style.display = 'none';
   document.getElementById('localDayNotesSection').style.display = 'block';
   // Lokaler Modus hat eigene Löschliste unten — Editor-Löschbutton hier aus
   document.getElementById('noteEditorDeleteBtn').style.display = 'none';
+  // Chat braucht GitHub-Sync — im lokalen Modus (kein ghToken) ausgeblendet, das Textfeld
+  // darüber bleibt als einziges Eingabefeld die reine Notiz.
+  document.getElementById('noteEditorChatSection').style.display = 'none';
   renderLocalDayNotesList();
   document.getElementById('noteEditorModal').style.display = 'flex';
 }
@@ -3349,7 +3270,9 @@ function closeNoteEditor() {
   document.getElementById('noteEditorModal').style.display = 'none';
   _editingNote = null;
   _noteEditorLocalMode = false;
+  _noteEditorSavedBody = null;
   _editingLocalNoteId = null;
+  _noteEditorDate = null;
 }
 
 function renderLocalDayNotesList() {
@@ -3384,7 +3307,9 @@ function deleteLocalDayNote(id) {
 
 async function saveNoteEditor() {
   const title   = _noteEditorTitle;
-  const body    = document.getElementById('noteEditorContent').value.trim();
+  // Wurde heute schon eine erste Chat-Nachricht geschickt, ist das Eingabefeld für Follow-ups
+  // schon wieder leer — dann zählt der beim Senden gesicherte Text, nicht das leere Feld.
+  const body    = _noteEditorSavedBody != null ? _noteEditorSavedBody : document.getElementById('morgenCheckChatInput').value.trim();
   const dateVal = _noteEditorDate || fmtDate(new Date());
   const existing = _editingNote || (_editingLocalNoteId ? _localDayNotes.find(x => x.id === _editingLocalNoteId) : null);
   const timeVal  = existing && existing.date ? existing.date.slice(11, 16) : nowLocalISO().slice(11, 16);
@@ -3443,8 +3368,11 @@ function latestRehaStatusLine() {
   return (firstLine || 'unverändert').replace(/\*\*/g, '').replace(/^[-•]\s*/, '');
 }
 
-async function copyNoteForClaude() {
-  const body  = document.getElementById('noteEditorContent').value.trim();
+// Strukturierter Morgen-Check-Block — sowohl für "Für Claude kopieren" (Fallback auf das
+// Claude.ai-Projekt) als auch für die erste Chat-Nachricht des Tages an den Head Coach
+// (siehe sendMorgenCheckMessage) genutzt, damit beide Wege exakt denselben Inhalt liefern.
+function buildMorgenCheckLines(bodyOverride) {
+  const body  = bodyOverride != null ? bodyOverride : document.getElementById('morgenCheckChatInput').value.trim();
   const moodSel = document.getElementById('moodPicker').dataset.selected;
   const mood  = moodSel ? parseInt(moodSel) : null;
   const dateLong = new Date().toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' });
@@ -3460,7 +3388,7 @@ async function copyNoteForClaude() {
     ? todaySessions.map(s => s.type + (s.min ? ` (${s.min} min)` : '')).join(', ')
     : 'Ruhetag';
 
-  const lines = [
+  return [
     `Morgen-Check — ${dateLong}`,
     '',
     `HRV: ${text('cockpitHRV')} · Ruhepuls: ${text('cockpitRHF')} · Schlaf: ${mood ? MOOD_OPTIONS.find(m=>m.v===mood)?.l : '—'}`,
@@ -3469,10 +3397,12 @@ async function copyNoteForClaude() {
     `Heute geplant: ${todayPlan}`,
     `Befinden: ${body || '—'}`,
   ];
+}
 
+async function copyNoteForClaude() {
   const btn = document.getElementById('copyNoteBtn');
   try {
-    await navigator.clipboard.writeText(lines.join('\n'));
+    await navigator.clipboard.writeText(buildMorgenCheckLines().join('\n'));
     btn.textContent = '✓ Kopiert!';
     setTimeout(() => { btn.textContent = '✦ Morgen-Check + Notiz für Claude kopieren'; }, 2500);
   } catch(e) { alert('Kopieren fehlgeschlagen.'); }
