@@ -2374,14 +2374,14 @@ function renderEquipmentSection() {
     const kindTags = tagLabels.length
       ? tagLabels.map(l => `<span class="tag" style="background:#64748b20;color:#64748b;margin-right:4px">${escHtml(l)}</span>`).join('')
       : `<span class="tag" style="background:#94a3b820;color:#94a3b8">alle Aktivitäten</span>`;
-    const barBaseColor = '#64748b';
+    const barBaseColor = 'var(--accent)';
     const totalKm = it.totalKm || 0;
     const hasLimit = it.maxKm > 0;
     const pct = hasLimit ? Math.min(100, totalKm / it.maxKm * 100) : 0;
     const overLimit = hasLimit && totalKm > it.maxKm;
     const barColor = overLimit ? 'var(--red)' : (hasLimit && pct > 80 ? 'var(--orange)' : barBaseColor);
     const bar = hasLimit
-      ? `<div class="week-cal-hbar-track" style="background:${barColor}30;margin-top:8px">
+      ? `<div class="week-cal-hbar-track" style="background:var(--bg3);margin-top:8px">
            <div class="week-cal-hbar-fill" style="width:${pct}%;background:${barColor}"></div>
          </div>
          <div class="week-cal-hbar-hours" style="margin-top:3px">${totalKm.toFixed(1)} von ${it.maxKm} km${overLimit ? ' · Grenze überschritten' : ''}</div>`
