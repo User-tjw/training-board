@@ -1,4 +1,5 @@
 const { chatWithTrainer } = require('../lib/chatWithTrainer');
+const { verifyUser } = require('../lib/verifyUser');
 
 // GitHub Pages (TrainIQ-Frontend) und dieser Vercel-Proxy laufen auf unterschiedlichen
 // Domains — anders als beim Belege-Scanner (Frontend+API auf derselben Vercel-Domain)
@@ -12,7 +13,7 @@ function setCorsHeaders(req, res) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
 module.exports = async (req, res) => {
@@ -28,6 +29,7 @@ module.exports = async (req, res) => {
   }
 
   try {
+    await verifyUser(req);
     const { persona, context, history, message } = req.body || {};
     const result = await chatWithTrainer({
       persona, context, history, message,

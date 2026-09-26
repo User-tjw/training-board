@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const { chatWithTrainer } = require('./lib/chatWithTrainer');
+const { verifyUser } = require('./lib/verifyUser');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,6 +10,7 @@ app.use(express.json({ limit: '1mb' }));
 
 app.post('/api/chat', async (req, res) => {
   try {
+    await verifyUser(req);
     const { persona, context, history, message } = req.body || {};
     const result = await chatWithTrainer({
       persona, context, history, message,

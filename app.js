@@ -2763,7 +2763,7 @@ async function sendMorgenCheckMessage() {
 
     const res = await fetch(chatProxyUrl.replace(/\/$/, '') + '/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ghToken}` },
       body: JSON.stringify({ persona: 'head-coach', context: buildChatContextText(), history, message: messageText }),
     });
     const data = await res.json();
