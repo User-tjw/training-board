@@ -988,8 +988,10 @@ async function loadAll() {
     loadFullRangeInBackground();
     if (ghToken && ghRepo) {
       if (_notes.length === 0) loadNotesInBackground();
-      else loadOlderNotesInBackground();
+      else { loadOlderNotesInBackground(); openMorgenCheckFromLink(); }
       if (_chatMonthsLoaded.length === 0) loadChatInBackground();
+    } else {
+      openMorgenCheckFromLink();
     }
   } catch(err) {
     console.error(err);
@@ -1010,6 +1012,16 @@ async function loadNotesInBackground() {
   } catch(err) {
     console.error('Notizen-Hintergrund-Nachladung fehlgeschlagen:', err);
   }
+  openMorgenCheckFromLink();
+}
+
+// Direkteinstieg von außen (AssistIQ-Kachel "Morgen-Check"): …/training-board/#morgencheck öffnet
+// den Morgen-Check von heute. Erst nach dem Laden der Notizen, sonst würde openNoteEditor die
+// bestehende Notiz des Tages nicht finden und beim Speichern eine zweite anlegen. *(Stand: 26.09.2026)*
+function openMorgenCheckFromLink() {
+  if (location.hash !== '#morgencheck') return;
+  history.replaceState(null, '', location.pathname + location.search);
+  if (ghToken && ghRepo) openNoteEditor(); else openDayNoteEditor();
 }
 
 // Lädt nach dem schnellen ersten Render den vollen Zeitraum nach (für "Alle"/365-Ansicht und Jahres-Historie).
