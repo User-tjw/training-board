@@ -39,6 +39,56 @@ function renderFromCache() {
   autoAssignEquipment();
   recomputeEquipmentTotals(false);
   renderEquipmentSection();
+  scheduleTrainSummary();
+}
+
+// ─── Kennzahlen für andere Apps (settings/summary.json) ─────────────────────────
+// Fertige Kennzahlen für AssistIQ (lesender Token): heutige/kommende Einheiten, Morgen-Check, Wochenumfang,
+// Form. Neue Kennzahl = neuer Eintrag in fields, erscheint dort automatisch zur Auswahl. Geschrieben nur,
+// wenn sich der Inhalt geändert hat, und erst nachdem die Notizen geladen sind (sonst fehlt der Morgen-Check).
+// date = Stand-Tag; AssistIQ wertet tagesbezogene Felder nur aus, wenn date heute ist. *(Stand: 25.10.2026)*
+const GH_SUMMARY_FILE = 'settings/summary.json';
+let _summaryTimer = null;
+function scheduleTrainSummary() {
+  clearTimeout(_summaryTimer);
+  _summaryTimer = setTimeout(writeTrainSummary, 3000);
+}
+function buildTrainSummary() {
+  const today = fmtDate(new Date());
+  const note = findDayNote(today);
+  const sessions = [];
+  for (let i = 0; i < 8; i++) {
+    const d = fmtDate(daysAgo(-i));
+    getPlanSessionsFor(d).filter(s => s.type).forEach(s => sessions.push({ key: 'session', date: d, label: s.note ? `${s.type} · ${s.note}` : s.type, value: s.min || null, unit: 'min' }));
+  }
+  const weekActs = weekActivities(cockpitWeekStart(0)).filter(a => normalizeType(a.type) !== 'Atmung');
+  const weekH = Math.round(weekActs.reduce((s, a) => s + (a.moving_time || 0), 0) / 360) / 10;
+  const f = _fitnessFull[_fitnessFull.length - 1] || {};
+  const todays = sessions.filter(s => s.date === today);
+  const fields = [
+    { key: 'today.sessions', label: 'Heute geplant', value: todays.length ? todays.map(s => s.label + (s.value ? ` (${s.value} min)` : '')).join(', ') : 'nichts', group: 'Heute' },
+    { key: 'today.check', label: 'Morgen-Check heute', value: !!note, type: 'bool', group: 'Heute' },
+    { key: 'today.mood', label: 'Schlafqualität heute', value: note && note.mood ? note.mood : null, max: 5, group: 'Heute' },
+    { key: 'week.hours', label: 'Umfang diese Woche', value: weekH, unit: 'h', group: 'Woche' },
+    { key: 'week.target', label: 'Wochenziel', value: getTrainingPlan().weekHours || null, unit: 'h', default: false, group: 'Woche' },
+    { key: 'week.count', label: 'Einheiten diese Woche', value: weekActs.length, default: false, group: 'Woche' },
+    { key: 'form.ctl', label: 'Fitness (CTL)', value: f.ctl != null ? Math.round(f.ctl) : null, default: false, group: 'Form' },
+    { key: 'form.atl', label: 'Ermüdung (ATL)', value: f.atl != null ? Math.round(f.atl) : null, default: false, group: 'Form' },
+    { key: 'form.tsb', label: 'Form (TSB)', value: f.tsb != null ? Math.round(f.tsb) : null, default: false, group: 'Form' },
+  ];
+  return { app: 'trainiq', date: today, fields, items: sessions };
+}
+async function writeTrainSummary() {
+  if (!ghToken || !ghRepo || !_notes.length || !_activitiesFull.length) return;
+  try {
+    const sum = buildTrainSummary();
+    const sig = JSON.stringify(sum);
+    if (localStorage.getItem('tb_summary_sig') === sig) return;
+    await saveJSONToGH(GH_SUMMARY_FILE, { ...sum, updatedAt: new Date().toISOString() }, 'Kennzahlen aktualisiert');
+    localStorage.setItem('tb_summary_sig', sig);
+  } catch(e) {
+    console.warn('Kennzahlen nicht geschrieben:', e);
+  }
 }
 
 // Ordnet Aktivitäten, die noch nie eine Ausrüstungs-Zuordnung hatten, im Hintergrund automatisch alle
@@ -424,6 +474,7 @@ function getPlanSessionsFor(dayStr) {
 function savePlanSessions(data) {
   data.updatedAt = Date.now();
   localStorage.setItem('plan_sessions', JSON.stringify(data));
+  scheduleTrainSummary();
   if (ghToken && ghRepo) {
     savePlanSessionsToGH(data).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Plan ist trotzdem lokal gespeichert.'));
   }
