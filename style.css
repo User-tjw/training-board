@@ -1,4 +1,4 @@
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+﻿    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* Zentrale Design-Variablen: alle Farben/Fonts/Radien der App werden hier einmal definiert */
     :root {
       --bg: #f4f6f9; --bg2: #ffffff; --bg3: #eef1f5; --border: #dde2ea;
@@ -378,5 +378,5 @@
 /* Einblend-Symbol in Passwort-/Token-Feldern */
 .pw-wrap { position: relative; }
 .pw-wrap > input { width: 100%; padding-right: 44px; box-sizing: border-box; }
-.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 6px; opacity: .65; }
-.pw-toggle:hover { opacity: 1; }
+.pw-toggle { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--text3, #888); cursor: pointer; border-radius: 4px; padding: 0; }
+.pw-toggle:hover { color: var(--text); }

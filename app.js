@@ -1,4 +1,4 @@
-// ─── Zeitraum pro Kachel-Gruppe ────────────────────────────────────────────────
+﻿// ─── Zeitraum pro Kachel-Gruppe ────────────────────────────────────────────────
 
 const RANGE_OPTIONS = [7, 14, 30, 90, 365];
 let _wellnessFull = [], _activitiesFull = [], _fitnessFull = [], _icuEventsFull = [];
@@ -3899,7 +3899,9 @@ if (localStorage.getItem('tb_pw_hash') && isSessionValid()) {
   unlockApp(true); // Reload: Position beibehalten
 }
 
-// Einblend-Symbol (Auge) für alle Passwort-/Token-Felder
+// Einblend-Symbol (Auge) für alle Passwort-/Token-Felder — gleiches Icon wie FinanceIQ/AssistIQ
+const ICON_EYE = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICON_EYE_OFF = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 function addPasswordToggles(root) {
   (root || document).querySelectorAll('input[type="password"]:not([data-pw-toggle])').forEach(inp => {
     inp.dataset.pwToggle = '1';
@@ -3912,11 +3914,12 @@ function addPasswordToggles(root) {
     btn.className = 'pw-toggle';
     btn.title = 'Einblenden';
     btn.setAttribute('aria-label', 'Einblenden');
-    btn.textContent = '👁';
+    btn.tabIndex = -1;
+    btn.innerHTML = ICON_EYE;
     btn.onclick = () => {
       const show = inp.type === 'password';
       inp.type = show ? 'text' : 'password';
-      btn.textContent = show ? '🙈' : '👁';
+      btn.innerHTML = show ? ICON_EYE_OFF : ICON_EYE;
       btn.title = show ? 'Ausblenden' : 'Einblenden';
       btn.setAttribute('aria-label', btn.title);
     };
