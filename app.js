@@ -3898,3 +3898,30 @@ function getWeek(date) {
 if (localStorage.getItem('tb_pw_hash') && isSessionValid()) {
   unlockApp(true); // Reload: Position beibehalten
 }
+
+// Einblend-Symbol (Auge) für alle Passwort-/Token-Felder
+function addPasswordToggles(root) {
+  (root || document).querySelectorAll('input[type="password"]:not([data-pw-toggle])').forEach(inp => {
+    inp.dataset.pwToggle = '1';
+    const wrap = document.createElement('div');
+    wrap.className = 'pw-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pw-toggle';
+    btn.title = 'Einblenden';
+    btn.setAttribute('aria-label', 'Einblenden');
+    btn.textContent = '👁';
+    btn.onclick = () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+      btn.title = show ? 'Ausblenden' : 'Einblenden';
+      btn.setAttribute('aria-label', btn.title);
+    };
+    wrap.appendChild(btn);
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => addPasswordToggles());
+else addPasswordToggles();

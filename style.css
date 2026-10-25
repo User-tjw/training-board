@@ -374,3 +374,9 @@
       .group-card-section { border-right: none !important; border-bottom: 1px solid var(--border); }
       .group-card-section:last-child { border-bottom: none; }
     }
+
+/* Einblend-Symbol in Passwort-/Token-Feldern */
+.pw-wrap { position: relative; }
+.pw-wrap > input { width: 100%; padding-right: 44px; box-sizing: border-box; }
+.pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 6px; opacity: .65; }
+.pw-toggle:hover { opacity: 1; }
