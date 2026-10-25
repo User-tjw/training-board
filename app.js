@@ -65,6 +65,10 @@ function buildTrainSummary() {
   const weekH = Math.round(weekActs.reduce((s, a) => s + (a.moving_time || 0), 0) / 360) / 10;
   const f = _fitnessFull[_fitnessFull.length - 1] || {};
   const todays = sessions.filter(s => s.date === today);
+  // Events (Wettkämpfe/Saisonziele aus den Einstellungen) ab 30 Tagen zurück, für den Zeitplan in AssistIQ
+  const events = (getTrainingPlan().races || []).filter(r => r.name && r.date && r.date >= fmtDate(daysAgo(30)))
+    .sort((a, b) => a.date.localeCompare(b.date)).map(r => ({ key: 'event', date: r.date, label: r.name, priority: r.priority || 'A' }));
+  const next = events.find(e => e.date >= today);
   const fields = [
     { key: 'today.sessions', label: 'Heute geplant', value: todays.length ? todays.map(s => s.label + (s.value ? ` (${s.value} min)` : '')).join(', ') : 'nichts', group: 'Heute' },
     { key: 'today.check', label: 'Morgen-Check heute', value: !!note, type: 'bool', group: 'Heute' },
@@ -75,8 +79,10 @@ function buildTrainSummary() {
     { key: 'form.ctl', label: 'Fitness (CTL)', value: f.ctl != null ? Math.round(f.ctl) : null, default: false, group: 'Form' },
     { key: 'form.atl', label: 'Ermüdung (ATL)', value: f.atl != null ? Math.round(f.atl) : null, default: false, group: 'Form' },
     { key: 'form.tsb', label: 'Form (TSB)', value: f.tsb != null ? Math.round(f.tsb) : null, default: false, group: 'Form' },
+    { key: 'event.next', label: 'Nächstes Event', value: next ? `${next.label} (${next.date.split('-').reverse().join('.')})` : 'keins', group: 'Events' },
+    { key: 'event.days', label: 'Tage bis zum nächsten Event', value: next ? Math.round((new Date(next.date + 'T12:00') - new Date(today + 'T12:00')) / 864e5) : null, unit: 'Tage', group: 'Events' },
   ];
-  return { app: 'trainiq', date: today, fields, items: sessions };
+  return { app: 'trainiq', date: today, fields, items: [...sessions, ...events] };
 }
 async function writeTrainSummary() {
   if (!ghToken || !ghRepo || !_notes.length || !_activitiesFull.length) return;
@@ -907,6 +913,7 @@ function saveTrainingGoals() {
   const races = readRacesFromForm();
   const plan = { weekHours, byTypePct, byType, races, updatedAt: Date.now() };
   localStorage.setItem('training_plan', JSON.stringify(plan));
+  scheduleTrainSummary();
   if (ghToken && ghRepo) {
     saveTrainingPlanToGH(plan).catch(e => alert('Speichern bei GitHub fehlgeschlagen: ' + e.message + '\n\nDer Wert ist trotzdem lokal in diesem Browser gespeichert.'));
   }
