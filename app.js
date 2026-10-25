@@ -184,6 +184,23 @@ async function checkPassword() {
   }
 }
 
+// Einstellungen → Sperre: altes Passwort prüfen, neues zweimal eingeben
+async function changePassword() {
+  const msg = document.getElementById('pwChangeMsg');
+  const show = (text, ok) => { msg.textContent = text; msg.style.color = ok ? 'var(--green, #4caf50)' : 'var(--red, #e57373)'; msg.style.display = 'block'; };
+  const oldPw = document.getElementById('pwOld').value;
+  const new1 = document.getElementById('pwNew1').value;
+  const new2 = document.getElementById('pwNew2').value;
+  if (!window.crypto || !window.crypto.subtle) return show('Benötigt HTTPS oder localhost.');
+  const stored = localStorage.getItem('tb_pw_hash');
+  if (stored && await sha256(oldPw) !== stored) return show('Aktuelles Passwort ist falsch.');
+  if (new1.length < 4) return show('Neues Passwort: mindestens 4 Zeichen.');
+  if (new1 !== new2) return show('Die neuen Passwörter stimmen nicht überein.');
+  localStorage.setItem('tb_pw_hash', await sha256(new1));
+  ['pwOld', 'pwNew1', 'pwNew2'].forEach(id => document.getElementById(id).value = '');
+  show('Passwort geändert.', true);
+}
+
 const SESSION_TIMEOUT_HOURS = 0.5; // Nach 30 Minuten automatisch abmelden
 
 function logout() {

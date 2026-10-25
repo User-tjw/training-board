@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8"/>
@@ -10,7 +10,7 @@
   <!-- ?v=Datum als Cache-Buster: GitHub Pages cached app.js/style.css 10min ohne Revalidierung.
        Bei jeder Änderung an app.js oder style.css hier UND unten beim <script>-Tag das Datum
        auf den aktuellen Tag hochziehen, sonst bekommen Nutzer bis zu 10min alten Code. -->
-  <link rel="stylesheet" href="style.css?v=20261025b">
+  <link rel="stylesheet" href="style.css?v=20261025c">
 </head>
 <body>
 
@@ -469,6 +469,10 @@
           <div class="settings-nav-title">Aktivitäten</div>
           <div class="settings-nav-desc">Für Ausrüstungs-Zuordnung</div>
         </div>
+        <div class="settings-nav-item" data-pane="lock" onclick="selectSettingsPane('lock')">
+          <div class="settings-nav-title">Sicherheit</div>
+          <div class="settings-nav-desc">Passwort ändern</div>
+        </div>
       </div>
 
       <div class="settings-detail">
@@ -505,6 +509,28 @@
 
           <div class="settings-btn-row" style="margin-top:14px">
             <button class="setup-btn" onclick="saveApiSettings()">Speichern</button>
+          </div>
+        </div>
+
+        <!-- Sicherheit: App-Passwort ändern (Hash nur lokal in diesem Browser) -->
+        <div class="settings-pane" id="pane-lock" style="display:none">
+          <div class="settings-group-title">Passwort ändern</div>
+          <div class="setup-field">
+            <label class="setup-label">Aktuelles Passwort</label>
+            <input class="setup-input" id="pwOld" type="password" autocomplete="current-password">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">Neues Passwort</label>
+            <input class="setup-input" id="pwNew1" type="password" autocomplete="new-password">
+          </div>
+          <div class="setup-field">
+            <label class="setup-label">Neues Passwort wiederholen</label>
+            <input class="setup-input" id="pwNew2" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter')changePassword()">
+          </div>
+          <div class="setup-hint">Das Passwort gilt nur in diesem Browser (wird nicht synchronisiert). Mindestens 4 Zeichen.</div>
+          <div class="setup-hint" id="pwChangeMsg" style="display:none"></div>
+          <div class="settings-btn-row" style="margin-top:14px">
+            <button class="setup-btn" onclick="changePassword()">Passwort ändern</button>
           </div>
         </div>
 
@@ -822,6 +848,6 @@
 <!-- Eigenes Datumsauswahl-Popover (statt nativem Kalender), damit ein "Heute"-Feld möglich ist -->
 <div id="datePickerPopover" class="date-picker-pop" style="display:none"></div>
 
-<script src="app.js?v=20261025b"></script>
+<script src="app.js?v=20261025c"></script>
 </body>
 </html>
